@@ -103,7 +103,6 @@
           React.createElement('h1', { style: { fontSize: '28px', fontWeight: 700, marginBottom: '4px' } }, 'Daily Market Analysis'),
           React.createElement('p', { style: { color: '#94a3b8', marginBottom: '24px', fontSize: '14px' } }, TODAY + ' | US Markets | 15 Key Events'),
 
-          /* Industry Filter */
           React.createElement('div', { style: { display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' } },
             ['All', 'Tech', 'Energy', 'Finance'].map(ind =>
               React.createElement('button', {
@@ -123,36 +122,28 @@
             )
           ),
 
-          /* Chart */
           React.createElement('div', { style: { background: '#151c2c', borderRadius: '12px', padding: '20px', marginBottom: '20px', overflowX: 'auto' } },
             React.createElement('svg', { width: chartW, height: chartH, style: { display: 'block', margin: '0 auto' } },
-              /* Past background */
               React.createElement('rect', { x: padL, y: padT, width: todayX - padL, height: plotH, fill: 'rgba(239,68,68,0.06)' }),
-              /* Future background */
               React.createElement('rect', { x: todayX, y: padT, width: padL + plotW - todayX, height: plotH, fill: 'rgba(34,197,94,0.06)' }),
 
-              /* Grid lines */
               [1, 2, 3].map(v => {
                 const y = padT + plotH - ((v - 0.5) / 3) * plotH;
                 return React.createElement('line', { key: v, x1: padL, x2: padL + plotW, y1: y, y2: y, stroke: '#1e293b', strokeWidth: 1 });
               }),
 
-              /* Today line */
               React.createElement('line', { x1: todayX, y1: padT, x2: todayX, y2: padT + plotH, stroke: '#ef4444', strokeWidth: 2, strokeDasharray: '6,4' }),
               React.createElement('text', { x: todayX, y: padT - 8, fill: '#ef4444', fontSize: 11, textAnchor: 'middle', fontWeight: 600 }, 'TODAY'),
 
-              /* Y-axis labels */
               ['Low', 'Medium', 'High'].map((label, i) => {
                 const y = padT + plotH - ((i + 0.5) / 3) * plotH;
                 return React.createElement('text', { key: label, x: padL - 10, y: y + 4, fill: '#64748b', fontSize: 11, textAnchor: 'end' }, label);
               }),
 
-              /* X-axis date labels */
               dateLabels.map((dl, i) =>
                 React.createElement('text', { key: i, x: dl.x, y: padT + plotH + 20, fill: '#64748b', fontSize: 10, textAnchor: 'middle' }, dl.label)
               ),
 
-              /* Event dots */
               filteredEvents.map(event => {
                 const cx = xPos(event.date);
                 const cy = yPos(event.impact);
@@ -165,7 +156,6 @@
                 );
               }),
 
-              /* Legend */
               Object.entries(INDUSTRY_COLORS).map(([name, color], i) =>
                 React.createElement('g', { key: name, transform: 'translate(' + (padL + i * 110) + ',' + (chartH - 10) + ')' },
                   React.createElement('circle', { cx: 0, cy: 0, r: 5, fill: color }),
@@ -175,7 +165,6 @@
             )
           ),
 
-          /* Detail Panel */
           selectedEvent && React.createElement('div', { style: { background: '#151c2c', borderRadius: '12px', padding: '20px', marginBottom: '20px', border: '1px solid #334155' } },
             React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' } },
               React.createElement('div', null,
@@ -201,7 +190,6 @@
             React.createElement('p', { style: { marginTop: '12px', color: '#94a3b8', fontSize: '14px', lineHeight: '1.5' } }, selectedEvent.reason)
           ),
 
-          /* Table */
           React.createElement('div', { style: { background: '#151c2c', borderRadius: '12px', padding: '20px', overflowX: 'auto' } },
             React.createElement('h2', { style: { fontSize: '18px', fontWeight: 600, marginBottom: '16px' } }, 'All Events'),
             React.createElement('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: '13px' } },

@@ -123,33 +123,26 @@ export default function DailyMarketAnalysis() {
       {/* Chart */}
       <div style={{ background: '#151c2c', borderRadius: '12px', padding: '20px', marginBottom: '20px', overflowX: 'auto' }}>
         <svg width={chartW} height={chartH} style={{ display: 'block', margin: '0 auto' }}>
-          {/* Past background */}
           <rect x={padL} y={padT} width={todayX - padL} height={plotH} fill="rgba(239,68,68,0.06)" />
-          {/* Future background */}
           <rect x={todayX} y={padT} width={padL + plotW - todayX} height={plotH} fill="rgba(34,197,94,0.06)" />
 
-          {/* Grid lines */}
           {[1, 2, 3].map(v => {
             const y = padT + plotH - ((v - 0.5) / 3) * plotH;
             return <line key={v} x1={padL} x2={padL + plotW} y1={y} y2={y} stroke="#1e293b" strokeWidth={1} />;
           })}
 
-          {/* Today line */}
           <line x1={todayX} y1={padT} x2={todayX} y2={padT + plotH} stroke="#ef4444" strokeWidth={2} strokeDasharray="6,4" />
           <text x={todayX} y={padT - 8} fill="#ef4444" fontSize={11} textAnchor="middle" fontWeight={600}>TODAY</text>
 
-          {/* Y-axis labels */}
           {['Low', 'Medium', 'High'].map((label, i) => {
             const y = padT + plotH - ((i + 0.5) / 3) * plotH;
             return <text key={label} x={padL - 10} y={y + 4} fill="#64748b" fontSize={11} textAnchor="end">{label}</text>;
           })}
 
-          {/* X-axis date labels */}
           {dateLabels.map((dl, i) => (
             <text key={i} x={dl.x} y={padT + plotH + 20} fill="#64748b" fontSize={10} textAnchor="middle">{dl.label}</text>
           ))}
 
-          {/* Event dots */}
           {filteredEvents.map(event => {
             const cx = xPos(event.date);
             const cy = yPos(event.impact);
@@ -164,7 +157,6 @@ export default function DailyMarketAnalysis() {
             );
           })}
 
-          {/* Legend */}
           {Object.entries(INDUSTRY_COLORS).map(([name, color], i) => (
             <g key={name} transform={`translate(${padL + i * 110}, ${chartH - 10})`}>
               <circle cx={0} cy={0} r={5} fill={color} />
@@ -174,7 +166,6 @@ export default function DailyMarketAnalysis() {
         </svg>
       </div>
 
-      {/* Detail Panel */}
       {selectedEvent && (
         <div style={{ background: '#151c2c', borderRadius: '12px', padding: '20px', marginBottom: '20px', border: '1px solid #334155' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
@@ -202,7 +193,6 @@ export default function DailyMarketAnalysis() {
         </div>
       )}
 
-      {/* Table */}
       <div style={{ background: '#151c2c', borderRadius: '12px', padding: '20px', overflowX: 'auto' }}>
         <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>All Events</h2>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
