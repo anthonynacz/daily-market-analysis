@@ -1,185 +1,222 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Daily Market Analysis — 2026-03-25</title>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #0b0f1a; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-  #app { max-width: 1200px; margin: 0 auto; padding: 20px; }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daily Market Analysis — 2026-03-25</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0b0f1a; color: #e2e8f0; font-family: 'Inter', system-ui, -apple-system, sans-serif; padding: 2rem; min-height: 100vh; }
+    h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .subtitle { color: #94a3b8; margin-bottom: 1.5rem; }
+    .card { background: #151c2c; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .filters { display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .filter-btn { background: transparent; border: 1px solid #475569; color: #e2e8f0; border-radius: 9999px; padding: 0.25rem 0.75rem; cursor: pointer; font-size: 0.8rem; transition: all 0.2s; }
+    .filter-btn:hover { background: #1e293b; }
+    .filter-btn.active { background: #334155; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th { text-align: left; padding: 0.5rem; color: #64748b; font-weight: 500; border-bottom: 1px solid #1e293b; }
+    td { padding: 0.5rem; }
+    tr.clickable { cursor: pointer; }
+    tr.clickable:hover td { background: #1e293b44; }
+    .pill { padding: 0.15rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+    .detail-panel { border-left: 4px solid #818cf8; }
+    .close-btn { margin-top: 0.75rem; background: transparent; border: 1px solid #334155; color: #94a3b8; padding: 0.25rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; }
+    .footer { text-align: center; color: #475569; font-size: 0.75rem; margin-top: 2rem; }
+    svg { display: block; margin: 0 auto; max-width: 100%; }
+    .chart-container { overflow-x: auto; }
+  </style>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
-<div id="app"></div>
-<script type="text/babel">
-const { useState, useMemo } = React;
+  <div id="app"></div>
+  <script type="text/babel">
+    const { useState, useMemo } = React;
 
-const INDUSTRY_COLORS = {
-  Tech: '#818cf8',
-  Healthcare: '#34d399',
-  Energy: '#fbbf24',
-  Finance: '#fb7185',
-};
+    const INDUSTRY_COLORS = {
+      Tech: '#818cf8',
+      Healthcare: '#34d399',
+      Energy: '#fbbf24',
+      Finance: '#fb7185',
+    };
 
-const RECOMMENDATION_COLORS = {
-  BUY: '#22c55e',
-  SELL: '#ef4444',
-  HOLD: '#eab308',
-  WATCH: '#3b82f6',
-};
+    const IMPACT_MAP = { High: 3, Medium: 2, Low: 1 };
 
-const EVENTS = [
-  { id: 1, headline: 'Micron (MU) Q2 Earnings Report', industry: 'Tech', date: '2026-03-26', impact: 'High', ticker: 'MU', recommendation: 'BUY', reason: 'Strong revenue and EPS growth streak; technical breakout confirmed last quarter.' },
-  { id: 2, headline: 'Alibaba (BABA) Earnings — Weak Technical Setup', industry: 'Tech', date: '2026-03-26', impact: 'Medium', ticker: 'BABA', recommendation: 'HOLD', reason: 'Trading at multi-month lows; wait for earnings clarity before adding.' },
-  { id: 3, headline: 'Accenture (ACN) Earnings — AI Consulting Disruption', industry: 'Tech', date: '2026-03-27', impact: 'Medium', ticker: 'ACN', recommendation: 'WATCH', reason: 'AI disruption narrative weighing on consulting sector; key read on enterprise spending.' },
-  { id: 4, headline: 'Software Sector (IGV) Down 23% YTD on AI Fears', industry: 'Tech', date: '2026-03-24', impact: 'High', ticker: 'IGV', recommendation: 'WATCH', reason: 'Sector-wide selloff may be overdone but no catalyst for reversal yet.' },
-  { id: 5, headline: 'AWS Bahrain Region Disrupted by Drone Activity', industry: 'Tech', date: '2026-03-24', impact: 'Medium', ticker: 'AMZN', recommendation: 'HOLD', reason: 'Cloud migration underway to other regions; limited long-term impact but watch for escalation.' },
-  { id: 6, headline: 'Oil Surges Past $91 on Iran Strait of Hormuz Tensions', industry: 'Energy', date: '2026-03-24', impact: 'High', ticker: 'USO', recommendation: 'HOLD', reason: 'Prices elevated but diplomacy signals could trigger sharp reversal.' },
-  { id: 7, headline: 'Brent Crude Drops 4.7% on US-Iran Diplomacy Hopes', industry: 'Energy', date: '2026-03-25', impact: 'High', ticker: 'BNO', recommendation: 'SELL', reason: 'If diplomatic resolution materializes, oil could fall significantly from wartime premium.' },
-  { id: 8, headline: 'Chevron Rallies +1.82% as Energy Sector Outperforms', industry: 'Energy', date: '2026-03-24', impact: 'Medium', ticker: 'CVX', recommendation: 'BUY', reason: 'Strong defensive play while oil remains elevated; solid dividend yield.' },
-  { id: 9, headline: 'Fed Holds Rates at 3.50-3.75%, Cites Middle East Uncertainty', industry: 'Finance', date: '2026-03-22', impact: 'High', ticker: 'SPY', recommendation: 'HOLD', reason: 'Rate path uncertain; inflation pressures from oil complicate cuts timeline.' },
-  { id: 10, headline: 'Russell 2000 Enters Correction Territory', industry: 'Finance', date: '2026-03-23', impact: 'High', ticker: 'IWM', recommendation: 'WATCH', reason: 'Small caps historically rebound after corrections but macro headwinds persist.' },
-  { id: 11, headline: 'SEC May Scrap Quarterly Reporting Requirement', industry: 'Finance', date: '2026-03-24', impact: 'Medium', ticker: 'XLF', recommendation: 'WATCH', reason: 'Major regulatory shift if enacted; could reduce short-term volatility but decrease transparency.' },
-  { id: 12, headline: 'UMich Consumer Sentiment Final — Consensus 55.5', industry: 'Finance', date: '2026-03-27', impact: 'Medium', ticker: 'XLY', recommendation: 'WATCH', reason: 'Consumer confidence key indicator amid rising energy costs and geopolitical stress.' },
-  { id: 13, headline: 'FedEx (FDX) Earnings — Global Trade Bellwether', industry: 'Finance', date: '2026-03-26', impact: 'Medium', ticker: 'FDX', recommendation: 'HOLD', reason: 'Shipping volumes reflect global trade health; Iran disruptions could impact guidance.' },
-  { id: 14, headline: 'Healthcare Stocks Resilient as Defensive Play', industry: 'Healthcare', date: '2026-03-25', impact: 'Medium', ticker: 'XLV', recommendation: 'BUY', reason: 'Sector rotation into defensives amid geopolitical uncertainty supports healthcare names.' },
-];
+    const REC_COLORS = { BUY: '#22c55e', SELL: '#ef4444', HOLD: '#eab308', WATCH: '#3b82f6' };
 
-function daysBetween(a, b) {
-  return Math.round((new Date(b) - new Date(a)) / (1000 * 60 * 60 * 24));
-}
+    const TODAY = '2026-03-25';
 
-function App() {
-  const [selected, setSelected] = useState(null);
-  const today = '2026-03-25';
+    const EVENTS = [
+      { id: 1, headline: 'Software Sector Selloff — IGV Down 23% YTD on AI Disruption Fears', industry: 'Tech', date: '2026-03-24', impact: 'High', ticker: 'MSFT', recommendation: 'SELL', reason: 'AI disruption fears are crushing software valuations with no near-term catalyst for reversal.' },
+      { id: 2, headline: 'Salesforce Drops 4% Amid Weak Enterprise Spending', industry: 'Tech', date: '2026-03-24', impact: 'Medium', ticker: 'CRM', recommendation: 'SELL', reason: 'Enterprise AI headwinds and declining deal sizes signal continued weakness.' },
+      { id: 3, headline: 'Micron Earnings Report — Q2 FY2026', industry: 'Tech', date: '2026-03-26', impact: 'High', ticker: 'MU', recommendation: 'WATCH', reason: 'Strong momentum in memory chips but semiconductor volatility warrants caution pre-earnings.' },
+      { id: 4, headline: 'AWS Bahrain Region Disrupted by Drone Activity', industry: 'Tech', date: '2026-03-24', impact: 'Medium', ticker: 'AMZN', recommendation: 'HOLD', reason: 'Regional cloud disruption is temporary but highlights growing geopolitical risk to infrastructure.' },
+      { id: 5, headline: 'Iran-US Peace Plan Proposal — Diplomatic Breakthrough', industry: 'Energy', date: '2026-03-25', impact: 'High', ticker: 'XLE', recommendation: 'WATCH', reason: 'A confirmed deal could crash oil prices 15-20%; wait for official confirmation before acting.' },
+      { id: 6, headline: 'Crude Oil Surges to $91.80 as War Enters Fourth Week', industry: 'Energy', date: '2026-03-24', impact: 'High', ticker: 'CVX', recommendation: 'BUY', reason: 'Sustained high oil prices directly boost upstream energy revenues and margins.' },
+      { id: 7, headline: 'Strait of Hormuz Shipping Restrictions — Iran $2M Transit Tax', industry: 'Energy', date: '2026-03-23', impact: 'High', ticker: 'XOM', recommendation: 'BUY', reason: 'Supply disruption keeps prices elevated; Exxon benefits from both upstream and refining margins.' },
+      { id: 8, headline: 'Fed Holds Rates at 3.50-3.75% Citing Middle East Uncertainty', industry: 'Finance', date: '2026-03-22', impact: 'High', ticker: 'JPM', recommendation: 'HOLD', reason: 'Rate stability supports net interest income but geopolitical uncertainty limits upside.' },
+      { id: 9, headline: 'Apollo $15B Fund Hit with Record Redemption Requests', industry: 'Finance', date: '2026-03-24', impact: 'High', ticker: 'APO', recommendation: 'SELL', reason: 'Redemptions exceeding 2x quarterly limits signal credit stress in private markets.' },
+      { id: 10, headline: 'Russell 2000 Enters Correction Territory', industry: 'Finance', date: '2026-03-23', impact: 'High', ticker: 'IWM', recommendation: 'WATCH', reason: 'Small caps in correction — wait for stabilization before adding exposure.' },
+      { id: 11, headline: 'SEC Considers Scrapping Quarterly Reporting Requirement', industry: 'Finance', date: '2026-03-24', impact: 'Medium', ticker: 'GS', recommendation: 'WATCH', reason: 'Shift to semi-annual reporting could reshape market structure; monitor comment period.' },
+      { id: 12, headline: 'FedEx Earnings — Key Read on Global Trade Volumes', industry: 'Finance', date: '2026-03-26', impact: 'Medium', ticker: 'FDX', recommendation: 'WATCH', reason: 'FedEx volumes are a bellwether for global trade; Iran conflict impact on logistics is key.' },
+      { id: 13, headline: 'Celsius Holdings Drops 10% on Growth Concerns', industry: 'Healthcare', date: '2026-03-24', impact: 'Medium', ticker: 'CELH', recommendation: 'SELL', reason: 'Growth deceleration in functional beverages amid rising competitive pressure from incumbents.' },
+      { id: 14, headline: 'Defensive Rotation Into Healthcare — UNH Outperforms', industry: 'Healthcare', date: '2026-03-25', impact: 'Medium', ticker: 'UNH', recommendation: 'BUY', reason: 'Healthcare offers defensive positioning as investors rotate out of growth amid geopolitical risk.' },
+    ];
 
-  const chartConfig = useMemo(() => {
-    const startDate = '2026-03-22';
-    const endDate = '2026-03-30';
-    const totalDays = daysBetween(startDate, endDate);
-    const width = 900;
-    const height = 300;
-    const padding = { top: 30, right: 30, bottom: 40, left: 60 };
-    const plotW = width - padding.left - padding.right;
-    const plotH = height - padding.top - padding.bottom;
-    const impactMap = { Low: 1, Medium: 2, High: 3 };
-
-    const points = EVENTS.map(ev => {
-      const dx = daysBetween(startDate, ev.date);
-      const x = padding.left + (dx / totalDays) * plotW;
-      const y = padding.top + plotH - ((impactMap[ev.impact] - 0.5) / 3) * plotH;
-      return { ...ev, x, y };
-    });
-
-    const todayX = padding.left + (daysBetween(startDate, today) / totalDays) * plotW;
-
-    const dates = [];
-    for (let i = 0; i <= totalDays; i++) {
-      const d = new Date('2026-03-22');
-      d.setDate(d.getDate() + i);
-      const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      const x = padding.left + (i / totalDays) * plotW;
-      dates.push({ label, x });
+    function parseDate(d) {
+      const [y, m, day] = d.split('-').map(Number);
+      return new Date(y, m - 1, day);
     }
 
-    return { width, height, padding, plotW, plotH, points, todayX, dates };
-  }, []);
+    function formatDate(d) {
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return months[d.getMonth()] + ' ' + d.getDate();
+    }
 
-  const selectedEvent = selected ? EVENTS.find(e => e.id === selected) : null;
+    function App() {
+      const [selected, setSelected] = useState(null);
+      const [filterIndustry, setFilterIndustry] = useState('All');
 
-  return (
-    <div>
-      <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 4, color: '#f1f5f9' }}>Daily Market Analysis</h1>
-      <p style={{ color: '#94a3b8', marginBottom: 20 }}>{today} | 14 Events Across 4 Industries</p>
+      const startDate = parseDate('2026-03-22');
+      const endDate = parseDate('2026-03-30');
+      const totalDays = (endDate - startDate) / (1000 * 60 * 60 * 24);
 
-      {/* Legend */}
-      <div style={{ display: 'flex', gap: 20, marginBottom: 16, flexWrap: 'wrap' }}>
-        {Object.entries(INDUSTRY_COLORS).map(([name, color]) => (
-          <span key={name} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-            <span style={{ width: 10, height: 10, borderRadius: '50%', background: color, display: 'inline-block' }} />
-            {name}
-          </span>
-        ))}
-      </div>
+      const chartW = 800, chartH = 300, padL = 60, padR = 30, padT = 30, padB = 50;
+      const plotW = chartW - padL - padR;
+      const plotH = chartH - padT - padB;
 
-      {/* Chart */}
-      <div style={{ background: '#151c2c', borderRadius: 12, padding: 16, marginBottom: 20, overflowX: 'auto' }}>
-        <svg width={chartConfig.width} height={chartConfig.height} style={{ display: 'block', margin: '0 auto' }}>
-          {/* Past background */}
-          <rect x={chartConfig.padding.left} y={chartConfig.padding.top} width={chartConfig.todayX - chartConfig.padding.left} height={chartConfig.plotH} fill="rgba(239,68,68,0.05)" />
-          {/* Future background */}
-          <rect x={chartConfig.todayX} y={chartConfig.padding.top} width={chartConfig.padding.left + chartConfig.plotW - chartConfig.todayX} height={chartConfig.plotH} fill="rgba(34,197,94,0.05)" />
-          {/* Today line */}
-          <line x1={chartConfig.todayX} y1={chartConfig.padding.top} x2={chartConfig.todayX} y2={chartConfig.padding.top + chartConfig.plotH} stroke="#ef4444" strokeWidth={2} strokeDasharray="6,4" />
-          <text x={chartConfig.todayX} y={chartConfig.padding.top - 8} fill="#ef4444" fontSize={11} textAnchor="middle">TODAY</text>
-          {/* Y axis labels */}
-          {['Low', 'Medium', 'High'].map((label, i) => (
-            <text key={label} x={chartConfig.padding.left - 10} y={chartConfig.padding.top + chartConfig.plotH - ((i + 0.5) / 3) * chartConfig.plotH + 4} fill="#64748b" fontSize={11} textAnchor="end">{label}</text>
-          ))}
-          {/* X axis dates */}
-          {chartConfig.dates.map((d, i) => (
-            <text key={i} x={d.x} y={chartConfig.padding.top + chartConfig.plotH + 20} fill="#64748b" fontSize={10} textAnchor="middle">{d.label}</text>
-          ))}
-          {/* Grid lines */}
-          {[1, 2, 3].map(i => (
-            <line key={i} x1={chartConfig.padding.left} y1={chartConfig.padding.top + chartConfig.plotH - ((i - 0.5) / 3) * chartConfig.plotH} x2={chartConfig.padding.left + chartConfig.plotW} y2={chartConfig.padding.top + chartConfig.plotH - ((i - 0.5) / 3) * chartConfig.plotH} stroke="#1e293b" strokeWidth={1} />
-          ))}
-          {/* Dots */}
-          {chartConfig.points.map(pt => (
-            <circle key={pt.id} cx={pt.x} cy={pt.y} r={selected === pt.id ? 9 : 7} fill={INDUSTRY_COLORS[pt.industry]} stroke={selected === pt.id ? '#fff' : 'none'} strokeWidth={2} style={{ cursor: 'pointer', opacity: selected && selected !== pt.id ? 0.3 : 1, transition: 'opacity 0.2s' }} onClick={() => setSelected(selected === pt.id ? null : pt.id)} />
-          ))}
-        </svg>
-      </div>
+      const xScale = (dateStr) => {
+        const d = parseDate(dateStr);
+        const dayOffset = (d - startDate) / (1000 * 60 * 60 * 24);
+        return padL + (dayOffset / totalDays) * plotW;
+      };
 
-      {/* Detail Panel */}
-      {selectedEvent && (
-        <div style={{ background: '#151c2c', borderRadius: 12, padding: 20, marginBottom: 20, borderLeft: `4px solid ${INDUSTRY_COLORS[selectedEvent.industry]}` }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', flexWrap: 'wrap', gap: 10 }}>
-            <div>
-              <h3 style={{ fontSize: 18, marginBottom: 6 }}>{selectedEvent.headline}</h3>
-              <p style={{ color: '#94a3b8', fontSize: 13 }}>{selectedEvent.date} • {selectedEvent.industry} • <strong style={{ color: '#f1f5f9' }}>{selectedEvent.ticker}</strong> • Impact: {selectedEvent.impact}</p>
-            </div>
-            <span style={{ background: RECOMMENDATION_COLORS[selectedEvent.recommendation], color: '#000', fontWeight: 700, fontSize: 13, padding: '4px 14px', borderRadius: 20 }}>{selectedEvent.recommendation}</span>
-          </div>
-          <p style={{ marginTop: 12, color: '#cbd5e1', fontSize: 14, lineHeight: 1.5 }}>{selectedEvent.reason}</p>
-        </div>
-      )}
+      const yScale = (impact) => {
+        const val = IMPACT_MAP[impact];
+        return padT + plotH - ((val - 0.5) / 3) * plotH;
+      };
 
-      {/* Table */}
-      <div style={{ background: '#151c2c', borderRadius: 12, padding: 16, overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid #1e293b' }}>
-              {['Date', 'Headline', 'Industry', 'Ticker', 'Impact', 'Rec'].map(h => (
-                <th key={h} style={{ textAlign: 'left', padding: '8px 10px', color: '#64748b', fontWeight: 600 }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {EVENTS.sort((a, b) => a.date.localeCompare(b.date)).map(ev => (
-              <tr key={ev.id} style={{ borderBottom: '1px solid #1e293b', cursor: 'pointer', background: selected === ev.id ? '#1e293b' : 'transparent' }} onClick={() => setSelected(selected === ev.id ? null : ev.id)}>
-                <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>{ev.date}</td>
-                <td style={{ padding: '8px 10px' }}>{ev.headline}</td>
-                <td style={{ padding: '8px 10px' }}><span style={{ color: INDUSTRY_COLORS[ev.industry] }}>{ev.industry}</span></td>
-                <td style={{ padding: '8px 10px', fontWeight: 600 }}>{ev.ticker}</td>
-                <td style={{ padding: '8px 10px' }}>{ev.impact}</td>
-                <td style={{ padding: '8px 10px' }}><span style={{ background: RECOMMENDATION_COLORS[ev.recommendation], color: '#000', fontWeight: 700, fontSize: 11, padding: '2px 10px', borderRadius: 12 }}>{ev.recommendation}</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      const todayX = xScale(TODAY);
 
-      <p style={{ textAlign: 'center', color: '#475569', fontSize: 11, marginTop: 20 }}>Generated 2026-03-25 • Data sourced from CNBC, Bloomberg, Yahoo Finance, Earnings Whispers</p>
-    </div>
-  );
-}
+      const filteredEvents = useMemo(() => {
+        if (filterIndustry === 'All') return EVENTS;
+        return EVENTS.filter(e => e.industry === filterIndustry);
+      }, [filterIndustry]);
 
-ReactDOM.createRoot(document.getElementById('app')).render(React.createElement(App));
-</script>
+      const dateTicks = [];
+      for (let d = new Date(startDate); d <= endDate; d = new Date(d.getTime() + 86400000)) {
+        dateTicks.push(new Date(d));
+      }
+
+      return (
+        React.createElement('div', null,
+          React.createElement('h1', null, 'Daily Market Analysis'),
+          React.createElement('p', { className: 'subtitle' }, TODAY + ' \u00b7 US Markets \u00b7 14 Events Tracked'),
+
+          React.createElement('div', { className: 'filters' },
+            ['All', 'Tech', 'Healthcare', 'Energy', 'Finance'].map(ind =>
+              React.createElement('button', {
+                key: ind,
+                className: 'filter-btn' + (filterIndustry === ind ? ' active' : ''),
+                onClick: () => setFilterIndustry(ind),
+                style: filterIndustry === ind && ind !== 'All' ? {
+                  borderColor: INDUSTRY_COLORS[ind],
+                  color: INDUSTRY_COLORS[ind],
+                  background: INDUSTRY_COLORS[ind] + '22',
+                } : ind !== 'All' ? { borderColor: INDUSTRY_COLORS[ind], color: INDUSTRY_COLORS[ind] } : {},
+              }, ind === 'All' ? 'All Industries' : ind)
+            )
+          ),
+
+          React.createElement('div', { className: 'card chart-container' },
+            React.createElement('svg', { width: chartW, height: chartH, viewBox: '0 0 ' + chartW + ' ' + chartH },
+              React.createElement('rect', { x: padL, y: padT, width: todayX - padL, height: plotH, fill: 'rgba(239,68,68,0.05)' }),
+              React.createElement('rect', { x: todayX, y: padT, width: padL + plotW - todayX, height: plotH, fill: 'rgba(34,197,94,0.05)' }),
+
+              [1, 2, 3].map(v =>
+                React.createElement('line', { key: 'g' + v, x1: padL, x2: padL + plotW, y1: padT + plotH - ((v - 0.5) / 3) * plotH, y2: padT + plotH - ((v - 0.5) / 3) * plotH, stroke: '#1e293b', strokeWidth: 1 })
+              ),
+
+              [{ label: 'Low', val: 1 }, { label: 'Medium', val: 2 }, { label: 'High', val: 3 }].map(item =>
+                React.createElement('text', { key: 'y' + item.val, x: padL - 10, y: padT + plotH - ((item.val - 0.5) / 3) * plotH + 4, textAnchor: 'end', fill: '#64748b', fontSize: 11 }, item.label)
+              ),
+
+              dateTicks.map((d, i) => {
+                const ds = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                return React.createElement('text', { key: 'x' + i, x: xScale(ds), y: chartH - 10, textAnchor: 'middle', fill: '#64748b', fontSize: 10 }, formatDate(d));
+              }),
+
+              React.createElement('line', { x1: todayX, x2: todayX, y1: padT, y2: padT + plotH, stroke: '#ef4444', strokeWidth: 2, strokeDasharray: '6,4' }),
+              React.createElement('text', { x: todayX, y: padT - 8, textAnchor: 'middle', fill: '#ef4444', fontSize: 11, fontWeight: 600 }, 'TODAY'),
+
+              filteredEvents.map(ev => {
+                const cx = xScale(ev.date);
+                const cy = yScale(ev.impact);
+                const isSel = selected && selected.id === ev.id;
+                return React.createElement('g', { key: 'ev' + ev.id, onClick: () => setSelected(isSel ? null : ev), style: { cursor: 'pointer' } },
+                  React.createElement('circle', { cx: cx, cy: cy, r: isSel ? 9 : 7, fill: INDUSTRY_COLORS[ev.industry], opacity: isSel ? 1 : 0.85, stroke: isSel ? '#fff' : 'none', strokeWidth: 2 }),
+                  React.createElement('text', { x: cx + 12, y: cy + 4, fill: '#94a3b8', fontSize: 9 }, ev.ticker)
+                );
+              })
+            )
+          ),
+
+          selected && React.createElement('div', {
+            className: 'card detail-panel',
+            style: { borderLeftColor: INDUSTRY_COLORS[selected.industry] },
+          },
+            React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' } },
+              React.createElement('div', null,
+                React.createElement('h3', { style: { fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.5rem' } }, selected.headline),
+                React.createElement('p', { style: { color: '#94a3b8', fontSize: '0.85rem' } },
+                  selected.industry + ' \u00b7 ' + selected.date + ' \u00b7 Impact: ' + selected.impact + ' \u00b7 Ticker: ',
+                  React.createElement('strong', { style: { color: '#e2e8f0' } }, selected.ticker)
+                )
+              ),
+              React.createElement('span', {
+                className: 'pill',
+                style: { background: REC_COLORS[selected.recommendation] + '22', color: REC_COLORS[selected.recommendation], border: '1px solid ' + REC_COLORS[selected.recommendation] + '44', padding: '0.25rem 0.75rem', fontWeight: 700, fontSize: '0.8rem' },
+              }, selected.recommendation)
+            ),
+            React.createElement('p', { style: { marginTop: '0.75rem', color: '#cbd5e1', fontSize: '0.9rem' } }, selected.reason),
+            React.createElement('button', { className: 'close-btn', onClick: () => setSelected(null) }, 'Close')
+          ),
+
+          React.createElement('div', { className: 'card', style: { overflowX: 'auto' } },
+            React.createElement('h2', { style: { fontSize: '1.1rem', fontWeight: 600, marginBottom: '1rem' } }, 'All Events'),
+            React.createElement('table', null,
+              React.createElement('thead', null,
+                React.createElement('tr', null,
+                  ['Date', 'Industry', 'Ticker', 'Impact', 'Rec', 'Headline'].map(h =>
+                    React.createElement('th', { key: h }, h)
+                  )
+                )
+              ),
+              React.createElement('tbody', null,
+                filteredEvents.map(ev =>
+                  React.createElement('tr', { key: 'r' + ev.id, className: 'clickable', onClick: () => setSelected(ev) },
+                    React.createElement('td', { style: { color: '#94a3b8' } }, ev.date),
+                    React.createElement('td', null, React.createElement('span', { style: { color: INDUSTRY_COLORS[ev.industry] } }, ev.industry)),
+                    React.createElement('td', { style: { fontWeight: 600 } }, ev.ticker),
+                    React.createElement('td', { style: { color: ev.impact === 'High' ? '#f87171' : '#fbbf24' } }, ev.impact),
+                    React.createElement('td', null,
+                      React.createElement('span', { className: 'pill', style: { background: REC_COLORS[ev.recommendation] + '22', color: REC_COLORS[ev.recommendation] } }, ev.recommendation)
+                    ),
+                    React.createElement('td', { style: { color: '#cbd5e1', maxWidth: '400px' } }, ev.headline)
+                  )
+                )
+              )
+            )
+          ),
+
+          React.createElement('p', { className: 'footer' }, 'Generated ' + TODAY + ' \u00b7 Not financial advice \u00b7 Do your own research')
+        )
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('app')).render(React.createElement(App));
+  </script>
 </body>
 </html>
