@@ -1,0 +1,186 @@
+import { useState, useMemo } from 'react';
+
+const INDUSTRY_COLORS = {
+  Tech: '#818cf8',
+  Healthcare: '#34d399',
+  Energy: '#fbbf24',
+  Finance: '#fb7185',
+};
+
+const RECOMMENDATION_COLORS = {
+  BUY: '#22c55e',
+  SELL: '#ef4444',
+  HOLD: '#eab308',
+  WATCH: '#3b82f6',
+};
+
+const EVENTS = [
+  { id: 1, headline: 'US-Iran tensions reignite as US seizes Iranian ship, Strait of Hormuz at risk', industry: 'Energy', date: '2026-04-20', impact: 'High', ticker: 'XOM', recommendation: 'BUY', reason: 'Oil supply disruption fears will drive energy prices higher in the short term.' },
+  { id: 2, headline: 'Nasdaq 12-day winning streak ends on geopolitical selloff', industry: 'Tech', date: '2026-04-20', impact: 'High', ticker: 'QQQ', recommendation: 'HOLD', reason: 'Pullback after extended rally is healthy; wait for clarity on Iran situation.' },
+  { id: 3, headline: 'Netflix falls 10% after Reed Hastings announces departure', industry: 'Tech', date: '2026-04-17', impact: 'High', ticker: 'NFLX', recommendation: 'WATCH', reason: 'Leadership vacuum plus weak guidance creates uncertainty; wait for stabilization.' },
+  { id: 4, headline: 'Meta/Broadcom announce 1GW custom AI chip deployment deal', industry: 'Tech', date: '2026-04-18', impact: 'Medium', ticker: 'AVGO', recommendation: 'BUY', reason: 'Massive AI infrastructure deal validates Broadcom custom silicon strategy.' },
+  { id: 5, headline: 'S&P 500 hits all-time high of 7,126 before Friday pullback', industry: 'Finance', date: '2026-04-17', impact: 'Medium', ticker: 'SPY', recommendation: 'HOLD', reason: 'Record highs followed by geopolitical shock; reduce exposure but don\'t panic sell.' },
+  { id: 6, headline: 'Tesla Q1 2026 earnings report', industry: 'Tech', date: '2026-04-22', impact: 'High', ticker: 'TSLA', recommendation: 'WATCH', reason: 'Robotaxi updates and margin recovery key; high volatility expected around report.' },
+  { id: 7, headline: 'UnitedHealth Group Q1 2026 earnings report', industry: 'Healthcare', date: '2026-04-21', impact: 'High', ticker: 'UNH', recommendation: 'HOLD', reason: 'Stable managed care giant but regulatory headwinds persist.' },
+  { id: 8, headline: 'Capital One Financial Q1 2026 earnings report', industry: 'Finance', date: '2026-04-21', impact: 'High', ticker: 'COF', recommendation: 'HOLD', reason: 'Credit quality trends critical amid consumer spending slowdown concerns.' },
+  { id: 9, headline: 'Intuitive Surgical Q1 2026 earnings report', industry: 'Healthcare', date: '2026-04-21', impact: 'High', ticker: 'ISRG', recommendation: 'BUY', reason: 'Da Vinci 5 system adoption accelerating; procedure volume growth remains strong.' },
+  { id: 10, headline: 'Halliburton Q1 2026 earnings report', industry: 'Energy', date: '2026-04-21', impact: 'Medium', ticker: 'HAL', recommendation: 'BUY', reason: 'Rising oil prices from geopolitical tensions benefit oilfield services directly.' },
+  { id: 11, headline: 'ServiceNow Q1 2026 earnings report', industry: 'Tech', date: '2026-04-22', impact: 'Medium', ticker: 'NOW', recommendation: 'BUY', reason: 'AI workflow automation demand surging; consistent beat-and-raise expected.' },
+  { id: 12, headline: 'Boeing Q1 2026 earnings and delivery update', industry: 'Tech', date: '2026-04-22', impact: 'High', ticker: 'BA', recommendation: 'WATCH', reason: 'Production recovery progress critical but defense tensions add uncertainty.' },
+  { id: 13, headline: 'Kinder Morgan Q1 2026 earnings report', industry: 'Energy', date: '2026-04-22', impact: 'Medium', ticker: 'KMI', recommendation: 'HOLD', reason: 'Stable pipeline cash flows but limited upside from commodity price spikes.' },
+  { id: 14, headline: 'Interactive Brokers Q1 2026 earnings report', industry: 'Finance', date: '2026-04-21', impact: 'Medium', ticker: 'IBKR', recommendation: 'BUY', reason: 'Record trading volumes from market volatility directly boost revenue.' },
+];
+
+function DailyMarketAnalysis() {
+  const [selectedEvent, setSelectedEvent] = useState(null);
+
+  const today = new Date('2026-04-20');
+
+  const dateRange = useMemo(() => {
+    const dates = [];
+    for (let i = -3; i <= 5; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() + i);
+      dates.push(d.toISOString().split('T')[0]);
+    }
+    return dates;
+  }, []);
+
+  const chartWidth = 800;
+  const chartHeight = 300;
+  const padding = { top: 40, right: 40, bottom: 50, left: 60 };
+  const plotWidth = chartWidth - padding.left - padding.right;
+  const plotHeight = chartHeight - padding.top - padding.bottom;
+
+  const impactToY = (impact) => {
+    const levels = { Low: 0.2, Medium: 0.5, High: 0.85 };
+    return padding.top + plotHeight * (1 - (levels[impact] || 0.5));
+  };
+
+  const dateToX = (dateStr) => {
+    const startDate = new Date(dateRange[0]);
+    const endDate = new Date(dateRange[dateRange.length - 1]);
+    const current = new Date(dateStr);
+    const totalDays = (endDate - startDate) / (1000 * 60 * 60 * 24);
+    const dayOffset = (current - startDate) / (1000 * 60 * 60 * 24);
+    return padding.left + (dayOffset / totalDays) * plotWidth;
+  };
+
+  const todayX = dateToX('2026-04-20');
+
+  return (
+    <div style={{ background: '#0b0f1a', minHeight: '100vh', color: '#e2e8f0', fontFamily: 'Inter, system-ui, sans-serif', padding: '24px' }}>
+      <h1 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '4px' }}>Daily Market Analysis</h1>
+      <p style={{ color: '#94a3b8', marginBottom: '24px' }}>April 20, 2026 — 14 Key Events Across 4 Industries</p>
+
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        {Object.entries(INDUSTRY_COLORS).map(([name, color]) => (
+          <span key={name} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+            <span style={{ width: 10, height: 10, borderRadius: '50%', background: color, display: 'inline-block' }} />
+            {name}
+          </span>
+        ))}
+      </div>
+
+      <div style={{ background: '#151c2c', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
+        <svg width={chartWidth} height={chartHeight} style={{ width: '100%', height: 'auto' }} viewBox={`0 0 ${chartWidth} ${chartHeight}`}>
+          <rect x={padding.left} y={padding.top} width={todayX - padding.left} height={plotHeight} fill="rgba(239,68,68,0.05)" />
+          <rect x={todayX} y={padding.top} width={padding.left + plotWidth - todayX} height={plotHeight} fill="rgba(34,197,94,0.05)" />
+
+          <line x1={todayX} y1={padding.top} x2={todayX} y2={padding.top + plotHeight} stroke="#ef4444" strokeWidth="2" strokeDasharray="6,4" />
+          <text x={todayX} y={padding.top - 8} fill="#ef4444" fontSize="11" textAnchor="middle">TODAY</text>
+
+          {['High', 'Medium', 'Low'].map((level) => (
+            <g key={level}>
+              <line x1={padding.left} y1={impactToY(level)} x2={padding.left + plotWidth} y2={impactToY(level)} stroke="#1e293b" strokeWidth="1" />
+              <text x={padding.left - 10} y={impactToY(level) + 4} fill="#64748b" fontSize="11" textAnchor="end">{level}</text>
+            </g>
+          ))}
+
+          {dateRange.map((date) => (
+            <g key={date}>
+              <line x1={dateToX(date)} y1={padding.top + plotHeight} x2={dateToX(date)} y2={padding.top + plotHeight + 6} stroke="#334155" strokeWidth="1" />
+              <text x={dateToX(date)} y={padding.top + plotHeight + 20} fill="#64748b" fontSize="10" textAnchor="middle">
+                {date.slice(5)}
+              </text>
+            </g>
+          ))}
+
+          {EVENTS.map((event, idx) => {
+            const cx = dateToX(event.date);
+            const cy = impactToY(event.impact) + (idx % 3 - 1) * 8;
+            return (
+              <circle
+                key={event.id}
+                cx={cx}
+                cy={cy}
+                r={selectedEvent?.id === event.id ? 9 : 7}
+                fill={INDUSTRY_COLORS[event.industry]}
+                opacity={selectedEvent && selectedEvent.id !== event.id ? 0.4 : 0.9}
+                stroke={selectedEvent?.id === event.id ? '#fff' : 'none'}
+                strokeWidth="2"
+                style={{ cursor: 'pointer', transition: 'all 0.2s' }}
+                onClick={() => setSelectedEvent(event)}
+              />
+            );
+          })}
+        </svg>
+      </div>
+
+      {selectedEvent && (
+        <div style={{ background: '#151c2c', borderRadius: '12px', padding: '20px', marginBottom: '24px', border: '1px solid #1e293b' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 600, margin: 0, flex: 1 }}>{selectedEvent.headline}</h3>
+            <button onClick={() => setSelectedEvent(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '18px' }}>✕</button>
+          </div>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ background: '#1e293b', padding: '4px 10px', borderRadius: '6px', fontSize: '13px', color: INDUSTRY_COLORS[selectedEvent.industry] }}>{selectedEvent.industry}</span>
+            <span style={{ background: '#1e293b', padding: '4px 10px', borderRadius: '6px', fontSize: '13px' }}>{selectedEvent.ticker}</span>
+            <span style={{ background: '#1e293b', padding: '4px 10px', borderRadius: '6px', fontSize: '13px' }}>{selectedEvent.date}</span>
+            <span style={{ background: '#1e293b', padding: '4px 10px', borderRadius: '6px', fontSize: '13px' }}>Impact: {selectedEvent.impact}</span>
+            <span style={{ background: RECOMMENDATION_COLORS[selectedEvent.recommendation], padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 700, color: selectedEvent.recommendation === 'HOLD' ? '#000' : '#fff' }}>
+              {selectedEvent.recommendation}
+            </span>
+          </div>
+          <p style={{ marginTop: '12px', color: '#94a3b8', fontSize: '14px', lineHeight: '1.5' }}>{selectedEvent.reason}</p>
+        </div>
+      )}
+
+      <div style={{ background: '#151c2c', borderRadius: '12px', padding: '20px', overflowX: 'auto' }}>
+        <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px' }}>All Events</h2>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid #1e293b' }}>
+              <th style={{ padding: '10px 8px', textAlign: 'left', color: '#64748b', fontWeight: 500 }}>Date</th>
+              <th style={{ padding: '10px 8px', textAlign: 'left', color: '#64748b', fontWeight: 500 }}>Ticker</th>
+              <th style={{ padding: '10px 8px', textAlign: 'left', color: '#64748b', fontWeight: 500 }}>Headline</th>
+              <th style={{ padding: '10px 8px', textAlign: 'left', color: '#64748b', fontWeight: 500 }}>Industry</th>
+              <th style={{ padding: '10px 8px', textAlign: 'left', color: '#64748b', fontWeight: 500 }}>Impact</th>
+              <th style={{ padding: '10px 8px', textAlign: 'left', color: '#64748b', fontWeight: 500 }}>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {EVENTS.sort((a, b) => a.date.localeCompare(b.date)).map((event) => (
+              <tr key={event.id} style={{ borderBottom: '1px solid #1e293b', cursor: 'pointer' }} onClick={() => setSelectedEvent(event)}>
+                <td style={{ padding: '10px 8px' }}>{event.date.slice(5)}</td>
+                <td style={{ padding: '10px 8px', fontWeight: 600 }}>{event.ticker}</td>
+                <td style={{ padding: '10px 8px', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.headline}</td>
+                <td style={{ padding: '10px 8px' }}>
+                  <span style={{ color: INDUSTRY_COLORS[event.industry] }}>{event.industry}</span>
+                </td>
+                <td style={{ padding: '10px 8px' }}>{event.impact}</td>
+                <td style={{ padding: '10px 8px' }}>
+                  <span style={{ background: RECOMMENDATION_COLORS[event.recommendation], padding: '2px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, color: event.recommendation === 'HOLD' ? '#000' : '#fff' }}>
+                    {event.recommendation}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+export default DailyMarketAnalysis;
