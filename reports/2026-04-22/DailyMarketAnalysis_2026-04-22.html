@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daily Market Analysis — 2026-04-22</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0b0f1a; color: #e2e8f0; font-family: 'Inter', system-ui, sans-serif; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="text/babel">
+    const { useState, useMemo } = React;
+
+    const EVENTS = [
+      { id: 1, ticker: 'ADBE', headline: 'Adobe Announces $25B Stock Buyback Program', date: '2026-04-20', industry: 'Tech', impact: 'Medium', recommendation: 'BUY', reason: 'Massive share repurchase signals strong management confidence in AI-driven growth trajectory' },
+      { id: 2, ticker: 'UNH', headline: 'UnitedHealth Q1 Earnings Beat Estimates', date: '2026-04-21', industry: 'Healthcare', impact: 'High', recommendation: 'BUY', reason: 'Strong Medicare Advantage enrollment and cost controls drove revenue and EPS upside' },
+      { id: 3, ticker: 'MRK', headline: 'Merck Kidney Cancer Phase 3 Trial Fails', date: '2026-04-21', industry: 'Healthcare', impact: 'High', recommendation: 'SELL', reason: 'Phase 3 failure removes a key pipeline catalyst and raises oncology portfolio risk' },
+      { id: 4, ticker: 'COF', headline: 'Capital One Q1 Earnings Report', date: '2026-04-21', industry: 'Finance', impact: 'High', recommendation: 'HOLD', reason: 'Consumer credit quality stable but rising delinquency trends warrant caution' },
+      { id: 5, ticker: 'COIN', headline: 'Coinbase Drops 6.4% on Volume Concerns', date: '2026-04-21', industry: 'Finance', impact: 'High', recommendation: 'SELL', reason: 'Declining crypto trading volumes and margin compression signal sustained headwinds' },
+      { id: 6, ticker: 'HAL', headline: 'Halliburton Q1 Earnings Report', date: '2026-04-21', industry: 'Energy', impact: 'Medium', recommendation: 'HOLD', reason: 'North American rig count flat; steady international growth offsets domestic softness' },
+      { id: 7, ticker: 'TSLA', headline: 'Tesla Q1 Earnings After Market Close', date: '2026-04-22', industry: 'Tech', impact: 'High', recommendation: 'WATCH', reason: 'EV delivery numbers mixed; autonomous driving and robotaxi progress key to re-rating' },
+      { id: 8, ticker: 'NOW', headline: 'ServiceNow Q1 Earnings Report', date: '2026-04-22', industry: 'Tech', impact: 'High', recommendation: 'BUY', reason: 'AI platform adoption accelerating enterprise subscription revenue and net retention' },
+      { id: 9, ticker: 'XOM', headline: 'US-Iran Ceasefire Extension Eases Oil Supply Fears', date: '2026-04-22', industry: 'Energy', impact: 'High', recommendation: 'WATCH', reason: 'Ceasefire extension temporarily reduces oil supply disruption risk but uncertainty remains' },
+      { id: 10, ticker: 'BSX', headline: 'Boston Scientific Q1 Earnings Report', date: '2026-04-22', industry: 'Healthcare', impact: 'Medium', recommendation: 'HOLD', reason: 'Consistent medtech performer but elevated valuation limits near-term upside' },
+      { id: 11, ticker: 'TXN', headline: 'Texas Instruments Q1 Earnings Report', date: '2026-04-22', industry: 'Tech', impact: 'Medium', recommendation: 'HOLD', reason: 'Analog chip demand stable but automotive sector softening could weigh on guidance' },
+      { id: 12, ticker: 'KMI', headline: 'Kinder Morgan Q1 Earnings Report', date: '2026-04-22', industry: 'Energy', impact: 'Medium', recommendation: 'HOLD', reason: 'Natural gas pipeline demand strong but limited upside at current yield levels' },
+      { id: 13, ticker: 'V', headline: 'Visa Q1 Earnings Expected', date: '2026-04-24', industry: 'Finance', impact: 'Medium', recommendation: 'BUY', reason: 'Cross-border travel recovery and digital payments growth support premium valuation' },
+      { id: 14, ticker: 'ABBV', headline: 'AbbVie Q1 Earnings Expected', date: '2026-04-25', industry: 'Healthcare', impact: 'Medium', recommendation: 'BUY', reason: 'Skyrizi and Rinvoq ramp replacing Humira revenue faster than expected' },
+    ];
+
+    const INDUSTRY_COLORS = { Tech: '#818cf8', Healthcare: '#34d399', Energy: '#fbbf24', Finance: '#fb7185' };
+    const REC_COLORS = { BUY: '#22c55e', SELL: '#ef4444', HOLD: '#eab308', WATCH: '#3b82f6' };
+    const IMPACT_Y = { High: 3, Medium: 2, Low: 1 };
+    const TODAY = '2026-04-22';
+    const DATE_START = new Date('2026-04-19');
+    const TOTAL_DAYS = 9;
+
+    function dayIndex(dateStr) {
+      return Math.round((new Date(dateStr) - DATE_START) / 86400000);
+    }
+
+    function formatDate(idx) {
+      const d = new Date(DATE_START);
+      d.setDate(d.getDate() + idx);
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    function App() {
+      const [selected, setSelected] = useState(null);
+
+      const chartW = 800, chartH = 340, pad = { top: 40, right: 40, bottom: 50, left: 60 };
+      const plotW = chartW - pad.left - pad.right;
+      const plotH = chartH - pad.top - pad.bottom;
+
+      const positions = useMemo(() => {
+        const counts = {};
+        return EVENTS.map(ev => {
+          const key = ev.date + '-' + ev.impact;
+          counts[key] = (counts[key] || 0);
+          const sameGroup = EVENTS.filter(e => e.date === ev.date && e.impact === ev.impact);
+          const offset = counts[key] * 18 - ((sameGroup.length - 1) * 9);
+          counts[key]++;
+          const cx = pad.left + (dayIndex(ev.date) / (TOTAL_DAYS - 1)) * plotW + offset;
+          const cy = pad.top + plotH - ((IMPACT_Y[ev.impact] - 0.5) / 3) * plotH;
+          return Object.assign({}, ev, { cx, cy });
+        });
+      }, []);
+
+      const todayX = pad.left + (dayIndex(TODAY) / (TOTAL_DAYS - 1)) * plotW;
+      const sel = selected ? positions.find(p => p.id === selected) : null;
+
+      return (
+        <div style={{ minHeight: '100vh', background: '#0b0f1a', color: '#e2e8f0', fontFamily: "'Inter', sans-serif", padding: '2rem' }}>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.25rem' }}>Daily Market Analysis</h1>
+          <p style={{ color: '#94a3b8', marginBottom: '1.5rem' }}>April 22, 2026 — 14 key events across Tech, Healthcare, Energy & Finance</p>
+
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+            {Object.entries(INDUSTRY_COLORS).map(([name, color]) => (
+              <span key={name} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}>
+                <span style={{ width: 12, height: 12, borderRadius: '50%', background: color, display: 'inline-block' }} />
+                {name}
+              </span>
+            ))}
+          </div>
+
+          <div style={{ background: '#151c2c', borderRadius: 12, padding: '1.5rem', marginBottom: '1.5rem', overflowX: 'auto' }}>
+            <svg width={chartW} height={chartH} style={{ display: 'block', margin: '0 auto' }}>
+              <rect x={pad.left} y={pad.top} width={todayX - pad.left} height={plotH} fill="rgba(239,68,68,0.06)" />
+              <rect x={todayX} y={pad.top} width={pad.left + plotW - todayX} height={plotH} fill="rgba(34,197,94,0.06)" />
+
+              {[0, 1, 2, 3].map(i => {
+                const y = pad.top + plotH - (i / 3) * plotH;
+                return <line key={i} x1={pad.left} x2={pad.left + plotW} y1={y} y2={y} stroke="#1e293b" strokeWidth={1} />;
+              })}
+
+              {Array.from({ length: TOTAL_DAYS }, (_, i) => {
+                const x = pad.left + (i / (TOTAL_DAYS - 1)) * plotW;
+                return (
+                  <g key={i}>
+                    <line x1={x} x2={x} y1={pad.top} y2={pad.top + plotH} stroke="#1e293b" strokeWidth={1} />
+                    <text x={x} y={chartH - 10} textAnchor="middle" fill="#64748b" fontSize={12}>{formatDate(i)}</text>
+                  </g>
+                );
+              })}
+
+              {['High', 'Medium', 'Low'].map((label, i) => {
+                const y = pad.top + plotH - ((3 - i - 0.5) / 3) * plotH;
+                return <text key={label} x={pad.left - 10} y={y + 4} textAnchor="end" fill="#64748b" fontSize={12}>{label}</text>;
+              })}
+
+              <line x1={todayX} x2={todayX} y1={pad.top - 10} y2={pad.top + plotH + 5} stroke="#ef4444" strokeWidth={2} strokeDasharray="6,4" />
+              <text x={todayX} y={pad.top - 16} textAnchor="middle" fill="#ef4444" fontSize={11} fontWeight={600}>TODAY</text>
+
+              {positions.map(ev => (
+                <g key={ev.id} onClick={() => setSelected(selected === ev.id ? null : ev.id)} style={{ cursor: 'pointer' }}>
+                  <circle cx={ev.cx} cy={ev.cy} r={selected === ev.id ? 10 : 7} fill={INDUSTRY_COLORS[ev.industry]} opacity={0.9} stroke={selected === ev.id ? '#fff' : 'none'} strokeWidth={2} />
+                  <text x={ev.cx} y={ev.cy - 12} textAnchor="middle" fill="#cbd5e1" fontSize={10} fontWeight={600}>{ev.ticker}</text>
+                </g>
+              ))}
+            </svg>
+          </div>
+
+          {sel && (
+            <div style={{ background: '#151c2c', borderRadius: 12, padding: '1.25rem', marginBottom: '1.5rem', border: '1px solid #1e293b' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 600, margin: 0 }}>{sel.ticker} — {sel.headline}</h3>
+                <span style={{ background: REC_COLORS[sel.recommendation], color: sel.recommendation === 'HOLD' ? '#000' : '#fff', padding: '0.2rem 0.75rem', borderRadius: 999, fontSize: '0.8rem', fontWeight: 700 }}>{sel.recommendation}</span>
+              </div>
+              <p style={{ color: '#94a3b8', fontSize: '0.9rem', margin: '0.25rem 0' }}><strong>Date:</strong> {sel.date} &nbsp;|&nbsp; <strong>Industry:</strong> <span style={{ color: INDUSTRY_COLORS[sel.industry] }}>{sel.industry}</span> &nbsp;|&nbsp; <strong>Impact:</strong> {sel.impact}</p>
+              <p style={{ color: '#cbd5e1', fontSize: '0.9rem', marginTop: '0.5rem' }}>{sel.reason}</p>
+            </div>
+          )}
+
+          <div style={{ background: '#151c2c', borderRadius: 12, padding: '1.25rem', overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #1e293b' }}>
+                  {['Ticker', 'Headline', 'Date', 'Industry', 'Impact', 'Rec'].map(h => (
+                    <th key={h} style={{ padding: '0.6rem 0.75rem', textAlign: 'left', color: '#94a3b8', fontWeight: 600 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {EVENTS.map(ev => (
+                  <tr key={ev.id} onClick={() => setSelected(ev.id)} style={{ borderBottom: '1px solid #1e293b', cursor: 'pointer', background: selected === ev.id ? '#1e293b' : 'transparent' }}>
+                    <td style={{ padding: '0.5rem 0.75rem', fontWeight: 700, color: INDUSTRY_COLORS[ev.industry] }}>{ev.ticker}</td>
+                    <td style={{ padding: '0.5rem 0.75rem' }}>{ev.headline}</td>
+                    <td style={{ padding: '0.5rem 0.75rem', color: '#94a3b8' }}>{ev.date}</td>
+                    <td style={{ padding: '0.5rem 0.75rem' }}><span style={{ color: INDUSTRY_COLORS[ev.industry] }}>{ev.industry}</span></td>
+                    <td style={{ padding: '0.5rem 0.75rem' }}>{ev.impact}</td>
+                    <td style={{ padding: '0.5rem 0.75rem' }}>
+                      <span style={{ background: REC_COLORS[ev.recommendation], color: ev.recommendation === 'HOLD' ? '#000' : '#fff', padding: '0.15rem 0.5rem', borderRadius: 999, fontSize: '0.75rem', fontWeight: 700 }}>{ev.recommendation}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p style={{ color: '#475569', fontSize: '0.75rem', marginTop: '1.5rem', textAlign: 'center' }}>Generated 2026-04-22 • Not financial advice</p>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('app')).render(React.createElement(App));
+  </script>
+</body>
+</html>
