@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daily Market Analysis — 2026-04-23</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { min-height: 100vh; background: #0b0f1a; color: #e2e8f0; font-family: Inter, system-ui, sans-serif; padding: 2rem; }
+    h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .subtitle { color: #94a3b8; margin-bottom: 1.5rem; }
+    .legend { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; font-size: 0.85rem; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; vertical-align: middle; margin-right: 4px; }
+    .card { background: #151c2c; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; overflow-x: auto; }
+    .detail-card { border: 1px solid #1e293b; }
+    .detail-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem; }
+    .detail-title { font-size: 1.1rem; font-weight: 600; }
+    .detail-meta { color: #94a3b8; font-size: 0.85rem; margin: 0.25rem 0; }
+    .detail-reason { margin-top: 0.75rem; color: #cbd5e1; font-size: 0.9rem; }
+    .pill { padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.8rem; font-weight: 700; color: #fff; display: inline-block; }
+    .pill-sm { padding: 0.15rem 0.5rem; font-size: 0.75rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th { text-align: left; padding: 0.6rem 0.75rem; color: #94a3b8; font-weight: 600; border-bottom: 1px solid #1e293b; }
+    td { padding: 0.6rem 0.75rem; border-bottom: 1px solid #1e293b; }
+    tr.clickable { cursor: pointer; }
+    tr.clickable:hover { background: #1e293b; }
+    tr.active { background: #1e293b; }
+    svg { display: block; margin: 0 auto; }
+    circle { cursor: pointer; transition: r 0.2s; }
+  </style>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="text/babel">
+    const { useState, useMemo } = React;
+
+    const INDUSTRY_COLORS = { Tech: '#818cf8', Healthcare: '#34d399', Energy: '#fbbf24', Finance: '#fb7185' };
+    const REC_COLORS = { BUY: '#22c55e', SELL: '#ef4444', HOLD: '#eab308', WATCH: '#3b82f6' };
+
+    const EVENTS = [
+      { id: 1, headline: 'UnitedHealth Group Q1 Earnings — Strong Revenue but Rising Medical Costs', date: '2026-04-21', industry: 'Healthcare', impact: 'High', ticker: 'UNH', recommendation: 'HOLD', reason: 'Solid topline growth offset by rising medical loss ratios pressuring margins.' },
+      { id: 2, headline: 'Capital One Q1 Earnings — Consumer Lending Steady', date: '2026-04-21', industry: 'Finance', impact: 'Medium', ticker: 'COF', recommendation: 'HOLD', reason: 'Healthy consumer lending volumes offset by higher credit loss provisions.' },
+      { id: 3, headline: 'Alphabet Unveils New AI Chips & Cloud Partnerships', date: '2026-04-22', industry: 'Tech', impact: 'High', ticker: 'GOOGL', recommendation: 'BUY', reason: 'New custom AI silicon and expanded cloud partnerships strengthen competitive moat.' },
+      { id: 4, headline: 'Tesla Q1 Earnings Beat Estimates, Shares Jump', date: '2026-04-22', industry: 'Tech', impact: 'High', ticker: 'TSLA', recommendation: 'HOLD', reason: 'Earnings beat but slowing delivery growth and margin compression warrant caution.' },
+      { id: 5, headline: 'IBM Q1 Earnings Miss — Consulting Weakness Drags', date: '2026-04-22', industry: 'Tech', impact: 'High', ticker: 'IBM', recommendation: 'SELL', reason: 'Revenue miss and weak consulting guidance sent shares down 7%.' },
+      { id: 6, headline: 'ServiceNow Billings Miss Sends Shares Down 13%', date: '2026-04-22', industry: 'Tech', impact: 'High', ticker: 'NOW', recommendation: 'SELL', reason: 'Subscription billings miss signals slowing enterprise software demand.' },
+      { id: 7, headline: 'GE Vernova Soars 12% on Strong Power Generation Demand', date: '2026-04-22', industry: 'Energy', impact: 'High', ticker: 'GEV', recommendation: 'BUY', reason: 'Surging power generation and grid equipment demand drives breakout quarter.' },
+      { id: 8, headline: 'Iran Ceasefire Extension Lifts Oil & Equity Markets', date: '2026-04-22', industry: 'Energy', impact: 'High', ticker: 'XOM', recommendation: 'HOLD', reason: 'Geopolitical stability supports energy sector but reduced risk premium caps upside.' },
+      { id: 9, headline: 'Coinbase Rallies 5% as Crypto Market Booms', date: '2026-04-22', industry: 'Finance', impact: 'Medium', ticker: 'COIN', recommendation: 'BUY', reason: 'Risk-on sentiment and ceasefire headlines spark broad crypto rally.' },
+      { id: 10, headline: 'S&P Global Flash PMI — Manufacturing & Services Gauge', date: '2026-04-23', industry: 'Finance', impact: 'High', ticker: 'SPY', recommendation: 'WATCH', reason: 'Key leading indicator for economic momentum and Fed policy direction.' },
+      { id: 11, headline: 'New Home Sales Report — Housing Market Health Check', date: '2026-04-24', industry: 'Finance', impact: 'Medium', ticker: 'DHI', recommendation: 'WATCH', reason: 'Housing data critical amid elevated mortgage rates and tight inventory.' },
+      { id: 12, headline: 'Boston Scientific Pipeline & Innovation Showcase', date: '2026-04-24', industry: 'Healthcare', impact: 'Medium', ticker: 'BSX', recommendation: 'WATCH', reason: 'Medical device pipeline update could catalyze Q2 outlook revisions.' },
+      { id: 13, headline: 'Durable Goods Orders — Capital Spending Indicator', date: '2026-04-25', industry: 'Energy', impact: 'Medium', ticker: 'CAT', recommendation: 'WATCH', reason: 'Factory orders data signals industrial capex trends and energy infrastructure spend.' },
+      { id: 14, headline: 'GDP Q1 Advance Estimate — First Growth Reading', date: '2026-04-28', industry: 'Finance', impact: 'High', ticker: 'SPY', recommendation: 'WATCH', reason: 'First official Q1 growth estimate crucial for Fed rate path and market direction.' },
+    ];
+
+    const TODAY = '2026-04-23';
+    const DATES = ['2026-04-20','2026-04-21','2026-04-22','2026-04-23','2026-04-24','2026-04-25','2026-04-26','2026-04-27','2026-04-28'];
+    const IMPACT_MAP = { High: 3, Medium: 2, Low: 1 };
+
+    function App() {
+      const [selected, setSelected] = useState(null);
+
+      const chartWidth = 800;
+      const chartHeight = 300;
+      const pad = { top: 40, right: 40, bottom: 50, left: 60 };
+      const plotW = chartWidth - pad.left - pad.right;
+      const plotH = chartHeight - pad.top - pad.bottom;
+      const todayIdx = DATES.indexOf(TODAY);
+
+      const points = useMemo(() => {
+        return EVENTS.map((ev) => {
+          const di = DATES.indexOf(ev.date);
+          const x = pad.left + (di / (DATES.length - 1)) * plotW;
+          const impactVal = IMPACT_MAP[ev.impact];
+          const y = pad.top + plotH - ((impactVal - 0.5) / 3) * plotH;
+          return { ...ev, x, y };
+        });
+      }, []);
+
+      const todayX = pad.left + (todayIdx / (DATES.length - 1)) * plotW;
+
+      return (
+        <div>
+          <h1>Daily Market Analysis</h1>
+          <p className="subtitle">{TODAY} &middot; 14 events across Tech, Healthcare, Energy &amp; Finance</p>
+
+          <div className="legend">
+            {Object.entries(INDUSTRY_COLORS).map(([ind, col]) => (
+              <span key={ind}><span className="legend-dot" style={{ background: col }} />{ind}</span>
+            ))}
+          </div>
+
+          <div className="card">
+            <svg width={chartWidth} height={chartHeight} viewBox={`0 0 ${chartWidth} ${chartHeight}`}>
+              <rect x={pad.left} y={pad.top} width={todayX - pad.left} height={plotH} fill="rgba(239,68,68,0.06)" />
+              <rect x={todayX} y={pad.top} width={pad.left + plotW - todayX} height={plotH} fill="rgba(34,197,94,0.06)" />
+
+              {[1, 2, 3].map((v) => {
+                const y = pad.top + plotH - ((v - 0.5) / 3) * plotH;
+                return (
+                  <g key={v}>
+                    <line x1={pad.left} x2={pad.left + plotW} y1={y} y2={y} stroke="#1e293b" strokeWidth={1} />
+                    <text x={pad.left - 10} y={y + 4} textAnchor="end" fill="#64748b" fontSize={12}>
+                      {v === 3 ? 'High' : v === 2 ? 'Med' : 'Low'}
+                    </text>
+                  </g>
+                );
+              })}
+
+              {DATES.map((d, i) => {
+                const x = pad.left + (i / (DATES.length - 1)) * plotW;
+                return <text key={d} x={x} y={chartHeight - 10} textAnchor="middle" fill="#64748b" fontSize={11}>{d.slice(5)}</text>;
+              })}
+
+              <line x1={todayX} x2={todayX} y1={pad.top} y2={pad.top + plotH} stroke="#ef4444" strokeWidth={2} strokeDasharray="6,4" />
+              <text x={todayX} y={pad.top - 10} textAnchor="middle" fill="#ef4444" fontSize={11} fontWeight="600">TODAY</text>
+
+              {points.map((p) => (
+                <circle
+                  key={p.id}
+                  cx={p.x}
+                  cy={p.y}
+                  r={selected && selected.id === p.id ? 9 : 7}
+                  fill={INDUSTRY_COLORS[p.industry]}
+                  stroke={selected && selected.id === p.id ? '#fff' : 'none'}
+                  strokeWidth={2}
+                  onClick={() => setSelected(selected && selected.id === p.id ? null : p)}
+                />
+              ))}
+            </svg>
+          </div>
+
+          {selected && (
+            <div className="card detail-card">
+              <div className="detail-header">
+                <div>
+                  <div className="detail-title">{selected.headline}</div>
+                  <div className="detail-meta">{selected.ticker} &middot; {selected.industry} &middot; {selected.date} &middot; Impact: {selected.impact}</div>
+                </div>
+                <span className="pill" style={{ background: REC_COLORS[selected.recommendation] }}>{selected.recommendation}</span>
+              </div>
+              <p className="detail-reason">{selected.reason}</p>
+            </div>
+          )}
+
+          <div className="card">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th><th>Ticker</th><th>Industry</th><th>Impact</th><th>Rec</th><th>Headline</th>
+                </tr>
+              </thead>
+              <tbody>
+                {EVENTS.map((ev) => (
+                  <tr key={ev.id} className={`clickable${selected && selected.id === ev.id ? ' active' : ''}`} onClick={() => setSelected(ev)}>
+                    <td>{ev.date.slice(5)}</td>
+                    <td style={{ fontWeight: 600 }}>{ev.ticker}</td>
+                    <td><span style={{ color: INDUSTRY_COLORS[ev.industry] }}>{ev.industry}</span></td>
+                    <td>{ev.impact}</td>
+                    <td><span className="pill pill-sm" style={{ background: REC_COLORS[ev.recommendation] }}>{ev.recommendation}</span></td>
+                    <td>{ev.headline}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('app')).render(React.createElement(App));
+  </script>
+</body>
+</html>
