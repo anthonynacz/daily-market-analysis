@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Market Analysis - 2026-04-25</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0b0f1a; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    #app { max-width: 1000px; margin: 0 auto; padding: 28px 20px; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="text/babel">
+    const { useState, useMemo } = React;
+
+    const EVENTS = [
+      { id: 1, headline: "Intel Q1 Earnings Beat – Stock Surges 23.6%", industry: "Tech", date: "2026-04-24", impact: "High", ticker: "INTC", recommendation: "BUY", reason: "Best daily gain since 1987 with strong forward guidance signals chipmaker turnaround." },
+      { id: 2, headline: "Nvidia Crosses $5 Trillion Market Cap", industry: "Tech", date: "2026-04-24", impact: "High", ticker: "NVDA", recommendation: "HOLD", reason: "AI dominance confirmed but valuation at extreme premium levels." },
+      { id: 3, headline: "Alphabet Unveils New AI Chips & Partnerships", industry: "Tech", date: "2026-04-22", impact: "High", ticker: "GOOGL", recommendation: "BUY", reason: "Custom AI silicon positions Alphabet to challenge Nvidia in AI infrastructure." },
+      { id: 4, headline: "Meta Plans 10% Workforce Reduction", industry: "Tech", date: "2026-04-25", impact: "Medium", ticker: "META", recommendation: "WATCH", reason: "8,000 layoffs redirect spending toward AI but signal margin pressure." },
+      { id: 5, headline: "Microsoft Fiscal Q3 2026 Earnings Due", industry: "Tech", date: "2026-04-29", impact: "High", ticker: "MSFT", recommendation: "BUY", reason: "Analysts expect $4.04 EPS with 16.8% YoY growth from cloud and AI." },
+      { id: 6, headline: "Tesla Q1 2026 Earnings Report", industry: "Tech", date: "2026-04-22", impact: "High", ticker: "TSLA", recommendation: "HOLD", reason: "Met consensus at $0.37 EPS but EV competition intensifying globally." },
+      { id: 7, headline: "Cigna Group Q1 Earnings Due", industry: "Healthcare", date: "2026-04-30", impact: "Medium", ticker: "CI", recommendation: "WATCH", reason: "Key read on managed care medical cost trends and membership growth." },
+      { id: 8, headline: "Record Low Consumer Sentiment Pressures Pharma", industry: "Healthcare", date: "2026-04-25", impact: "Medium", ticker: "PFE", recommendation: "HOLD", reason: "Consumer confidence at 49.8 may reduce discretionary healthcare spending." },
+      { id: 9, headline: "US-Iran Ceasefire Eases Oil Supply Fears", industry: "Energy", date: "2026-04-22", impact: "High", ticker: "XOM", recommendation: "SELL", reason: "Geopolitical de-escalation removes crude oil risk premium from prices." },
+      { id: 10, headline: "Oil Prices Decline on Middle East Peace", industry: "Energy", date: "2026-04-23", impact: "Medium", ticker: "CVX", recommendation: "HOLD", reason: "Lower crude prices offset by strong downstream refining margins." },
+      { id: 11, headline: "Renewable Energy Stocks Gain on Policy Shift", industry: "Energy", date: "2026-04-24", impact: "Medium", ticker: "NEE", recommendation: "BUY", reason: "Clean energy benefits from geopolitical stability and policy tailwinds." },
+      { id: 12, headline: "FOMC Meeting & Rate Decision Upcoming", industry: "Finance", date: "2026-04-28", impact: "High", ticker: "JPM", recommendation: "WATCH", reason: "Markets pricing in potential dovish signals amid weak consumer data." },
+      { id: 13, headline: "S&P 500 Closes at Record High 7,165", industry: "Finance", date: "2026-04-24", impact: "High", ticker: "SPY", recommendation: "HOLD", reason: "Historic highs amid mixed economic signals suggest caution at current levels." },
+      { id: 14, headline: "Consumer Sentiment Plunges to Record Low 49.8", industry: "Finance", date: "2026-04-25", impact: "High", ticker: "GS", recommendation: "WATCH", reason: "Weakest reading ever despite market rally creates dangerous divergence." },
+    ];
+
+    const IC = { Tech: '#818cf8', Healthcare: '#34d399', Energy: '#fbbf24', Finance: '#fb7185' };
+    const RC = { BUY: '#22c55e', SELL: '#ef4444', HOLD: '#eab308', WATCH: '#3b82f6' };
+    const IV = { High: 3, Medium: 2, Low: 1 };
+    const DATES = ['Apr 22','Apr 23','Apr 24','Apr 25','Apr 26','Apr 27','Apr 28','Apr 29','Apr 30'];
+    const TODAY_IDX = 3;
+
+    function App() {
+      const [selected, setSelected] = useState(null);
+
+      const mg = { top: 36, right: 36, bottom: 56, left: 72 };
+      const W = 920, H = 380;
+      const pW = W - mg.left - mg.right;
+      const pH = H - mg.top - mg.bottom;
+
+      const xPos = (d) => { const day = parseInt(d.split('-')[2], 10); return mg.left + ((day - 22) / 8) * pW; };
+      const yPos = (imp) => mg.top + pH - ((IV[imp] - 1) / 2) * pH;
+      const todayX = mg.left + (TODAY_IDX / 8) * pW;
+
+      const dots = useMemo(() => {
+        const groups = {};
+        EVENTS.forEach(e => { const k = e.date + '_' + e.impact; if (!groups[k]) groups[k] = []; groups[k].push(e); });
+        const res = [];
+        Object.values(groups).forEach(g => {
+          const n = g.length;
+          g.forEach((e, i) => { res.push({ ...e, cx: xPos(e.date) + (i - (n - 1) / 2) * 26, cy: yPos(e.impact) }); });
+        });
+        return res;
+      }, []);
+
+      const sel = selected ? EVENTS.find(e => e.id === selected) : null;
+
+      const s = {
+        wrap: { background: '#0b0f1a', minHeight: '100vh', color: '#e2e8f0', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", padding: 24 },
+        inner: { maxWidth: 960, margin: '0 auto' },
+        h1: { fontSize: 28, fontWeight: 700, marginBottom: 4 },
+        sub: { color: '#94a3b8', marginBottom: 20, fontSize: 14 },
+        legend: { display: 'flex', gap: 20, marginBottom: 16, flexWrap: 'wrap' },
+        legendDot: (c) => ({ width: 10, height: 10, borderRadius: '50%', background: c, display: 'inline-block' }),
+        card: { background: '#151c2c', borderRadius: 12, padding: 20, marginBottom: 20 },
+        table: { width: '100%', borderCollapse: 'collapse', fontSize: 13 },
+        th: { padding: '12px 14px', textAlign: 'left', color: '#94a3b8', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' },
+        td: { padding: '10px 14px' },
+        pill: (r) => ({ background: RC[r], color: r === 'HOLD' ? '#000' : '#fff', padding: '3px 10px', borderRadius: 999, fontWeight: 700, fontSize: 11 }),
+        bigPill: (r) => ({ background: RC[r], color: r === 'HOLD' ? '#000' : '#fff', padding: '6px 16px', borderRadius: 999, fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap' }),
+      };
+
+      return (
+        React.createElement('div', { style: s.wrap },
+          React.createElement('div', { style: s.inner },
+            React.createElement('h1', { style: s.h1 }, 'Daily Market Analysis'),
+            React.createElement('p', { style: s.sub }, 'April 25, 2026 — 14 events across 4 industries'),
+
+            React.createElement('div', { style: s.legend },
+              Object.entries(IC).map(([name, color]) =>
+                React.createElement('div', { key: name, style: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 } },
+                  React.createElement('span', { style: s.legendDot(color) }),
+                  name
+                )
+              )
+            ),
+
+            React.createElement('div', { style: s.card },
+              React.createElement('svg', { viewBox: '0 0 ' + W + ' ' + H, style: { width: '100%', height: 'auto' } },
+                React.createElement('rect', { x: mg.left, y: mg.top, width: todayX - mg.left, height: pH, fill: 'rgba(239,68,68,0.06)' }),
+                React.createElement('rect', { x: todayX, y: mg.top, width: mg.left + pW - todayX, height: pH, fill: 'rgba(34,197,94,0.06)' }),
+                React.createElement('line', { x1: todayX, y1: mg.top - 8, x2: todayX, y2: mg.top + pH + 8, stroke: '#ef4444', strokeWidth: 2, strokeDasharray: '6 4' }),
+                React.createElement('text', { x: todayX, y: mg.top - 14, textAnchor: 'middle', fill: '#ef4444', fontSize: 11, fontWeight: 600 }, 'TODAY'),
+
+                DATES.map((label, i) => {
+                  const lx = mg.left + (i / 8) * pW;
+                  return React.createElement('g', { key: label },
+                    React.createElement('line', { x1: lx, y1: mg.top, x2: lx, y2: mg.top + pH, stroke: '#1e293b', strokeWidth: 1 }),
+                    React.createElement('text', { x: lx, y: H - 16, textAnchor: 'middle', fill: '#64748b', fontSize: 11 }, label)
+                  );
+                }),
+
+                ['High', 'Medium', 'Low'].map(level => {
+                  const ly = yPos(level);
+                  return React.createElement('g', { key: level },
+                    React.createElement('line', { x1: mg.left, y1: ly, x2: mg.left + pW, y2: ly, stroke: '#1e293b', strokeWidth: 1 }),
+                    React.createElement('text', { x: mg.left - 12, y: ly + 4, textAnchor: 'end', fill: '#64748b', fontSize: 11 }, level)
+                  );
+                }),
+
+                dots.map(d =>
+                  React.createElement('g', { key: d.id, onClick: () => setSelected(selected === d.id ? null : d.id), style: { cursor: 'pointer' } },
+                    React.createElement('circle', { cx: d.cx, cy: d.cy, r: selected === d.id ? 12 : 9, fill: IC[d.industry], opacity: selected && selected !== d.id ? 0.3 : 0.9, stroke: selected === d.id ? '#fff' : 'none', strokeWidth: 2 }),
+                    React.createElement('text', { x: d.cx, y: d.cy - 14, textAnchor: 'middle', fill: '#cbd5e1', fontSize: 9, fontWeight: 600 }, d.ticker)
+                  )
+                )
+              )
+            ),
+
+            sel && React.createElement('div', { style: { ...s.card, borderLeft: '4px solid ' + IC[sel.industry] } },
+              React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 } },
+                React.createElement('div', null,
+                  React.createElement('div', { style: { fontSize: 11, color: '#94a3b8', marginBottom: 4 } }, sel.industry + ' · ' + sel.date),
+                  React.createElement('h3', { style: { fontSize: 18, fontWeight: 600, marginBottom: 6 } }, sel.headline),
+                  React.createElement('span', { style: { fontSize: 15, color: '#94a3b8', fontWeight: 600 } }, sel.ticker)
+                ),
+                React.createElement('span', { style: s.bigPill(sel.recommendation) }, sel.recommendation)
+              ),
+              React.createElement('p', { style: { marginTop: 12, color: '#cbd5e1', fontSize: 14, lineHeight: 1.5 } }, sel.reason)
+            ),
+
+            React.createElement('div', { style: { background: '#151c2c', borderRadius: 12, overflow: 'hidden' } },
+              React.createElement('table', { style: s.table },
+                React.createElement('thead', null,
+                  React.createElement('tr', { style: { borderBottom: '1px solid #1e293b' } },
+                    ['Date', 'Ticker', 'Headline', 'Industry', 'Impact', 'Rec'].map(h =>
+                      React.createElement('th', { key: h, style: s.th }, h)
+                    )
+                  )
+                ),
+                React.createElement('tbody', null,
+                  EVENTS.map((e, i) =>
+                    React.createElement('tr', { key: e.id, onClick: () => setSelected(selected === e.id ? null : e.id), style: { borderBottom: '1px solid #1e293b', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)', cursor: 'pointer' } },
+                      React.createElement('td', { style: { ...s.td, whiteSpace: 'nowrap' } }, e.date.slice(5)),
+                      React.createElement('td', { style: { ...s.td, fontWeight: 700, color: IC[e.industry] } }, e.ticker),
+                      React.createElement('td', { style: s.td }, e.headline),
+                      React.createElement('td', { style: s.td }, e.industry),
+                      React.createElement('td', { style: s.td }, e.impact),
+                      React.createElement('td', { style: s.td },
+                        React.createElement('span', { style: s.pill(e.recommendation) }, e.recommendation)
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('app')).render(React.createElement(App));
+  </script>
+</body>
+</html>
