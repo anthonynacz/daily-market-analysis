@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daily Market Analysis — 2026-04-27</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0b0f1a; color: #e2e8f0; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    #app { min-height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="text/babel">
+    const { useState, useMemo } = React;
+
+    const EVENTS = [
+      { id: 1, headline: "Intel Q1 Earnings Beat — Stock Surges 23.6%", industry: "Tech", date: "2026-04-24", impact: "High", ticker: "INTC", recommendation: "BUY", reason: "Massive earnings beat with semiconductor momentum signals strong demand cycle." },
+      { id: 2, headline: "Semiconductor Rally Extends to 18 Consecutive Sessions", industry: "Tech", date: "2026-04-25", impact: "High", ticker: "NVDA", recommendation: "BUY", reason: "AI chip demand shows no signs of slowing; sustained rally reflects structural tailwind." },
+      { id: 3, headline: "Meta Announces 10% Workforce Reduction", industry: "Tech", date: "2026-04-25", impact: "High", ticker: "META", recommendation: "HOLD", reason: "Cost cuts boost margins but signal heavy AI spending pressure ahead." },
+      { id: 4, headline: "Oil Volatility Pressures Dow Jones Lower", industry: "Energy", date: "2026-04-25", impact: "Medium", ticker: "CVX", recommendation: "HOLD", reason: "Strong cash flow but near-term headwinds from geopolitical price swings." },
+      { id: 5, headline: "Iran/Hormuz Escalation Pushes Crude Oil Higher", industry: "Energy", date: "2026-04-27", impact: "High", ticker: "XOM", recommendation: "BUY", reason: "Geopolitical risk premium supports energy names with upstream exposure." },
+      { id: 6, headline: "Spotify Q1 Earnings Report", industry: "Tech", date: "2026-04-28", impact: "Medium", ticker: "SPOT", recommendation: "WATCH", reason: "Subscriber growth trajectory is key after recent price hikes." },
+      { id: 7, headline: "Centene Q1 Earnings Report", industry: "Healthcare", date: "2026-04-28", impact: "Medium", ticker: "CNC", recommendation: "WATCH", reason: "Managed care sector faces ongoing regulatory scrutiny; await guidance." },
+      { id: 8, headline: "BP Q1 Earnings Report", industry: "Energy", date: "2026-04-28", impact: "Medium", ticker: "BP", recommendation: "HOLD", reason: "Transitioning energy portfolio sends mixed signals to investors." },
+      { id: 9, headline: "S&P Global Q1 Earnings Report", industry: "Finance", date: "2026-04-28", impact: "Medium", ticker: "SPGI", recommendation: "HOLD", reason: "Consistent performer with stable revenue growth and strong moat." },
+      { id: 10, headline: "Coca-Cola Q1 Earnings Report", industry: "Finance", date: "2026-04-28", impact: "Low", ticker: "KO", recommendation: "HOLD", reason: "Defensive staple with predictable results; unlikely to surprise." },
+      { id: 11, headline: "FOMC Interest Rate Decision — Rates Expected Steady", industry: "Finance", date: "2026-04-29", impact: "High", ticker: "JPM", recommendation: "WATCH", reason: "Rates expected at 3.50-3.75%; Powell's forward guidance is the real catalyst." },
+      { id: 12, headline: "Magnificent Seven Earnings Week Kicks Off", industry: "Tech", date: "2026-04-29", impact: "High", ticker: "MSFT", recommendation: "WATCH", reason: "Elevated expectations create binary outcome risk; wait for results." },
+      { id: 13, headline: "Core PCE Price Index Release for March", industry: "Healthcare", date: "2026-04-30", impact: "High", ticker: "UNH", recommendation: "WATCH", reason: "Key inflation measure will shape Fed outlook and healthcare cost projections." },
+      { id: 14, headline: "Healthcare Sector Q1 Earnings Season Results", industry: "Healthcare", date: "2026-04-30", impact: "Medium", ticker: "JNJ", recommendation: "HOLD", reason: "Steady defensive play offering stability amid broader market volatility." },
+    ];
+
+    const INDUSTRY_COLORS = { Tech: '#818cf8', Healthcare: '#34d399', Energy: '#fbbf24', Finance: '#fb7185' };
+    const IMPACT_MAP = { High: 3, Medium: 2, Low: 1 };
+    const REC_COLORS = { BUY: '#22c55e', SELL: '#ef4444', HOLD: '#eab308', WATCH: '#3b82f6' };
+    const TODAY = '2026-04-27';
+    const DATES = ['2026-04-24','2026-04-25','2026-04-26','2026-04-27','2026-04-28','2026-04-29','2026-04-30','2026-05-01','2026-05-02'];
+
+    function formatDate(d) {
+      const p = d.split('-');
+      return parseInt(p[1]) + '/' + parseInt(p[2]);
+    }
+
+    function App() {
+      const [selected, setSelected] = useState(null);
+      const [filterIndustry, setFilterIndustry] = useState('All');
+
+      const filtered = useMemo(function() {
+        if (filterIndustry === 'All') return EVENTS;
+        return EVENTS.filter(function(e) { return e.industry === filterIndustry; });
+      }, [filterIndustry]);
+
+      const chartW = 800, chartH = 300;
+      const padL = 60, padR = 30, padT = 30, padB = 50;
+      const plotW = chartW - padL - padR;
+      const plotH = chartH - padT - padB;
+
+      function xPos(date) {
+        var idx = DATES.indexOf(date);
+        if (idx === -1) return padL;
+        return padL + (idx / (DATES.length - 1)) * plotW;
+      }
+
+      function yPos(impact) {
+        var val = IMPACT_MAP[impact] || 2;
+        return padT + plotH - ((val - 0.5) / 3) * plotH;
+      }
+
+      var todayX = xPos(TODAY);
+
+      return React.createElement('div', { style: { minHeight: '100vh', background: '#0b0f1a', color: '#e2e8f0', fontFamily: "'Inter', system-ui, sans-serif", padding: '2rem' } },
+        React.createElement('h1', { style: { fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.25rem' } }, 'Daily Market Analysis'),
+        React.createElement('p', { style: { color: '#94a3b8', marginBottom: '1.5rem' } }, 'April 27, 2026 — US Equities Overview'),
+
+        React.createElement('div', { style: { display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' } },
+          ['All', 'Tech', 'Healthcare', 'Energy', 'Finance'].map(function(ind) {
+            return React.createElement('button', {
+              key: ind,
+              onClick: function() { setFilterIndustry(ind); },
+              style: {
+                padding: '0.4rem 1rem', borderRadius: '9999px', border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600,
+                background: filterIndustry === ind ? (INDUSTRY_COLORS[ind] || '#6366f1') : '#1e293b',
+                color: filterIndustry === ind ? '#0b0f1a' : '#94a3b8',
+              }
+            }, ind);
+          })
+        ),
+
+        React.createElement('div', { style: { background: '#151c2c', borderRadius: '1rem', padding: '1.5rem', marginBottom: '1.5rem' } },
+          React.createElement('svg', { width: chartW, height: chartH, viewBox: '0 0 ' + chartW + ' ' + chartH, style: { width: '100%', height: 'auto' } },
+            React.createElement('rect', { x: padL, y: padT, width: todayX - padL, height: plotH, fill: 'rgba(239,68,68,0.06)' }),
+            React.createElement('rect', { x: todayX, y: padT, width: padL + plotW - todayX, height: plotH, fill: 'rgba(34,197,94,0.06)' }),
+            React.createElement('line', { x1: todayX, y1: padT, x2: todayX, y2: padT + plotH, stroke: '#ef4444', strokeWidth: 2, strokeDasharray: '6,4' }),
+            React.createElement('text', { x: todayX, y: padT - 8, fill: '#ef4444', fontSize: 11, textAnchor: 'middle', fontWeight: 700 }, 'TODAY'),
+
+            [1, 2, 3].map(function(level) {
+              var y = padT + plotH - ((level - 0.5) / 3) * plotH;
+              return React.createElement('g', { key: level },
+                React.createElement('line', { x1: padL, y1: y, x2: padL + plotW, y2: y, stroke: '#1e293b', strokeWidth: 1 }),
+                React.createElement('text', { x: padL - 10, y: y + 4, fill: '#64748b', fontSize: 11, textAnchor: 'end' },
+                  level === 3 ? 'High' : level === 2 ? 'Med' : 'Low')
+              );
+            }),
+
+            DATES.map(function(d) {
+              return React.createElement('text', { key: d, x: xPos(d), y: padT + plotH + 25, fill: '#64748b', fontSize: 11, textAnchor: 'middle' }, formatDate(d));
+            }),
+
+            filtered.map(function(ev, i) {
+              var cx = xPos(ev.date);
+              var cy = yPos(ev.impact);
+              var jitter = (i % 3 - 1) * 12;
+              var isSelected = selected && selected.id === ev.id;
+              return React.createElement('g', { key: ev.id, onClick: function() { setSelected(isSelected ? null : ev); }, style: { cursor: 'pointer' } },
+                React.createElement('circle', { cx: cx, cy: cy + jitter, r: isSelected ? 10 : 7, fill: INDUSTRY_COLORS[ev.industry], opacity: 0.9, stroke: isSelected ? '#fff' : 'none', strokeWidth: 2 }),
+                React.createElement('title', null, ev.ticker + ': ' + ev.headline)
+              );
+            })
+          ),
+
+          React.createElement('div', { style: { display: 'flex', gap: '1.5rem', justifyContent: 'center', marginTop: '0.75rem' } },
+            Object.entries(INDUSTRY_COLORS).map(function(entry) {
+              return React.createElement('div', { key: entry[0], style: { display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: '#94a3b8' } },
+                React.createElement('div', { style: { width: 10, height: 10, borderRadius: '50%', background: entry[1] } }),
+                entry[0]
+              );
+            })
+          )
+        ),
+
+        selected && React.createElement('div', { style: { background: '#151c2c', borderRadius: '1rem', padding: '1.5rem', marginBottom: '1.5rem', borderLeft: '4px solid ' + INDUSTRY_COLORS[selected.industry] } },
+          React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'start', flexWrap: 'wrap', gap: '0.5rem' } },
+            React.createElement('div', null,
+              React.createElement('h3', { style: { fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.3rem' } }, selected.headline),
+              React.createElement('p', { style: { color: '#94a3b8', fontSize: '0.85rem' } }, selected.date + ' · ' + selected.industry + ' · Impact: ' + selected.impact)
+            ),
+            React.createElement('div', { style: { display: 'flex', gap: '0.5rem', alignItems: 'center' } },
+              React.createElement('span', { style: { background: '#1e293b', padding: '0.3rem 0.75rem', borderRadius: '0.5rem', fontWeight: 700, fontSize: '0.95rem', color: INDUSTRY_COLORS[selected.industry] } }, selected.ticker),
+              React.createElement('span', { style: { background: REC_COLORS[selected.recommendation], color: '#0b0f1a', padding: '0.3rem 0.75rem', borderRadius: '9999px', fontWeight: 700, fontSize: '0.8rem' } }, selected.recommendation)
+            )
+          ),
+          React.createElement('p', { style: { marginTop: '0.75rem', color: '#cbd5e1', lineHeight: 1.6, fontSize: '0.9rem' } }, selected.reason)
+        ),
+
+        React.createElement('div', { style: { background: '#151c2c', borderRadius: '1rem', overflow: 'hidden' } },
+          React.createElement('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' } },
+            React.createElement('thead', null,
+              React.createElement('tr', { style: { background: '#1e293b' } },
+                ['Date', 'Ticker', 'Headline', 'Industry', 'Impact', 'Rec'].map(function(h) {
+                  return React.createElement('th', { key: h, style: { padding: '0.75rem 1rem', textAlign: 'left', color: '#94a3b8', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' } }, h);
+                })
+              )
+            ),
+            React.createElement('tbody', null,
+              filtered.map(function(ev) {
+                return React.createElement('tr', { key: ev.id, onClick: function() { setSelected(ev); }, style: { cursor: 'pointer', borderBottom: '1px solid #1e293b' } },
+                  React.createElement('td', { style: { padding: '0.65rem 1rem', color: '#94a3b8' } }, formatDate(ev.date)),
+                  React.createElement('td', { style: { padding: '0.65rem 1rem', fontWeight: 700, color: INDUSTRY_COLORS[ev.industry] } }, ev.ticker),
+                  React.createElement('td', { style: { padding: '0.65rem 1rem' } }, ev.headline),
+                  React.createElement('td', { style: { padding: '0.65rem 1rem' } },
+                    React.createElement('span', { style: { display: 'inline-flex', alignItems: 'center', gap: '0.3rem' } },
+                      React.createElement('span', { style: { width: 8, height: 8, borderRadius: '50%', background: INDUSTRY_COLORS[ev.industry], display: 'inline-block' } }),
+                      ev.industry
+                    )
+                  ),
+                  React.createElement('td', { style: { padding: '0.65rem 1rem', color: ev.impact === 'High' ? '#f87171' : ev.impact === 'Medium' ? '#fbbf24' : '#94a3b8' } }, ev.impact),
+                  React.createElement('td', { style: { padding: '0.65rem 1rem' } },
+                    React.createElement('span', { style: { background: REC_COLORS[ev.recommendation], color: '#0b0f1a', padding: '0.2rem 0.6rem', borderRadius: '9999px', fontWeight: 700, fontSize: '0.75rem' } }, ev.recommendation)
+                  )
+                );
+              })
+            )
+          )
+        ),
+
+        React.createElement('p', { style: { textAlign: 'center', color: '#475569', fontSize: '0.75rem', marginTop: '1.5rem' } }, 'Generated on 2026-04-27 · For informational purposes only · Not financial advice')
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('app')).render(React.createElement(App));
+  </script>
+</body>
+</html>
