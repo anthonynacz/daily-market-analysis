@@ -1,0 +1,174 @@
+import { useState, useMemo } from 'react';
+
+const EVENTS = [
+  { id: 1, ticker: 'INTC', headline: 'Intel Reaches Preliminary Chip Manufacturing Deal with Apple', industry: 'Tech', date: '2026-05-11', impact: 'High', recommendation: 'BUY', reason: 'Apple foundry agreement validates Intel\'s manufacturing pivot and opens major revenue stream' },
+  { id: 2, ticker: 'AAPL', headline: 'Apple Diversifies Chip Supply Chain Beyond TSMC', industry: 'Tech', date: '2026-05-11', impact: 'High', recommendation: 'HOLD', reason: 'Supply chain diversification is long-term positive but already priced into current valuations' },
+  { id: 3, ticker: 'NVDA', headline: 'Nvidia Extends Rally as Chip Stocks Drive Nasdaq to Record', industry: 'Tech', date: '2026-05-12', impact: 'High', recommendation: 'HOLD', reason: 'AI chip dominance continues but stretched valuations at all-time highs warrant caution' },
+  { id: 4, ticker: 'AMD', headline: 'Semiconductor Landscape Shifts on Intel-Apple Foundry Deal', industry: 'Tech', date: '2026-05-14', impact: 'Medium', recommendation: 'WATCH', reason: 'Intel-Apple partnership may reshape competitive dynamics for AMD\'s data center business' },
+  { id: 5, ticker: 'MRNA', headline: 'Moderna Surges 7.5% on Hantavirus Vaccine Development', industry: 'Healthcare', date: '2026-05-11', impact: 'High', recommendation: 'BUY', reason: 'Rapid mRNA vaccine response to cruise ship outbreak demonstrates pipeline versatility' },
+  { id: 6, ticker: 'PFE', headline: 'Pfizer Monitors Hantavirus Outbreak Aboard Cruise Ship Hondius', industry: 'Healthcare', date: '2026-05-12', impact: 'Medium', recommendation: 'WATCH', reason: 'Potential beneficiary if hantavirus outbreak broadens; monitoring therapeutic pipeline' },
+  { id: 7, ticker: 'UNH', headline: 'UnitedHealth Earnings Preview Amid Healthcare Policy Shifts', industry: 'Healthcare', date: '2026-05-15', impact: 'Medium', recommendation: 'HOLD', reason: 'Stable managed care fundamentals but regulatory headwinds limit near-term upside' },
+  { id: 8, ticker: 'XOM', headline: 'Oil Surges Above $101 as WTI Jumps 3% on Geopolitical Tensions', industry: 'Energy', date: '2026-05-12', impact: 'High', recommendation: 'BUY', reason: 'Oil above $101/barrel significantly boosts upstream margins and free cash flow' },
+  { id: 9, ticker: 'CVX', headline: 'Chevron Benefits as Trump Rejects Iran Peace Proposal', industry: 'Energy', date: '2026-05-12', impact: 'High', recommendation: 'BUY', reason: 'Prolonged Middle East tensions keep supply constrained, supporting elevated oil prices' },
+  { id: 10, ticker: 'OXY', headline: 'Occidental Positioned for Gains as Energy Sector Rallies', industry: 'Energy', date: '2026-05-13', impact: 'Medium', recommendation: 'HOLD', reason: 'Strong oil environment supports earnings but high debt levels temper outlook' },
+  { id: 11, ticker: 'SPY', headline: 'S&P 500 Closes Above 7,400 for First Time in History', industry: 'Finance', date: '2026-05-11', impact: 'High', recommendation: 'HOLD', reason: 'Record territory signals sustained bull market but watch for overbought pullback' },
+  { id: 12, ticker: 'JPM', headline: 'FOMC Rate Decision Looms Large for Banking Sector', industry: 'Finance', date: '2026-05-14', impact: 'High', recommendation: 'WATCH', reason: 'Fed rate decision will set near-term direction for net interest margins' },
+  { id: 13, ticker: 'TLT', headline: 'CPI Inflation Data Release Expected to Influence Fed Path', industry: 'Finance', date: '2026-05-13', impact: 'High', recommendation: 'WATCH', reason: 'May CPI reading is critical input for FOMC; hot print could delay rate cuts' },
+  { id: 14, ticker: 'BAC', headline: 'Strong April Jobs Report Reinforces Economic Resilience', industry: 'Finance', date: '2026-05-09', impact: 'Medium', recommendation: 'HOLD', reason: 'Robust employment supports loan growth but reduces probability of near-term rate cuts' },
+];
+
+const INDUSTRY_COLORS = {
+  Tech: '#818cf8',
+  Healthcare: '#34d399',
+  Energy: '#fbbf24',
+  Finance: '#fb7185',
+};
+
+const REC_COLORS = {
+  BUY: '#22c55e',
+  SELL: '#ef4444',
+  HOLD: '#eab308',
+  WATCH: '#3b82f6',
+};
+
+const TODAY = '2026-05-12';
+
+function DailyMarketAnalysis() {
+  const [selected, setSelected] = useState(null);
+
+  const dates = useMemo(() => {
+    const d = [];
+    const start = new Date('2026-05-09');
+    for (let i = 0; i <= 8; i++) {
+      const dt = new Date(start);
+      dt.setDate(start.getDate() + i);
+      d.push(dt.toISOString().split('T')[0]);
+    }
+    return d;
+  }, []);
+
+  const impactVal = (imp) => imp === 'High' ? 3 : imp === 'Medium' ? 2 : 1;
+
+  const chartW = 800, chartH = 300, padL = 60, padR = 30, padT = 30, padB = 50;
+  const plotW = chartW - padL - padR;
+  const plotH = chartH - padT - padB;
+
+  const xScale = (dateStr) => {
+    const idx = dates.indexOf(dateStr);
+    return padL + (idx / (dates.length - 1)) * plotW;
+  };
+
+  const yScale = (impact) => {
+    const v = impactVal(impact);
+    return padT + plotH - ((v - 1) / 2) * plotH;
+  };
+
+  const todayX = xScale(TODAY);
+
+  const selectedEvent = EVENTS.find(e => e.id === selected);
+
+  return (
+    <div style={{ background: '#0b0f1a', minHeight: '100vh', color: '#e2e8f0', fontFamily: 'Inter, system-ui, sans-serif', padding: '24px' }}>
+      <h1 style={{ fontSize: '28px', fontWeight: 700, marginBottom: '4px' }}>Daily Market Analysis</h1>
+      <p style={{ color: '#94a3b8', marginBottom: '24px', fontSize: '14px' }}>May 12, 2026 — 14 events across Tech, Healthcare, Energy & Finance</p>
+
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        {Object.entries(INDUSTRY_COLORS).map(([ind, col]) => (
+          <span key={ind} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+            <span style={{ width: 12, height: 12, borderRadius: '50%', background: col, display: 'inline-block' }} />
+            {ind}
+          </span>
+        ))}
+      </div>
+
+      <div style={{ background: '#151c2c', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
+        <svg width={chartW} height={chartH} viewBox={`0 0 ${chartW} ${chartH}`} style={{ maxWidth: '100%', height: 'auto' }}>
+          <rect x={padL} y={padT} width={todayX - padL} height={plotH} fill="rgba(239,68,68,0.06)" />
+          <rect x={todayX} y={padT} width={padL + plotW - todayX} height={plotH} fill="rgba(34,197,94,0.06)" />
+
+          <line x1={todayX} y1={padT} x2={todayX} y2={padT + plotH} stroke="#ef4444" strokeWidth="2" strokeDasharray="6,4" />
+          <text x={todayX} y={padT - 8} fill="#ef4444" fontSize="11" textAnchor="middle">TODAY</text>
+
+          {[1, 2, 3].map(v => (
+            <g key={v}>
+              <line x1={padL} y1={padT + plotH - ((v - 1) / 2) * plotH} x2={padL + plotW} y2={padT + plotH - ((v - 1) / 2) * plotH} stroke="#1e293b" strokeWidth="1" />
+              <text x={padL - 10} y={padT + plotH - ((v - 1) / 2) * plotH + 4} fill="#64748b" fontSize="11" textAnchor="end">
+                {v === 3 ? 'High' : v === 2 ? 'Med' : 'Low'}
+              </text>
+            </g>
+          ))}
+
+          {dates.map((d, i) => (
+            <text key={d} x={padL + (i / (dates.length - 1)) * plotW} y={chartH - 10} fill="#64748b" fontSize="10" textAnchor="middle">
+              {d.slice(5)}
+            </text>
+          ))}
+
+          {EVENTS.map((evt) => {
+            const cx = xScale(evt.date);
+            const cy = yScale(evt.impact);
+            const jitter = ((evt.id * 7) % 5 - 2) * 6;
+            return (
+              <g key={evt.id} onClick={() => setSelected(selected === evt.id ? null : evt.id)} style={{ cursor: 'pointer' }}>
+                <circle cx={cx + jitter} cy={cy} r={selected === evt.id ? 10 : 7} fill={INDUSTRY_COLORS[evt.industry]} opacity={selected === evt.id ? 1 : 0.85} stroke={selected === evt.id ? '#fff' : 'none'} strokeWidth="2" />
+                <text x={cx + jitter} y={cy - 12} fill="#94a3b8" fontSize="9" textAnchor="middle">{evt.ticker}</text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      {selectedEvent && (
+        <div style={{ background: '#151c2c', borderRadius: '12px', padding: '20px', marginBottom: '20px', borderLeft: `4px solid ${INDUSTRY_COLORS[selectedEvent.industry]}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '6px' }}>{selectedEvent.headline}</h3>
+              <p style={{ color: '#94a3b8', fontSize: '13px' }}>{selectedEvent.ticker} — {selectedEvent.industry} — {selectedEvent.date} — Impact: {selectedEvent.impact}</p>
+            </div>
+            <span style={{ background: REC_COLORS[selectedEvent.recommendation], color: '#000', fontWeight: 700, fontSize: '13px', padding: '4px 14px', borderRadius: '999px' }}>
+              {selectedEvent.recommendation}
+            </span>
+          </div>
+          <p style={{ marginTop: '12px', fontSize: '14px', lineHeight: 1.6 }}>{selectedEvent.reason}</p>
+        </div>
+      )}
+
+      <div style={{ background: '#151c2c', borderRadius: '12px', padding: '20px', overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid #1e293b' }}>
+              {['Ticker', 'Headline', 'Industry', 'Date', 'Impact', 'Rec'].map(h => (
+                <th key={h} style={{ textAlign: 'left', padding: '10px 8px', color: '#64748b', fontWeight: 600 }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {EVENTS.map(evt => (
+              <tr key={evt.id} onClick={() => setSelected(evt.id)} style={{ borderBottom: '1px solid #1e293b22', cursor: 'pointer', background: selected === evt.id ? '#1e293b' : 'transparent' }}>
+                <td style={{ padding: '10px 8px', fontWeight: 600, color: INDUSTRY_COLORS[evt.industry] }}>{evt.ticker}</td>
+                <td style={{ padding: '10px 8px' }}>{evt.headline}</td>
+                <td style={{ padding: '10px 8px' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: INDUSTRY_COLORS[evt.industry] }} />
+                    {evt.industry}
+                  </span>
+                </td>
+                <td style={{ padding: '10px 8px', color: '#94a3b8' }}>{evt.date}</td>
+                <td style={{ padding: '10px 8px' }}>{evt.impact}</td>
+                <td style={{ padding: '10px 8px' }}>
+                  <span style={{ background: REC_COLORS[evt.recommendation], color: '#000', fontWeight: 700, fontSize: '11px', padding: '2px 10px', borderRadius: '999px' }}>
+                    {evt.recommendation}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p style={{ textAlign: 'center', color: '#475569', fontSize: '11px', marginTop: '20px' }}>Generated by Daily Market Analysis — Not financial advice</p>
+    </div>
+  );
+}
+
+export default DailyMarketAnalysis;
