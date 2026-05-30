@@ -1,0 +1,218 @@
+import { useState, useMemo } from 'react';
+
+const INDUSTRY_COLORS = {
+  Tech: '#818cf8',
+  Healthcare: '#34d399',
+  Energy: '#fbbf24',
+  Finance: '#fb7185',
+};
+
+const RECOMMENDATION_COLORS = {
+  BUY: '#22c55e',
+  SELL: '#ef4444',
+  HOLD: '#eab308',
+  WATCH: '#3b82f6',
+};
+
+const EVENTS = [
+  { id: 1, headline: "Dell Technologies Q1 Earnings Beat — Stock Surges 33%", ticker: "DELL", industry: "Tech", date: "2026-05-29", impact: "High", recommendation: "BUY", reason: "Record single-day gain on earnings beat and raised full-year guidance signals strong enterprise demand." },
+  { id: 2, headline: "Micron Technology Crosses $1 Trillion Market Cap", ticker: "MU", industry: "Tech", date: "2026-05-28", impact: "High", recommendation: "HOLD", reason: "Already rallied 19% on AI memory demand bullishness; hold for continued AI infrastructure buildout." },
+  { id: 3, headline: "Apple Rallies 15% in May, Doubling April Gains", ticker: "AAPL", industry: "Tech", date: "2026-05-29", impact: "Medium", recommendation: "HOLD", reason: "Strong momentum but may be extended after outperforming the broader market significantly." },
+  { id: 4, headline: "Snowflake Beats on AI Enterprise Spending, Raises Margin Outlook", ticker: "SNOW", industry: "Tech", date: "2026-05-29", impact: "Medium", recommendation: "BUY", reason: "Stronger-than-expected margins validate AI monetization thesis across enterprise software." },
+  { id: 5, headline: "Broadcom Earnings Report Due", ticker: "AVGO", industry: "Tech", date: "2026-06-04", impact: "High", recommendation: "WATCH", reason: "Chip giant's results will signal AI chip demand trajectory; could move entire semiconductor sector." },
+  { id: 6, headline: "CrowdStrike Holdings Earnings Report Due", ticker: "CRWD", industry: "Tech", date: "2026-06-03", impact: "High", recommendation: "WATCH", reason: "Key cybersecurity bellwether amid surging enterprise IT security spending." },
+  { id: 7, headline: "Palo Alto Networks Earnings Report Due", ticker: "PANW", industry: "Tech", date: "2026-06-02", impact: "Medium", recommendation: "WATCH", reason: "Second major cybersecurity report this week; platformization strategy under scrutiny." },
+  { id: 8, headline: "Solar Stocks Post Best Month Since 2013 — TAN ETF +26.5%", ticker: "ENPH", industry: "Energy", date: "2026-05-29", impact: "High", recommendation: "HOLD", reason: "Explosive rally in solar names; momentum is strong but a pullback after such gains is likely." },
+  { id: 9, headline: "Crude Oil Prices Decline as Supply Concerns Ease", ticker: "XOM", industry: "Energy", date: "2026-05-29", impact: "Medium", recommendation: "SELL", reason: "Falling crude prices and shifting energy mix pressure traditional oil producer margins." },
+  { id: 10, headline: "S&P 500 Closes at Record High — Ninth Consecutive Weekly Gain", ticker: "SPY", industry: "Finance", date: "2026-05-29", impact: "High", recommendation: "HOLD", reason: "Extended winning streak is historically rare; maintain positions but avoid chasing at all-time highs." },
+  { id: 11, headline: "Federal Reserve FOMC Meeting with Economic Projections", ticker: "TLT", industry: "Finance", date: "2026-06-04", impact: "High", recommendation: "WATCH", reason: "June 16-17 meeting with updated dot plot; markets will begin positioning this week." },
+  { id: 12, headline: "Costco Wholesale Earnings Report Due", ticker: "COST", industry: "Finance", date: "2026-06-04", impact: "Medium", recommendation: "WATCH", reason: "Key consumer spending barometer; will gauge health of the US consumer amid record markets." },
+  { id: 13, headline: "Veeva Systems Earnings Report Due", ticker: "VEEV", industry: "Healthcare", date: "2026-06-03", impact: "Medium", recommendation: "WATCH", reason: "Healthcare cloud leader's results will indicate pharma industry IT spending trends." },
+  { id: 14, headline: "Johnson & Johnson Maintains Defensive Positioning", ticker: "JNJ", industry: "Healthcare", date: "2026-05-28", impact: "Medium", recommendation: "HOLD", reason: "Stable defensive play offers portfolio protection amid stretched equity valuations." },
+  { id: 15, headline: "SpaceX IPO Plans Target $1.8 Trillion Valuation", ticker: "RKLB", industry: "Tech", date: "2026-06-02", impact: "High", recommendation: "BUY", reason: "SpaceX IPO buzz likely to lift publicly traded space stocks like Rocket Lab as sector gains attention." },
+];
+
+const TODAY = '2026-05-30';
+
+function parseDate(str) {
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function formatDateLabel(str) {
+  const d = parseDate(str);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+const IMPACT_MAP = { Low: 1, Medium: 2, High: 3 };
+
+function DailyMarketAnalysis() {
+  const [selected, setSelected] = useState(null);
+  const [filter, setFilter] = useState('All');
+
+  const dates = useMemo(() => {
+    const start = parseDate('2026-05-27');
+    const result = [];
+    for (let i = 0; i < 9; i++) {
+      const d = new Date(start);
+      d.setDate(d.getDate() + i);
+      const iso = d.toISOString().slice(0, 10);
+      result.push(iso);
+    }
+    return result;
+  }, []);
+
+  const filteredEvents = useMemo(() => {
+    if (filter === 'All') return EVENTS;
+    return EVENTS.filter(e => e.industry === filter);
+  }, [filter]);
+
+  const chartW = 800, chartH = 320, pad = { top: 40, right: 30, bottom: 50, left: 60 };
+  const plotW = chartW - pad.left - pad.right;
+  const plotH = chartH - pad.top - pad.bottom;
+
+  function xPos(dateStr) {
+    const idx = dates.indexOf(dateStr);
+    if (idx === -1) return null;
+    return pad.left + (idx / (dates.length - 1)) * plotW;
+  }
+
+  function yPos(impact) {
+    const val = IMPACT_MAP[impact] || 2;
+    return pad.top + plotH - ((val - 0.5) / 3.5) * plotH;
+  }
+
+  const todayX = xPos(TODAY);
+  const todayIdx = dates.indexOf(TODAY);
+
+  const selectedEvent = EVENTS.find(e => e.id === selected);
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#0b0f1a', color: '#e2e8f0', fontFamily: "'Inter', system-ui, -apple-system, sans-serif", padding: '24px' }}>
+      <div style={{ maxWidth: 900, margin: '0 auto' }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 4 }}>Daily Market Analysis</h1>
+        <p style={{ color: '#94a3b8', marginBottom: 24, fontSize: 14 }}>May 30, 2026 — Weekend Edition</p>
+
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+          {['All', 'Tech', 'Healthcare', 'Energy', 'Finance'].map(ind => (
+            <button key={ind} onClick={() => setFilter(ind)} style={{
+              padding: '6px 14px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+              background: filter === ind ? (INDUSTRY_COLORS[ind] || '#6366f1') : '#1e293b',
+              color: filter === ind ? '#0b0f1a' : '#94a3b8',
+            }}>{ind}</button>
+          ))}
+        </div>
+
+        <div style={{ background: '#151c2c', borderRadius: 12, padding: 20, marginBottom: 24, overflowX: 'auto' }}>
+          <svg viewBox={`0 0 ${chartW} ${chartH}`} style={{ width: '100%', maxWidth: chartW }}>
+            {todayIdx > 0 && (
+              <rect x={pad.left} y={pad.top} width={todayX - pad.left} height={plotH} fill="rgba(239,68,68,0.06)" />
+            )}
+            {todayX && (
+              <rect x={todayX} y={pad.top} width={pad.left + plotW - todayX} height={plotH} fill="rgba(34,197,94,0.06)" />
+            )}
+            {dates.map((d, i) => {
+              const x = pad.left + (i / (dates.length - 1)) * plotW;
+              return (
+                <g key={d}>
+                  <line x1={x} y1={pad.top} x2={x} y2={pad.top + plotH} stroke="#1e293b" strokeWidth={1} />
+                  <text x={x} y={chartH - 10} textAnchor="middle" fill="#64748b" fontSize={11}>{formatDateLabel(d)}</text>
+                </g>
+              );
+            })}
+            {['High', 'Medium', 'Low'].map(level => {
+              const y = yPos(level);
+              return (
+                <g key={level}>
+                  <line x1={pad.left} y1={y} x2={pad.left + plotW} y2={y} stroke="#1e293b" strokeWidth={1} />
+                  <text x={pad.left - 10} y={y + 4} textAnchor="end" fill="#64748b" fontSize={11}>{level}</text>
+                </g>
+              );
+            })}
+            {todayX && (
+              <>
+                <line x1={todayX} y1={pad.top - 5} x2={todayX} y2={pad.top + plotH + 5} stroke="#ef4444" strokeWidth={2} strokeDasharray="6,4" />
+                <text x={todayX} y={pad.top - 12} textAnchor="middle" fill="#ef4444" fontSize={11} fontWeight={700}>TODAY</text>
+              </>
+            )}
+            {filteredEvents.map((ev, i) => {
+              const cx = xPos(ev.date);
+              if (cx === null) return null;
+              const cy = yPos(ev.impact);
+              const jitter = ((i % 5) - 2) * 8;
+              return (
+                <g key={ev.id} onClick={() => setSelected(ev.id === selected ? null : ev.id)} style={{ cursor: 'pointer' }}>
+                  <circle cx={cx + jitter} cy={cy} r={selected === ev.id ? 10 : 7} fill={INDUSTRY_COLORS[ev.industry]} opacity={0.9} stroke={selected === ev.id ? '#fff' : 'none'} strokeWidth={2} />
+                  <title>{ev.ticker}: {ev.headline}</title>
+                </g>
+              );
+            })}
+            <text x={pad.left} y={20} fill="#94a3b8" fontSize={12} fontWeight={600}>Market Events Timeline</text>
+            <text x={chartW - pad.right} y={20} textAnchor="end" fill="#64748b" fontSize={10}>Click dots for details</text>
+          </svg>
+
+          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginTop: 12 }}>
+            {Object.entries(INDUSTRY_COLORS).map(([name, color]) => (
+              <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: color }} />
+                <span style={{ fontSize: 12, color: '#94a3b8' }}>{name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {selectedEvent && (
+          <div style={{ background: '#151c2c', borderRadius: 12, padding: 20, marginBottom: 24, border: '1px solid #2d3a52' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+              <div>
+                <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>{selectedEvent.headline}</h3>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ background: INDUSTRY_COLORS[selectedEvent.industry], color: '#0b0f1a', padding: '2px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>{selectedEvent.industry}</span>
+                  <span style={{ background: RECOMMENDATION_COLORS[selectedEvent.recommendation], color: '#0b0f1a', padding: '2px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>{selectedEvent.recommendation}</span>
+                  <span style={{ color: '#94a3b8', fontSize: 13 }}>{selectedEvent.ticker} · {formatDateLabel(selectedEvent.date)} · {selectedEvent.impact} Impact</span>
+                </div>
+              </div>
+              <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 20 }}>✕</button>
+            </div>
+            <p style={{ marginTop: 12, color: '#cbd5e1', fontSize: 14, lineHeight: 1.6 }}>{selectedEvent.reason}</p>
+          </div>
+        )}
+
+        <div style={{ background: '#151c2c', borderRadius: 12, padding: 20, overflowX: 'auto' }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>All Events</h2>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #2d3a52' }}>
+                {['Date', 'Ticker', 'Headline', 'Industry', 'Impact', 'Rec.'].map(h => (
+                  <th key={h} style={{ textAlign: 'left', padding: '8px 10px', color: '#64748b', fontWeight: 600 }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filteredEvents.map(ev => (
+                <tr key={ev.id} onClick={() => setSelected(ev.id)} style={{ borderBottom: '1px solid #1e293b', cursor: 'pointer', background: selected === ev.id ? '#1e293b' : 'transparent' }}>
+                  <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>{formatDateLabel(ev.date)}</td>
+                  <td style={{ padding: '8px 10px', fontWeight: 700, color: INDUSTRY_COLORS[ev.industry] }}>{ev.ticker}</td>
+                  <td style={{ padding: '8px 10px' }}>{ev.headline}</td>
+                  <td style={{ padding: '8px 10px' }}>
+                    <span style={{ background: INDUSTRY_COLORS[ev.industry], color: '#0b0f1a', padding: '1px 8px', borderRadius: 8, fontSize: 11, fontWeight: 700 }}>{ev.industry}</span>
+                  </td>
+                  <td style={{ padding: '8px 10px' }}>{ev.impact}</td>
+                  <td style={{ padding: '8px 10px' }}>
+                    <span style={{ background: RECOMMENDATION_COLORS[ev.recommendation], color: '#0b0f1a', padding: '1px 8px', borderRadius: 8, fontSize: 11, fontWeight: 700 }}>{ev.recommendation}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <p style={{ textAlign: 'center', color: '#475569', fontSize: 11, marginTop: 24 }}>
+          Generated on May 30, 2026. For informational purposes only — not financial advice.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export default DailyMarketAnalysis;
