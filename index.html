@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Daily Market Analysis — Latest</title>
+<style>
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: #0b0f1a;
+    color: #e2e8f0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; padding: 24px; box-sizing: border-box;
+  }
+  .box { max-width: 420px; }
+  .spin {
+    width: 40px; height: 40px; margin: 0 auto 20px;
+    border: 3px solid #1e293b; border-top-color: #818cf8;
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  h1 { font-size: 18px; font-weight: 600; margin: 0 0 6px; }
+  .muted { color: #64748b; font-size: 13px; line-height: 1.5; margin-top: 12px; }
+  a { color: #818cf8; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="box" id="box">
+    <div class="spin"></div>
+    <h1>Loading the latest market analysis…</h1>
+    <div class="muted">Finding today's report.</div>
+  </div>
+  <script>
+    (function () {
+      function pad(n) { return String(n).padStart(2, "0"); }
+      function fmt(d) {
+        return d.getUTCFullYear() + "-" + pad(d.getUTCMonth() + 1) + "-" + pad(d.getUTCDate());
+      }
+      var now = new Date();
+      var candidates = [];
+      // Walk back up to 21 days to find the most recent published report.
+      for (var i = 0; i < 21; i++) {
+        var d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - i));
+        var date = fmt(d);
+        candidates.push("reports/" + date + "/DailyMarketAnalysis_" + date + ".html");
+      }
+      var idx = 0;
+      function attempt() {
+        if (idx >= candidates.length) { fail(); return; }
+        var url = candidates[idx];
+        fetch(url, { method: "HEAD" })
+          .then(function (r) {
+            if (r.ok) { window.location.replace(url); }
+            else { idx++; attempt(); }
+          })
+          .catch(function () { idx++; attempt(); });
+      }
+      function fail() {
+        document.getElementById("box").innerHTML =
+          '<h1>No report published yet</h1>' +
+          '<div class="muted">The next scheduled run will publish one shortly.<br />' +
+          'Meanwhile, browse <a href="https://github.com/anthonynacz/daily-market-analysis/tree/main/reports">all reports on GitHub</a>.</div>';
+      }
+      attempt();
+    })();
+  </script>
+</body>
+</html>
