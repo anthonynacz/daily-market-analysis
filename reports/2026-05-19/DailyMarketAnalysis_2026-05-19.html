@@ -1,21 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Daily Market Analysis — May 19, 2026</title>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>US Market Pulse — Recency × Impact Matrix</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #0b0f1a; color: #e2e8f0; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
-  #app { padding: 24px; max-width: 900px; margin: 0 auto; }
+  html, body { margin: 0; background: #0b0f1a; }
+  body { padding: 16px; -webkit-text-size-adjust: 100%; }
+  #root { max-width: 1000px; margin: 0 auto; }
+  .boot { color:#64748b; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; text-align:center; padding:40px 16px; font-size:14px; }
+  .err  { color:#f87171; font-family:ui-monospace,monospace; white-space:pre-wrap; padding:16px; font-size:12px; }
 </style>
+<script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
 </head>
 <body>
-<div id="app"></div>
-<script type="text/babel">
+<div id="root"><div class="boot">Loading market matrix…</div></div>
+<script id="jsx-source" type="text/plain">
 const { useState, useMemo } = React;
 
 const INDUSTRY_COLORS = {
@@ -54,12 +56,14 @@ const DATE_LABELS = ['May 16','May 17','May 18','May 19','May 20','May 21','May 
 const IMPACT_MAP = { High: 3, Medium: 2, Low: 1 };
 const TODAY = '2026-05-19';
 
-function App() {
+function DailyMarketAnalysis() {
   const [selected, setSelected] = useState(null);
 
   const chartW = 780, chartH = 340, padL = 60, padR = 30, padT = 30, padB = 50;
   const plotW = chartW - padL - padR;
   const plotH = chartH - padT - padB;
+
+  const todayIdx = DATES.indexOf(TODAY);
 
   const xScale = (d) => padL + (DATES.indexOf(d) / (DATES.length - 1)) * plotW;
   const yScale = (v) => padT + plotH - ((v - 0.5) / 3) * plotH;
@@ -67,12 +71,12 @@ function App() {
   const jitteredEvents = useMemo(() => {
     const seen = {};
     return EVENTS.map((e) => {
-      const key = e.date + '-' + e.impact;
+      const key = `${e.date}-${e.impact}`;
       seen[key] = (seen[key] || 0) + 1;
       const count = seen[key];
       const offsetX = ((count - 1) % 3 - 1) * 14;
       const offsetY = Math.floor((count - 1) / 3) * 14;
-      return Object.assign({}, e, { ox: offsetX, oy: offsetY });
+      return { ...e, ox: offsetX, oy: offsetY };
     });
   }, []);
 
@@ -80,111 +84,144 @@ function App() {
   const selectedEvent = selected ? jitteredEvents.find((e) => e.id === selected) : null;
 
   return (
-    React.createElement('div', { style: { minHeight: '100vh' } },
-      React.createElement('h1', { style: { fontSize: '28px', fontWeight: 700, marginBottom: '4px' } }, 'Daily Market Analysis'),
-      React.createElement('p', { style: { color: '#94a3b8', marginBottom: '24px', fontSize: '14px' } }, 'May 19, 2026 — Market Events & Outlook'),
+    <div style={{ background: '#0b0f1a', minHeight: '100vh', color: '#e2e8f0', fontFamily: "'Inter', system-ui, sans-serif", padding: '24px' }}>
+      <h1 style={{ fontSize: '28px', fontWeight: 700, marginBottom: '4px' }}>Daily Market Analysis</h1>
+      <p style={{ color: '#94a3b8', marginBottom: '24px', fontSize: '14px' }}>May 19, 2026 — Market Events & Outlook</p>
 
-      React.createElement('div', { style: { display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' } },
-        Object.entries(INDUSTRY_COLORS).map(([ind, col]) =>
-          React.createElement('span', { key: ind, style: { display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' } },
-            React.createElement('span', { style: { width: 12, height: 12, borderRadius: '50%', background: col, display: 'inline-block' } }),
-            ind
-          )
-        )
-      ),
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        {Object.entries(INDUSTRY_COLORS).map(([ind, col]) => (
+          <span key={ind} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+            <span style={{ width: 12, height: 12, borderRadius: '50%', background: col, display: 'inline-block' }} />
+            {ind}
+          </span>
+        ))}
+      </div>
 
-      React.createElement('div', { style: { background: '#151c2c', borderRadius: '12px', padding: '20px', marginBottom: '20px', overflowX: 'auto' } },
-        React.createElement('svg', { width: chartW, height: chartH, style: { display: 'block', margin: '0 auto' } },
-          React.createElement('rect', { x: padL, y: padT, width: todayX - padL, height: plotH, fill: 'rgba(239,68,68,0.06)' }),
-          React.createElement('rect', { x: todayX, y: padT, width: padL + plotW - todayX, height: plotH, fill: 'rgba(34,197,94,0.06)' }),
+      <div style={{ background: '#151c2c', borderRadius: '12px', padding: '20px', marginBottom: '20px', overflowX: 'auto' }}>
+        <svg width={chartW} height={chartH} style={{ display: 'block', margin: '0 auto' }}>
+          <rect x={padL} y={padT} width={todayX - padL} height={plotH} fill="rgba(239,68,68,0.06)" />
+          <rect x={todayX} y={padT} width={padL + plotW - todayX} height={plotH} fill="rgba(34,197,94,0.06)" />
 
-          [1, 2, 3].map((v) =>
-            React.createElement('g', { key: v },
-              React.createElement('line', { x1: padL, y1: yScale(v), x2: padL + plotW, y2: yScale(v), stroke: '#1e293b', strokeWidth: 1 }),
-              React.createElement('text', { x: padL - 10, y: yScale(v) + 4, textAnchor: 'end', fill: '#64748b', fontSize: 12 },
-                v === 3 ? 'High' : v === 2 ? 'Med' : 'Low'
-              )
-            )
-          ),
+          {[1, 2, 3].map((v) => (
+            <g key={v}>
+              <line x1={padL} y1={yScale(v)} x2={padL + plotW} y2={yScale(v)} stroke="#1e293b" strokeWidth={1} />
+              <text x={padL - 10} y={yScale(v) + 4} textAnchor="end" fill="#64748b" fontSize={12}>
+                {v === 3 ? 'High' : v === 2 ? 'Med' : 'Low'}
+              </text>
+            </g>
+          ))}
 
-          DATES.map((d, i) =>
-            React.createElement('text', { key: d, x: xScale(d), y: chartH - 10, textAnchor: 'middle', fill: '#64748b', fontSize: 11 }, DATE_LABELS[i])
-          ),
+          {DATES.map((d, i) => (
+            <text key={d} x={xScale(d)} y={chartH - 10} textAnchor="middle" fill="#64748b" fontSize={11}>
+              {DATE_LABELS[i]}
+            </text>
+          ))}
 
-          React.createElement('line', { x1: todayX, y1: padT, x2: todayX, y2: padT + plotH, stroke: '#ef4444', strokeWidth: 2, strokeDasharray: '6,4' }),
-          React.createElement('text', { x: todayX, y: padT - 8, textAnchor: 'middle', fill: '#ef4444', fontSize: 11, fontWeight: 600 }, 'TODAY'),
+          <line x1={todayX} y1={padT} x2={todayX} y2={padT + plotH} stroke="#ef4444" strokeWidth={2} strokeDasharray="6,4" />
+          <text x={todayX} y={padT - 8} textAnchor="middle" fill="#ef4444" fontSize={11} fontWeight={600}>TODAY</text>
 
-          jitteredEvents.map((e) => {
+          {jitteredEvents.map((e) => {
             const cx = xScale(e.date) + e.ox;
             const cy = yScale(IMPACT_MAP[e.impact]) + e.oy;
-            const isSel = selected === e.id;
-            return React.createElement('g', { key: e.id, onClick: () => setSelected(isSel ? null : e.id), style: { cursor: 'pointer' } },
-              React.createElement('circle', { cx: cx, cy: cy, r: isSel ? 10 : 7, fill: INDUSTRY_COLORS[e.industry], opacity: isSel ? 1 : 0.85, stroke: isSel ? '#fff' : 'none', strokeWidth: 2 }),
-              React.createElement('text', { x: cx, y: cy + 4, textAnchor: 'middle', fill: '#0b0f1a', fontSize: 9, fontWeight: 700, style: { pointerEvents: 'none' } }, e.ticker.slice(0, 3))
+            const isSelected = selected === e.id;
+            return (
+              <g key={e.id} onClick={() => setSelected(isSelected ? null : e.id)} style={{ cursor: 'pointer' }}>
+                <circle cx={cx} cy={cy} r={isSelected ? 10 : 7} fill={INDUSTRY_COLORS[e.industry]} opacity={isSelected ? 1 : 0.85} stroke={isSelected ? '#fff' : 'none'} strokeWidth={2} />
+                <text x={cx} y={cy + 4} textAnchor="middle" fill="#0b0f1a" fontSize={9} fontWeight={700} style={{ pointerEvents: 'none' }}>
+                  {e.ticker.slice(0, 3)}
+                </text>
+              </g>
             );
-          })
-        )
-      ),
+          })}
+        </svg>
+      </div>
 
-      selectedEvent && React.createElement('div', { style: { background: '#151c2c', borderRadius: '12px', padding: '20px', marginBottom: '20px', borderLeft: '4px solid ' + INDUSTRY_COLORS[selectedEvent.industry] } },
-        React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' } },
-          React.createElement('div', null,
-            React.createElement('h3', { style: { fontSize: '18px', fontWeight: 600 } }, selectedEvent.headline),
-            React.createElement('p', { style: { color: '#94a3b8', fontSize: '13px', marginTop: '4px' } },
-              selectedEvent.ticker + ' · ' + selectedEvent.industry + ' · ' + selectedEvent.date + ' · Impact: ' + selectedEvent.impact
-            )
-          ),
-          React.createElement('span', { style: {
-            padding: '4px 14px', borderRadius: '999px', fontSize: '13px', fontWeight: 600,
-            background: REC_COLORS[selectedEvent.rec] + '22', color: REC_COLORS[selectedEvent.rec],
-          } }, selectedEvent.rec)
-        ),
-        React.createElement('p', { style: { marginTop: '10px', fontSize: '14px', lineHeight: 1.6, color: '#cbd5e1' } }, selectedEvent.reason)
-      ),
+      {selectedEvent && (
+        <div style={{ background: '#151c2c', borderRadius: '12px', padding: '20px', marginBottom: '20px', borderLeft: `4px solid ${INDUSTRY_COLORS[selectedEvent.industry]}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
+            <div>
+              <h3 style={{ fontSize: '18px', fontWeight: 600, margin: 0 }}>{selectedEvent.headline}</h3>
+              <p style={{ color: '#94a3b8', fontSize: '13px', margin: '4px 0' }}>
+                {selectedEvent.ticker} &middot; {selectedEvent.industry} &middot; {selectedEvent.date} &middot; Impact: {selectedEvent.impact}
+              </p>
+            </div>
+            <span style={{
+              padding: '4px 14px', borderRadius: '999px', fontSize: '13px', fontWeight: 600,
+              background: REC_COLORS[selectedEvent.rec] + '22', color: REC_COLORS[selectedEvent.rec],
+            }}>
+              {selectedEvent.rec}
+            </span>
+          </div>
+          <p style={{ marginTop: '10px', fontSize: '14px', lineHeight: 1.6, color: '#cbd5e1' }}>{selectedEvent.reason}</p>
+        </div>
+      )}
 
-      React.createElement('div', { style: { background: '#151c2c', borderRadius: '12px', padding: '20px', overflowX: 'auto' } },
-        React.createElement('h2', { style: { fontSize: '18px', fontWeight: 600, marginBottom: '12px' } }, 'All Events'),
-        React.createElement('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: '13px' } },
-          React.createElement('thead', null,
-            React.createElement('tr', { style: { borderBottom: '1px solid #1e293b', textAlign: 'left' } },
-              ['Date', 'Ticker', 'Headline', 'Industry', 'Impact', 'Rec'].map((h) =>
-                React.createElement('th', { key: h, style: { padding: '8px 12px', color: '#64748b', fontWeight: 500 } }, h)
-              )
-            )
-          ),
-          React.createElement('tbody', null,
-            EVENTS.map((e) =>
-              React.createElement('tr', { key: e.id, onClick: () => setSelected(e.id), style: { borderBottom: '1px solid rgba(30,41,59,0.13)', cursor: 'pointer' } },
-                React.createElement('td', { style: { padding: '8px 12px' } }, e.date),
-                React.createElement('td', { style: { padding: '8px 12px', fontWeight: 600, color: INDUSTRY_COLORS[e.industry] } }, e.ticker),
-                React.createElement('td', { style: { padding: '8px 12px' } }, e.headline),
-                React.createElement('td', { style: { padding: '8px 12px' } },
-                  React.createElement('span', { style: { display: 'flex', alignItems: 'center', gap: '6px' } },
-                    React.createElement('span', { style: { width: 8, height: 8, borderRadius: '50%', background: INDUSTRY_COLORS[e.industry], display: 'inline-block' } }),
-                    e.industry
-                  )
-                ),
-                React.createElement('td', { style: { padding: '8px 12px' } }, e.impact),
-                React.createElement('td', { style: { padding: '8px 12px' } },
-                  React.createElement('span', { style: {
+      <div style={{ background: '#151c2c', borderRadius: '12px', padding: '20px', overflowX: 'auto' }}>
+        <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '12px' }}>All Events</h2>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid #1e293b', textAlign: 'left' }}>
+              <th style={{ padding: '8px 12px', color: '#64748b', fontWeight: 500 }}>Date</th>
+              <th style={{ padding: '8px 12px', color: '#64748b', fontWeight: 500 }}>Ticker</th>
+              <th style={{ padding: '8px 12px', color: '#64748b', fontWeight: 500 }}>Headline</th>
+              <th style={{ padding: '8px 12px', color: '#64748b', fontWeight: 500 }}>Industry</th>
+              <th style={{ padding: '8px 12px', color: '#64748b', fontWeight: 500 }}>Impact</th>
+              <th style={{ padding: '8px 12px', color: '#64748b', fontWeight: 500 }}>Rec</th>
+            </tr>
+          </thead>
+          <tbody>
+            {EVENTS.map((e) => (
+              <tr key={e.id} onClick={() => setSelected(e.id)} style={{ borderBottom: '1px solid #1e293b22', cursor: 'pointer' }}>
+                <td style={{ padding: '8px 12px' }}>{e.date}</td>
+                <td style={{ padding: '8px 12px', fontWeight: 600, color: INDUSTRY_COLORS[e.industry] }}>{e.ticker}</td>
+                <td style={{ padding: '8px 12px' }}>{e.headline}</td>
+                <td style={{ padding: '8px 12px' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: INDUSTRY_COLORS[e.industry], display: 'inline-block' }} />
+                    {e.industry}
+                  </span>
+                </td>
+                <td style={{ padding: '8px 12px' }}>{e.impact}</td>
+                <td style={{ padding: '8px 12px' }}>
+                  <span style={{
                     padding: '2px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 600,
                     background: REC_COLORS[e.rec] + '22', color: REC_COLORS[e.rec],
-                  } }, e.rec)
-                )
-              )
-            )
-          )
-        )
-      ),
+                  }}>
+                    {e.rec}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-      React.createElement('p', { style: { textAlign: 'center', color: '#475569', fontSize: '12px', marginTop: '24px' } },
-        'Generated on 2026-05-19. For informational purposes only — not financial advice.'
-      )
-    )
+      <p style={{ textAlign: 'center', color: '#475569', fontSize: '12px', marginTop: '24px' }}>
+        Generated on 2026-05-19. For informational purposes only — not financial advice.
+      </p>
+    </div>
   );
 }
 
-ReactDOM.createRoot(document.getElementById('app')).render(React.createElement(App));
+
+
+
+ReactDOM.createRoot(document.getElementById("root")).render(<DailyMarketAnalysis />);
+</script>
+<script>
+  (function () {
+    try {
+      var src = document.getElementById("jsx-source").textContent;
+      var out = Babel.transform(src, { presets: [["react", { runtime: "classic" }]] }).code;
+      var s = document.createElement("script");
+      s.text = out;
+      document.body.appendChild(s);
+    } catch (e) {
+      document.getElementById("root").innerHTML =
+        '<div class="err">Render error: ' + (e && e.message ? e.message : e) + '</div>';
+      console.error(e);
+    }
+  })();
 </script>
 </body>
 </html>
