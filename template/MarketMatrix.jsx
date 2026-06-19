@@ -164,53 +164,55 @@ const EVENTS = [
 ];
 
 // ------------------------------------------------------------------ options
-// Each idea carries a `strategy` (selected by IV regime, sentiment & binary risk)
-// and a `profile` (risk appetite). Defined-risk + cash-secured only — no naked shorts.
+// Each idea carries a `strategy` (chosen by IV regime, sentiment & binary risk),
+// a `profile` (risk appetite), and a stated CAPITAL figure. Defined-risk + cash-
+// secured only — no naked shorts; total capital at risk per idea is kept <= $1,500
+// (so cash-secured puts only fit genuinely cheap stocks — otherwise use spreads).
 const OPTION_PLAYS = [
   { ticker: "AAPL", name: "Apple", rank: 1, spot: "~$310", sentiment: "Bullish",
     catalyst: "WWDC 2026 keynote — Mon Jun 8 (Siri / AI re-rating)",
     iv: "~25% — CHEAP → long premium favored", liq: "Deepest equity chain in the market; penny-wide spreads, huge OI",
-    thesis: "Hard 3-day catalyst with cheap IV → low crush risk, so buying premium is favored. Spread up for a defined-cost version.",
+    thesis: "Hard 3-day catalyst with cheap IV → low crush risk, so buying premium is favored. Spread up for a cheaper, defined-cost version.",
     ideas: [
-      { profile: "Conservative", strategy: "Long Call (ITM)", text: "$300 call · Jul 17 '26 · ~$14.50 debit · Δ≈0.65" },
-      { profile: "Moderate",     strategy: "Bull Call Debit Spread", text: "Buy $310 / sell $325 · Jun 19 '26 · ~$5.00 net debit · max loss $5" },
-      { profile: "Aggressive",   strategy: "Long Call (OTM)", text: "$325 call · Jun 12 '26 · ~$1.80 debit · pure WWDC pop" },
+      { profile: "Conservative", strategy: "Long Call (ITM)", text: "$300 call · Jul 17 '26 · ~$14.50 debit · cost ~$1,450 · Δ≈0.65" },
+      { profile: "Moderate",     strategy: "Bull Call Debit Spread", text: "Buy $310 / sell $325 · Jun 19 '26 · ~$5.00 net debit · cost/max loss ~$500" },
+      { profile: "Aggressive",   strategy: "Long Call (OTM)", text: "$325 call · Jun 12 '26 · ~$1.80 debit · cost ~$180 · pure WWDC pop" },
     ] },
   { ticker: "ORCL", name: "Oracle", rank: 2, spot: "~$236", sentiment: "Bullish",
     catalyst: "FQ4 earnings — Wed Jun 10 (after close) · BINARY",
     iv: "~73% / IVR ~90 — VERY RICH (±~12% implied)", liq: "Deep, very active AI-infrastructure chain",
-    thesis: "Bullish into a binary with expensive IV → avoid naked long calls (max crush). Cut vega with a debit spread, or get paid via defined-risk short premium.",
+    thesis: "Bullish into a binary with expensive IV → avoid naked long calls (max crush). Cut vega with a debit spread, or get paid via a defined-risk credit spread.",
     ideas: [
-      { profile: "Conservative", strategy: "Bull Call Debit Spread", text: "Buy $230 / sell $250 · Jul 17 '26 · ~$9 net debit · max loss $9 · vega-reduced" },
-      { profile: "Moderate",     strategy: "Cash-Secured Put", text: "Sell $220 put · Jun 19 '26 · ~$6 credit · net buy $214; collateral ~$22k" },
-      { profile: "Aggressive",   strategy: "Put Credit Spread", text: "Sell $220 / buy $210 · Jun 12 '26 · ~$3 credit · max loss $7 · harvests IV crush" },
+      { profile: "Conservative", strategy: "Bull Call Debit Spread", text: "Buy $230 / sell $250 · Jul 17 '26 · ~$9 net debit · cost/max loss ~$900 · vega-reduced" },
+      { profile: "Moderate",     strategy: "Put Credit Spread", text: "Sell $220 / buy $210 · Jun 19 '26 · ~$3 credit · max loss/capital ~$700 · harvests IV crush" },
+      { profile: "Aggressive",   strategy: "Put Credit Spread", text: "Sell $225 / buy $215 · Jun 12 '26 · ~$3.50 credit · max loss/capital ~$650" },
     ] },
   { ticker: "ADBE", name: "Adobe", rank: 3, spot: "~$258", sentiment: "Neutral-to-Bullish",
     catalyst: "Q2 earnings — Thu Jun 11 (after close) · BINARY",
     iv: "Elevated (~±8% earnings move)", liq: "Deep large-cap software chain; tight spreads",
     thesis: "Oversold, low expectations, but a binary print → defined-risk, range-tolerant structures. Sell elevated premium below support; spread up for cheap upside.",
     ideas: [
-      { profile: "Conservative", strategy: "Put Credit Spread", text: "Sell $250 / buy $240 · Jul 17 '26 · ~$3 credit · max loss $7 · bullish, range-tolerant" },
-      { profile: "Moderate",     strategy: "Bull Call Debit Spread", text: "Buy $260 / sell $280 · Jun 19 '26 · ~$7 net debit · max loss $7" },
-      { profile: "Aggressive",   strategy: "Long Call (OTM)", text: "$275 call · Jun 12 '26 · ~$2.50 debit" },
+      { profile: "Conservative", strategy: "Put Credit Spread", text: "Sell $250 / buy $240 · Jul 17 '26 · ~$3 credit · max loss/capital ~$700 · bullish, range-tolerant" },
+      { profile: "Moderate",     strategy: "Bull Call Debit Spread", text: "Buy $260 / sell $280 · Jun 19 '26 · ~$7 net debit · cost/max loss ~$700" },
+      { profile: "Aggressive",   strategy: "Long Call (OTM)", text: "$275 call · Jun 12 '26 · ~$2.50 debit · cost ~$250" },
     ] },
   { ticker: "FDX", name: "FedEx", rank: 4, spot: "~$331", sentiment: "Bullish",
     catalyst: "Q4 earnings — ~Jun 18 (after close); post Freight spinoff",
     iv: "Elevated into earnings; unusual call activity flagged", liq: "Deep, liquid large-cap chain",
-    thesis: "Two stacked bullish catalysts (spinoff re-rate + earnings). Pair a paid-to-wait short put with a defined-cost call spread.",
+    thesis: "Two stacked bullish catalysts (spinoff re-rate + earnings). Pair a defined-risk put-credit spread with a defined-cost call spread.",
     ideas: [
-      { profile: "Conservative", strategy: "Cash-Secured Put", text: "Sell $320 put · Jul 17 '26 · ~$9 credit · net buy $311; collateral ~$32k" },
-      { profile: "Moderate",     strategy: "Bull Call Debit Spread", text: "Buy $330 / sell $350 · Jun 19 '26 · ~$8 net debit · max loss $8" },
-      { profile: "Aggressive",   strategy: "Long Call (OTM)", text: "$350 call · Jun 19 '26 · ~$3 debit · breakout" },
+      { profile: "Conservative", strategy: "Bull Call Debit Spread", text: "Buy $320 / sell $340 · Jul 17 '26 · ~$8 net debit · cost/max loss ~$800" },
+      { profile: "Moderate",     strategy: "Put Credit Spread", text: "Sell $320 / buy $310 · Jun 19 '26 · ~$3.50 credit · max loss/capital ~$650" },
+      { profile: "Aggressive",   strategy: "Long Call (OTM)", text: "$350 call · Jun 19 '26 · ~$3 debit · cost ~$300 · breakout" },
     ] },
   { ticker: "NKE", name: "Nike", rank: 5, spot: "~$44", sentiment: "Bullish (contrarian)",
     catalyst: "Q4 earnings — ~Jun 30 (after close) · BINARY",
     iv: "~54% (±~11% implied) — rich on a cheap stock", liq: "Deep mega-cap chain; low $ premiums",
-    thesis: "Max-pessimism turnaround near 11-yr lows with rich IV → get paid to accumulate via short puts; cheap call for the asymmetric pop.",
+    thesis: "Max-pessimism turnaround near 11-yr lows with rich IV → get paid via a defined-risk put-credit spread; cheap call for the asymmetric pop.",
     ideas: [
-      { profile: "Conservative", strategy: "Cash-Secured Put", text: "Sell $42 put · Jul 17 '26 · ~$2.10 credit · net buy $39.90; collateral ~$4.2k" },
-      { profile: "Moderate",     strategy: "Long Call (ITM)", text: "$42 call · Jul 17 '26 · ~$3.50 debit · Δ≈0.65" },
-      { profile: "Aggressive",   strategy: "Bull Call Debit Spread", text: "Buy $44 / sell $50 · Jul 2 '26 · ~$1.60 net debit · max loss $1.60" },
+      { profile: "Conservative", strategy: "Long Call (ITM)", text: "$42 call · Jul 17 '26 · ~$3.50 debit · cost ~$350 · Δ≈0.65" },
+      { profile: "Moderate",     strategy: "Put Credit Spread", text: "Sell $42 / buy $38 · Jul 17 '26 · ~$1.20 credit · max loss/capital ~$280 · paid to accumulate" },
+      { profile: "Aggressive",   strategy: "Bull Call Debit Spread", text: "Buy $44 / sell $50 · Jul 2 '26 · ~$1.60 net debit · cost/max loss ~$160" },
     ] },
 ];
 
@@ -456,7 +458,7 @@ export default function MarketMatrix() {
         <div style={{ marginTop: 6 }}>
           <div style={S.optHead}>
             <div style={S.sub}>
-              Strongest options plays for the coming month — strategy chosen per name by <b style={{ color: "#e2e8f0" }}>IV, sentiment &amp; upcoming binary events</b> (long calls/puts, debit &amp; credit spreads, cash-secured puts). Every idea is <b style={{ color: "#e2e8f0" }}>defined-risk</b> — net debit or max loss <b style={{ color: "#e2e8f0" }}>under $15/contract</b> on a liquid chain. No naked shorts.
+              Strongest options plays for the coming month — strategy chosen per name by <b style={{ color: "#e2e8f0" }}>IV, sentiment &amp; upcoming binary events</b> (long calls/puts, debit &amp; credit spreads, cash-secured puts). Every idea is <b style={{ color: "#e2e8f0" }}>defined-risk</b> with total capital at risk <b style={{ color: "#e2e8f0" }}>under $1,500/trade</b> (debit × 100, or max loss / collateral) on a liquid chain. No naked shorts.
             </div>
             <div style={S.riskRow}>
               {["All", "Conservative", "Moderate", "Aggressive"].map((r) => (
