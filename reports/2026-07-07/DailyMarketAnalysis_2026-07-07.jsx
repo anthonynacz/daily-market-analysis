@@ -1,0 +1,576 @@
+import React, { useState, useMemo } from "react";
+
+/**
+ * MarketMatrix — Recency × Impact news matrix for US equities, by industry.
+ *
+ * Snapshot date: Tuesday, July 7, 2026 (live-researched).
+ * Window: last 3 days (Jul 4) → coming 2 weeks (Jul 21).
+ *
+ * Self-contained: only depends on React. Inline styles + raw SVG, no libs.
+ * Drop <MarketMatrix /> anywhere and it renders.
+ *
+ * ⚠ Educational analysis, NOT financial advice. Option premiums are ESTIMATES
+ *   derived from spot + implied vol; confirm live on your broker before trading.
+ */
+
+// ------------------------------------------------------------------ palette
+const INDUSTRIES = {
+  tech:     { label: "Technology / Semis", color: "#3b82f6" },
+  energy:   { label: "Energy",             color: "#f59e0b" },
+  health:   { label: "Healthcare / Pharma", color: "#10b981" },
+  finance:  { label: "Financials",         color: "#a855f7" },
+  consumer: { label: "Consumer / Retail",  color: "#ef4444" },
+};
+
+const DIR = {
+  BULLISH: { glyph: "↑", label: "Bullish" },
+  BEARISH: { glyph: "↓", label: "Bearish" },
+  MIXED:   { glyph: "↔", label: "Mixed / uncertain" },
+};
+
+// 18-day axis: Jul 4 .. Jul 21 (last 3 days → coming 2 weeks). Today = index 3 (Jul 7).
+const DAYS = [
+  { idx: 0, date: "Jul 4", dow: "Sat" }, // mkt closed (Independence Day)
+  { idx: 1, date: "Jul 5", dow: "Sun" },
+  { idx: 2, date: "Jul 6", dow: "Mon" },
+  { idx: 3, date: "Jul 7", dow: "Tue" }, // TODAY
+  { idx: 4, date: "Jul 8", dow: "Wed" },
+  { idx: 5, date: "Jul 9", dow: "Thu" },
+  { idx: 6, date: "Jul 10", dow: "Fri" },
+  { idx: 7, date: "Jul 11", dow: "Sat" },
+  { idx: 8, date: "Jul 12", dow: "Sun" },
+  { idx: 9, date: "Jul 13", dow: "Mon" },
+  { idx: 10, date: "Jul 14", dow: "Tue" },
+  { idx: 11, date: "Jul 15", dow: "Wed" },
+  { idx: 12, date: "Jul 16", dow: "Thu" },
+  { idx: 13, date: "Jul 17", dow: "Fri" },
+  { idx: 14, date: "Jul 18", dow: "Sat" },
+  { idx: 15, date: "Jul 19", dow: "Sun" },
+  { idx: 16, date: "Jul 20", dow: "Mon" },
+  { idx: 17, date: "Jul 21", dow: "Tue" },
+];
+const TODAY_IDX = 3;
+
+// impact: 3 = HIGH (top), 2 = MEDIUM, 1 = LOW (bottom)
+const IMPACT_LABEL = { 3: "HIGH", 2: "MEDIUM", 1: "LOW" };
+
+// ------------------------------------------------------------------ events
+// dayIdx maps the event date onto the 18-day axis above.
+const EVENTS = [
+  // ---- TECHNOLOGY / SEMIS -------------------------------------------------
+  { id: "t1", ind: "tech", dayIdx: 2, future: false, impact: 3, dir: "BULLISH",
+    headline: "Chip rally lifts market — AMD +6.6%, Broadcom +3.7% on Apple deal to 2031", tickers: "AVGO · AMD · AAPL",
+    rec: "Ride the AI leadership but don't chase a 6% AMD pop; add on pullbacks, trim extended names." },
+  { id: "t2", ind: "tech", dayIdx: 3, future: false, impact: 3, dir: "BEARISH",
+    headline: "Samsung −8.8% in Seoul; memory read-through hits MU / SNDK −5%+ premarket", tickers: "MU · SNDK · STX",
+    rec: "Avoid catching the memory knife pre-open; wait for MU to base — the miss was guidance, not demand." },
+  { id: "t3", ind: "tech", dayIdx: 2, future: false, impact: 2, dir: "MIXED",
+    headline: "AI-semis whipsaw a 2nd day — MU / AMD / INTC swung −5% intraday before recovering", tickers: "NVDA · MU · INTC",
+    rec: "Expect high two-way vol; keep quality (NVDA) core, use the chop to scale, don't over-trade." },
+  { id: "t4", ind: "tech", dayIdx: 12, future: true, impact: 3, dir: "BULLISH",
+    headline: "TSMC Q2 earnings (pre-market) — the AI-capex tell for the whole complex", tickers: "TSM · NVDA · AVGO",
+    rec: "Strong gross margin + capex guide re-rates AI hardware; wait for the print, don't front-run." },
+  { id: "t5", ind: "tech", dayIdx: 12, future: true, impact: 3, dir: "MIXED",
+    headline: "Netflix Q2 earnings — Thu Jul 16 (after close) · BINARY", tickers: "NFLX",
+    rec: "Rich IV into a binary; size before the print and prefer defined-risk — don't buy naked premium." },
+  { id: "t6", ind: "tech", dayIdx: 4, future: true, impact: 2, dir: "MIXED",
+    headline: "FOMC minutes (Warsh's first meeting) — rate-path tell for high-multiple tech", tickers: "QQQ · NVDA · MSFT",
+    rec: "A hawkish tone pressures megacap multiples; keep dry powder into the release, fade knee-jerk moves." },
+
+  // ---- ENERGY -------------------------------------------------------------
+  { id: "e1", ind: "energy", dayIdx: 2, future: false, impact: 2, dir: "BEARISH",
+    headline: "OPEC+ hikes quotas again; Saudi cuts Arab Light $11 — crude near Feb lows", tickers: "XOM · CVX · COP",
+    rec: "Supply glut caps upside; trim beta E&P, favor low-cost majors — don't buy the dip yet." },
+  { id: "e2", ind: "energy", dayIdx: 3, future: false, impact: 2, dir: "BULLISH",
+    headline: "WTI pops >$69 (1-week high) after LNG tanker struck near Strait of Hormuz", tickers: "XOM · CVX · USO",
+    rec: "Trade the geopolitical spike with trailing stops; a de-escalation unwinds the premium fast." },
+  { id: "e3", ind: "energy", dayIdx: 2, future: false, impact: 1, dir: "BULLISH",
+    headline: "Wolfe upgrades Chevron to Outperform, $210 target (down ~20% from highs)", tickers: "CVX",
+    rec: "Constructive on the dividend + valuation; accumulate CVX on weakness for income, not a quick pop." },
+  { id: "e4", ind: "energy", dayIdx: 5, future: true, impact: 2, dir: "MIXED",
+    headline: "EIA weekly petroleum status report (crude / product inventories)", tickers: "XOM · CVX · USO",
+    rec: "A big draw amid Hormuz risk supports crude; use the print to time entries, not to chase." },
+  { id: "e5", ind: "energy", dayIdx: 11, future: true, impact: 1, dir: "BEARISH",
+    headline: "OFAC 60-day Iran oil license keeps supply overhang in play", tickers: "XOM · CVX · COP",
+    rec: "Extra barrels pressure the war premium; stay selective — quality majors over high-beta names." },
+
+  // ---- HEALTHCARE / PHARMA ------------------------------------------------
+  { id: "h1", ind: "health", dayIdx: 12, future: true, impact: 3, dir: "MIXED",
+    headline: "UnitedHealth Q2 earnings — Thu Jul 16 (before open) · BINARY, MA-margin watch", tickers: "UNH · HUM · CVS",
+    rec: "Managed-care sentiment fragile; use defined-risk / range structures — the print swings the whole group." },
+  { id: "h2", ind: "health", dayIdx: 11, future: true, impact: 2, dir: "MIXED",
+    headline: "J&J Q2 earnings (before open) — MedTech + Innovative Medicine guide", tickers: "JNJ",
+    rec: "Defensive anchor; hold for the raise-and-hold guide, don't expect a big move — low-vol name." },
+  { id: "h3", ind: "health", dayIdx: 6, future: true, impact: 1, dir: "BEARISH",
+    headline: "Managed-care sentiment stays soft into the UNH print", tickers: "UNH · ELV · CVS",
+    rec: "Stay cautious / underweight until UNH clears 2027-rate + medical-cost trend uncertainty." },
+  { id: "h4", ind: "health", dayIdx: 9, future: true, impact: 1, dir: "MIXED",
+    headline: "Q2 pharma previews begin — GLP-1 volume & pricing watch", tickers: "LLY · NVO",
+    rec: "Favor LLY on script momentum; fade knee-jerk NVO moves — position before, not into, headlines." },
+
+  // ---- FINANCIALS ---------------------------------------------------------
+  { id: "f1", ind: "finance", dayIdx: 10, future: true, impact: 3, dir: "MIXED",
+    headline: "Big-bank Q2 kickoff — JPM, Wells Fargo, Citi & Goldman report (Jul 14)", tickers: "JPM · WFC · C · GS",
+    rec: "NII + IB-fee recovery is the tell; favor asset-sensitive JPM/BAC, take profits into strength." },
+  { id: "f2", ind: "finance", dayIdx: 10, future: true, impact: 3, dir: "MIXED",
+    headline: "June CPI (8:30 ET) — first inflation tell before the Jul 29 FOMC", tickers: "JPM · BAC · SPY · TLT",
+    rec: "Biggest macro swing in the window; keep dry powder, avoid new duration until after the print." },
+  { id: "f3", ind: "finance", dayIdx: 11, future: true, impact: 2, dir: "MIXED",
+    headline: "BofA & Morgan Stanley report; June PPI print", tickers: "BAC · MS",
+    rec: "Trading + wealth revenue in focus; hold quality franchises, don't chase the bank-index move." },
+  { id: "f4", ind: "finance", dayIdx: 2, future: false, impact: 1, dir: "BULLISH",
+    headline: "JPMorgan at record ~$336 into earnings; bank index firm", tickers: "JPM",
+    rec: "Momentum is strong but earnings are a binary — hold core, wait for the print to add." },
+
+  // ---- CONSUMER / RETAIL --------------------------------------------------
+  { id: "c1", ind: "consumer", dayIdx: 6, future: true, impact: 3, dir: "BULLISH",
+    headline: "Delta Q2 earnings (before open) — airline season kickoff, summer travel read", tickers: "DAL · UAL · AAL",
+    rec: "Strong summer demand + lower fuel is the bull case; use defined-risk into the binary, don't chase." },
+  { id: "c2", ind: "consumer", dayIdx: 12, future: true, impact: 2, dir: "MIXED",
+    headline: "June retail sales (8:30 ET) — consumer-health check", tickers: "WMT · TGT · AMZN",
+    rec: "A firm print backs the resilient-consumer thesis; favor WMT share-gainers over discretionary laggards." },
+  { id: "c3", ind: "consumer", dayIdx: 2, future: false, impact: 1, dir: "BULLISH",
+    headline: "Holiday-weekend spend solid; consumer holds up into earnings season", tickers: "WMT · AMZN",
+    rec: "Constructive backdrop for staples/retail leaders; hold WMT/AMZN, add on macro-driven dips." },
+  { id: "c4", ind: "consumer", dayIdx: 13, future: true, impact: 1, dir: "MIXED",
+    headline: "Prime-Day read-through week — e-commerce demand & promo intensity", tickers: "AMZN · WMT · TGT",
+    rec: "Watch traffic/units over headline GMV; use any weakness in AMZN to accumulate, not to fade." },
+
+  // ---- FORWARD CATALYSTS (week 2: Jul 17–21) ------------------------------
+  { id: "x1", ind: "tech", dayIdx: 16, future: true, impact: 1, dir: "MIXED",
+    headline: "AI-capex read-through continues post TSM / NFLX prints", tickers: "NVDA · AVGO · TSM",
+    rec: "Let the dust settle; re-add on confirmed capex strength, not the first bounce." },
+  { id: "x2", ind: "finance", dayIdx: 17, future: true, impact: 2, dir: "MIXED",
+    headline: "Mega-cap earnings on deck (GOOGL Jul 22, MSFT/META Jul 29) — positioning", tickers: "SPY · QQQ · GOOGL",
+    rec: "Trim into strength ahead of the megacap gauntlet; keep powder for the Jul 29 FOMC + Big-Tech week." },
+];
+
+// ------------------------------------------------------------------ options
+// Each idea carries a `strategy` (chosen by IV regime, sentiment & binary risk),
+// a `profile` (risk appetite), and a stated CAPITAL figure. Defined-risk + cash-
+// secured only — no naked shorts; total capital at risk per idea is kept <= $1,500
+// (so cash-secured puts only fit genuinely cheap stocks — otherwise use spreads).
+const OPTION_PLAYS = [
+  { ticker: "JPM", name: "JPMorgan Chase", rank: 1, spot: "~$336", sentiment: "Bullish",
+    catalyst: "Q2 earnings — Tue Jul 14 (before open) · BINARY; big-bank kickoff + CPI same day",
+    iv: "Moderate (~±4–5% implied) — not extreme; bank earnings rarely gap huge",
+    liq: "Deep, penny-wide mega-cap financial chain; huge OI",
+    thesis: "Record highs into a bullish NII/IB-recovery setup, but earnings + CPI land the same morning. Cut vega with a debit spread; get paid below support with a defined-risk put credit spread.",
+    ideas: [
+      { profile: "Conservative", strategy: "Bull Call Debit Spread", text: "Buy $330 / sell $345 · Aug 21 '26 · ~$7 net debit · cost/max loss ~$700" },
+      { profile: "Moderate",     strategy: "Put Credit Spread", text: "Sell $325 / buy $315 · Jul 31 '26 · ~$3 credit · max loss/capital ~$700 · harvests IV crush" },
+      { profile: "Aggressive",   strategy: "Long Call (OTM)", text: "$345 call · Jul 24 '26 · ~$3 debit · cost ~$300 · pure earnings pop" },
+    ] },
+  { ticker: "DAL", name: "Delta Air Lines", rank: 2, spot: "~$93", sentiment: "Bullish",
+    catalyst: "Q2 earnings — Fri Jul 10 (before open) · BINARY; airline-season kickoff",
+    iv: "Elevated into the print (±~7–8% implied) on a mid-priced stock",
+    liq: "Deep, liquid airline chain; tight spreads",
+    thesis: "Strong summer travel + easing jet-fuel is the bull case, but it's a binary. CSP collateral (~$9k) blows the cap on a $93 stock, so use a defined-risk put credit spread; spread up for cheap upside.",
+    ideas: [
+      { profile: "Conservative", strategy: "Put Credit Spread", text: "Sell $88 / buy $83 · Aug 21 '26 · ~$1.50 credit · max loss/capital ~$350 · paid to be bullish" },
+      { profile: "Moderate",     strategy: "Bull Call Debit Spread", text: "Buy $93 / sell $100 · Jul 31 '26 · ~$3 net debit · cost/max loss ~$300" },
+      { profile: "Aggressive",   strategy: "Long Call (OTM)", text: "$97 call · Jul 17 '26 · ~$1.50 debit · cost ~$150 · pure earnings pop" },
+    ] },
+  { ticker: "NFLX", name: "Netflix", rank: 3, spot: "~$78", sentiment: "Bullish",
+    catalyst: "Q2 earnings — Thu Jul 16 (after close) · BINARY (post-split, low $ premiums)",
+    iv: "Rich into earnings (±~9–10% implied) — max IV crush risk",
+    liq: "Very deep large-cap media chain; tight spreads",
+    thesis: "Bullish into a binary with expensive IV → avoid naked long calls (max crush). Harvest the crush with a defined-risk put credit spread, or cut vega with a debit spread.",
+    ideas: [
+      { profile: "Conservative", strategy: "Put Credit Spread", text: "Sell $72 / buy $67 · Aug 21 '26 · ~$1.50 credit · max loss/capital ~$350 · harvests IV crush" },
+      { profile: "Moderate",     strategy: "Bull Call Debit Spread", text: "Buy $78 / sell $88 · Jul 31 '26 · ~$4 net debit · cost/max loss ~$400 · vega-reduced" },
+      { profile: "Aggressive",   strategy: "Long Call (OTM)", text: "$85 call · Jul 17 '26 · ~$2 debit · cost ~$200 · pure post-earnings pop" },
+    ] },
+  { ticker: "TSM", name: "Taiwan Semiconductor", rank: 4, spot: "~$457", sentiment: "Bullish",
+    catalyst: "Q2 earnings — Thu Jul 16 (pre-market) · BINARY; AI-capex bellwether",
+    iv: "Elevated into the print (±~6–7% implied)",
+    liq: "Deep, very active AI-infrastructure ADR chain",
+    thesis: "The cleanest AI-capex read in the tape, bullish into a binary with rich IV → cut vega with a debit spread, or get paid via a defined-risk put credit spread below support.",
+    ideas: [
+      { profile: "Conservative", strategy: "Bull Call Debit Spread", text: "Buy $450 / sell $465 · Aug 21 '26 · ~$7 net debit · cost/max loss ~$700 · vega-reduced" },
+      { profile: "Moderate",     strategy: "Put Credit Spread", text: "Sell $440 / buy $430 · Jul 31 '26 · ~$3 credit · max loss/capital ~$700 · harvests IV crush" },
+      { profile: "Aggressive",   strategy: "Long Call (OTM)", text: "$470 call · Jul 17 '26 · ~$4 debit · cost ~$400 · pure AI-capex pop" },
+    ] },
+  { ticker: "UNH", name: "UnitedHealth Group", rank: 5, spot: "~$418", sentiment: "Neutral",
+    catalyst: "Q2 earnings — Thu Jul 16 (before open) · BINARY; medical-cost-trend watch",
+    iv: "Rich into earnings (±~8% implied) — elevated on lingering MA uncertainty",
+    liq: "Deep, liquid mega-cap managed-care chain",
+    thesis: "Range-bound with fragile sentiment into a binary print → sell rich premium with defined-risk structures; an iron condor collects both wings, a put-credit spread leans mildly bullish, a bear debit spread fades margin risk.",
+    ideas: [
+      { profile: "Conservative", strategy: "Iron Condor", text: "Sell $400p/$440c, buy $390p/$450c · Aug 21 '26 · ~$3 credit · max loss/capital ~$700 · range-bound" },
+      { profile: "Moderate",     strategy: "Put Credit Spread", text: "Sell $400 / buy $390 · Jul 31 '26 · ~$3 credit · max loss/capital ~$700 · mildly bullish" },
+      { profile: "Aggressive",   strategy: "Bear Put Debit Spread", text: "Buy $410 / sell $395 · Jul 17 '26 · ~$6 net debit · cost/max loss ~$600 · fades margin risk" },
+    ] },
+];
+
+const RISK_COLORS = {
+  Conservative: "#22c55e",
+  Moderate:     "#eab308",
+  Aggressive:   "#ef4444",
+};
+
+// ------------------------------------------------------------------ geometry
+const M = { left: 78, top: 28, right: 26, bottom: 58 };
+const PLOT_W = 980;
+const PLOT_H = 384;
+const COL_W = PLOT_W / DAYS.length;
+const SVG_W = M.left + PLOT_W + M.right;
+const SVG_H = M.top + PLOT_H + M.bottom;
+// today line sits on the boundary between Jul 7 and Jul 8
+const TODAY_X = M.left + (TODAY_IDX + 1) * COL_W;
+
+const xCenter = (dayIdx) => M.left + (dayIdx + 0.5) * COL_W;
+const yCenter = (impact) => M.top + PLOT_H * ((3 - impact) / 3 + 1 / 6);
+
+// deterministic mini-grid offset so co-located dots don't overlap
+function cellOffset(i, n) {
+  const perRow = Math.min(n, 3);
+  const rows = Math.ceil(n / 3);
+  const col = i % 3;
+  const row = Math.floor(i / 3);
+  const dx = (col - (perRow - 1) / 2) * 21;
+  const dy = (row - (rows - 1) / 2) * 22;
+  return { dx, dy };
+}
+
+// ------------------------------------------------------------------ component
+export default function MarketMatrix() {
+  const [tab, setTab] = useState("matrix");
+  const [activeInds, setActiveInds] = useState(() => new Set(Object.keys(INDUSTRIES)));
+  const [selected, setSelected] = useState(null);
+  const [hovered, setHovered] = useState(null);
+  const [risk, setRisk] = useState("All");
+
+  const toggleInd = (key) =>
+    setActiveInds((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+
+  // group visible events by (dayIdx, impact) so we can spread them
+  const positioned = useMemo(() => {
+    const visible = EVENTS.filter((e) => activeInds.has(e.ind));
+    const groups = {};
+    visible.forEach((e) => {
+      const k = `${e.dayIdx}-${e.impact}`;
+      (groups[k] = groups[k] || []).push(e);
+    });
+    const out = [];
+    Object.values(groups).forEach((arr) => {
+      arr.forEach((e, i) => {
+        const { dx, dy } = cellOffset(i, arr.length);
+        out.push({ ...e, cx: xCenter(e.dayIdx) + dx, cy: yCenter(e.impact) + dy });
+      });
+    });
+    return out;
+  }, [activeInds]);
+
+  const detail = selected || hovered;
+
+  return (
+    <div style={S.root}>
+      <div style={S.header}>
+        <div>
+          <h1 style={S.h1}>US Market Pulse — Recency × Impact Matrix</h1>
+          <div style={S.sub}>
+            Snapshot <b style={{ color: "#e2e8f0" }}>Tuesday, Jul 7 2026</b> · window: last 3 days → next 2 weeks ·
+            color = industry · dot = event · {DIR.BULLISH.glyph}/{DIR.BEARISH.glyph}/{DIR.MIXED.glyph} = bullish / bearish / mixed
+          </div>
+        </div>
+        <div style={S.tabs}>
+          <button style={tabBtn(tab === "matrix")} onClick={() => setTab("matrix")}>News Matrix</button>
+          <button style={tabBtn(tab === "options")} onClick={() => setTab("options")}>Top Option Plays</button>
+        </div>
+      </div>
+
+      {tab === "matrix" ? (
+        <>
+          {/* legend */}
+          <div style={S.legend}>
+            {Object.entries(INDUSTRIES).map(([k, v]) => {
+              const on = activeInds.has(k);
+              return (
+                <button key={k} onClick={() => toggleInd(k)}
+                        style={{ ...S.chip, opacity: on ? 1 : 0.32, borderColor: v.color }}>
+                  <span style={{ ...S.dot, background: v.color }} />
+                  {v.label}
+                </button>
+              );
+            })}
+            <span style={S.legendNote}>click a chip to filter · click a dot to pin its recommendation</span>
+          </div>
+
+          <div style={S.matrixWrap}>
+            <svg width={SVG_W} height={SVG_H} style={{ display: "block" }}
+                 onClick={() => setSelected(null)}>
+              {/* future background */}
+              <rect x={TODAY_X} y={M.top} width={M.left + PLOT_W - TODAY_X} height={PLOT_H}
+                    fill="#1e293b" opacity={0.55} />
+              <text x={(TODAY_X + M.left + PLOT_W) / 2} y={M.top + 15} fill="#64748b"
+                    fontSize={11} textAnchor="middle" letterSpacing={2}>
+                FORECAST / UPCOMING
+              </text>
+
+              {/* impact bands + labels */}
+              {[1, 2, 3].map((lvl) => {
+                const yTop = M.top + PLOT_H * ((3 - lvl) / 3);
+                return (
+                  <g key={lvl}>
+                    {lvl < 3 && (
+                      <line x1={M.left} y1={yTop} x2={M.left + PLOT_W} y2={yTop}
+                            stroke="#334155" strokeDasharray="3 4" />
+                    )}
+                    <text x={M.left - 12} y={yCenter(lvl)} fill="#94a3b8" fontSize={11}
+                          textAnchor="end" dominantBaseline="middle" fontWeight={600}>
+                      {IMPACT_LABEL[lvl]}
+                    </text>
+                  </g>
+                );
+              })}
+
+              {/* plot border */}
+              <rect x={M.left} y={M.top} width={PLOT_W} height={PLOT_H} fill="none" stroke="#334155" />
+
+              {/* day columns + x labels */}
+              {DAYS.map((d) => {
+                const x = M.left + d.idx * COL_W;
+                const weekend = d.dow === "Sat" || d.dow === "Sun";
+                return (
+                  <g key={d.idx}>
+                    {d.idx > 0 && (
+                      <line x1={x} y1={M.top} x2={x} y2={M.top + PLOT_H} stroke="#1f2a3a" />
+                    )}
+                    <text x={x + COL_W / 2} y={M.top + PLOT_H + 20} fill={d.idx === TODAY_IDX ? "#f8fafc" : "#94a3b8"}
+                          fontSize={11} textAnchor="middle" fontWeight={d.idx === TODAY_IDX ? 700 : 500}>
+                      {d.date}
+                    </text>
+                    <text x={x + COL_W / 2} y={M.top + PLOT_H + 34} fill={weekend ? "#475569" : "#64748b"}
+                          fontSize={9} textAnchor="middle">
+                      {d.dow}
+                    </text>
+                  </g>
+                );
+              })}
+
+              {/* TODAY divider */}
+              <line x1={TODAY_X} y1={M.top - 6} x2={TODAY_X} y2={M.top + PLOT_H + 6}
+                    stroke="#f8fafc" strokeWidth={2} />
+              <text x={TODAY_X} y={M.top - 12} fill="#f8fafc" fontSize={11} textAnchor="middle"
+                    fontWeight={700} letterSpacing={1}>
+                ▸ TODAY (Jul 7)
+              </text>
+
+              {/* axis titles */}
+              <text x={M.left + PLOT_W / 2} y={SVG_H - 6} fill="#cbd5e1" fontSize={12}
+                    textAnchor="middle" fontWeight={600} letterSpacing={1}>
+                RECENCY  →  (past · today · upcoming)
+              </text>
+              <text x={16} y={M.top + PLOT_H / 2} fill="#cbd5e1" fontSize={12} fontWeight={600}
+                    textAnchor="middle" letterSpacing={1}
+                    transform={`rotate(-90 16 ${M.top + PLOT_H / 2})`}>
+                IMPACT  ↑
+              </text>
+
+              {/* event dots */}
+              {positioned.map((e) => {
+                const c = INDUSTRIES[e.ind].color;
+                const isOn = detail && detail.id === e.id;
+                return (
+                  <g key={e.id} style={{ cursor: "pointer" }}
+                     onMouseEnter={() => setHovered(e)}
+                     onMouseLeave={() => setHovered(null)}
+                     onClick={(ev) => { ev.stopPropagation(); setSelected(e); }}>
+                    <circle cx={e.cx} cy={e.cy} r={isOn ? 13 : 10}
+                            fill={c} stroke={isOn ? "#f8fafc" : "rgba(255,255,255,0.55)"}
+                            strokeWidth={isOn ? 2.5 : 1} />
+                    <text x={e.cx} y={e.cy} fill="#fff" fontSize={10} fontWeight={700}
+                          textAnchor="middle" dominantBaseline="central" style={{ pointerEvents: "none" }}>
+                      {DIR[e.dir].glyph}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+
+          {/* detail panel */}
+          <div style={S.detail}>
+            {detail ? (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <span style={{ ...S.dot, background: INDUSTRIES[detail.ind].color, width: 14, height: 14 }} />
+                  <b style={{ color: "#f1f5f9" }}>{detail.headline}</b>
+                  <span style={badge(detail.future ? "#38bdf8" : "#64748b")}>
+                    {detail.future ? "UPCOMING" : "PAST"}
+                  </span>
+                  <span style={badge("#475569")}>{IMPACT_LABEL[detail.impact]} IMPACT</span>
+                  <span style={badge(dirColor(detail.dir))}>{DIR[detail.dir].glyph} {DIR[detail.dir].label}</span>
+                </div>
+                <div style={S.tickers}>{detail.tickers}</div>
+                <div style={S.recBox}>
+                  <span style={S.recLabel}>What to do</span> {detail.rec}
+                </div>
+              </>
+            ) : (
+              <span style={{ color: "#64748b" }}>Hover or click a dot to see the headline, affected tickers, and the recommended action.</span>
+            )}
+          </div>
+
+          {/* full recommendation ledger */}
+          <details style={S.ledger}>
+            <summary style={S.ledgerSummary}>All {EVENTS.length} events &amp; recommendations (full ledger)</summary>
+            <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+              {EVENTS.filter((e) => activeInds.has(e.ind))
+                .slice()
+                .sort((a, b) => a.dayIdx - b.dayIdx || b.impact - a.impact)
+                .map((e) => (
+                  <div key={e.id} style={S.ledgerRow} onClick={() => setSelected(e)}>
+                    <span style={{ ...S.dot, background: INDUSTRIES[e.ind].color }} />
+                    <span style={{ color: "#64748b", width: 52, fontSize: 12 }}>
+                      {DAYS[e.dayIdx].date}
+                    </span>
+                    <span style={{ color: dirColor(e.dir), width: 16, textAlign: "center" }}>{DIR[e.dir].glyph}</span>
+                    <span style={{ flex: 1, color: "#cbd5e1", fontSize: 13 }}>
+                      <b style={{ color: "#e2e8f0" }}>{e.tickers}</b> — {e.headline}
+                      <span style={{ color: "#94a3b8" }}> → {e.rec}</span>
+                    </span>
+                  </div>
+                ))}
+            </div>
+          </details>
+        </>
+      ) : (
+        // ---------------------------------------------------------- options tab
+        <div style={{ marginTop: 6 }}>
+          <div style={S.optHead}>
+            <div style={S.sub}>
+              Strongest options plays for the coming month — strategy chosen per name by <b style={{ color: "#e2e8f0" }}>IV, sentiment &amp; upcoming binary events</b> (long calls/puts, debit &amp; credit spreads, cash-secured puts). Every idea is <b style={{ color: "#e2e8f0" }}>defined-risk</b> with total capital at risk <b style={{ color: "#e2e8f0" }}>under $1,500/trade</b> (debit × 100, or max loss / collateral) on a liquid chain. No naked shorts.
+            </div>
+            <div style={S.riskRow}>
+              {["All", "Conservative", "Moderate", "Aggressive"].map((r) => (
+                <button key={r} onClick={() => setRisk(r)}
+                        style={{ ...S.riskBtn, ...(risk === r ? { background: r === "All" ? "#334155" : RISK_COLORS[r], color: "#0b1220", borderColor: "transparent" } : {}) }}>
+                  {r}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={S.optGrid}>
+            {OPTION_PLAYS.map((p) => (
+              <div key={p.ticker} style={S.optCard}>
+                <div style={S.optTop}>
+                  <span style={S.optRank}>#{p.rank}</span>
+                  <b style={{ color: "#f8fafc", fontSize: 18 }}>{p.ticker}</b>
+                  <span style={{ color: "#94a3b8" }}>{p.name}</span>
+                  <span style={{ ...badge(sentColor(p.sentiment)), marginLeft: "auto" }}>{p.sentiment}</span>
+                  <span style={{ color: "#cbd5e1", fontSize: 13 }}>{p.spot}</span>
+                </div>
+                <div style={S.optMeta}><span style={S.k}>Catalyst</span> {p.catalyst}</div>
+                <div style={S.optMeta}><span style={S.k}>IV</span> {p.iv}</div>
+                <div style={S.optMeta}><span style={S.k}>Liquidity</span> {p.liq}</div>
+                <div style={S.optThesis}>{p.thesis}</div>
+                <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
+                  {p.ideas.filter((i) => risk === "All" || i.profile === risk).map((i, ix) => (
+                    <div key={ix} style={S.ideaRow}>
+                      <span style={{ ...S.ideaTag, background: RISK_COLORS[i.profile] }}>{i.profile}</span>
+                      <span style={S.stratTag}>{i.strategy}</span>
+                      <span style={{ color: "#e2e8f0", fontSize: 13 }}>{i.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={S.disclaimer}>
+        ⚠ Educational analysis, <b>not financial advice</b>. Strikes, premiums &amp; IV are
+        <b> estimates</b> from spot + implied vol — confirm live bid/ask, expirations, and assignment/margin terms on your broker before trading. Long options can
+        expire worthless; credit &amp; cash-secured strategies carry assignment and collateral obligations. Size aggressive OTM ideas as lottery tickets.
+      </div>
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------ helpers
+function dirColor(d) {
+  return d === "BULLISH" ? "#22c55e" : d === "BEARISH" ? "#f43f5e" : "#94a3b8";
+}
+function sentColor(s) {
+  if (!s) return "#94a3b8";
+  if (s.indexOf("Bull") > -1) return "#22c55e";
+  if (s.indexOf("Bear") > -1) return "#f43f5e";
+  return "#fbbf24";
+}
+function tabBtn(active) {
+  return {
+    ...S.tabBtn,
+    background: active ? "#334155" : "transparent",
+    color: active ? "#f8fafc" : "#94a3b8",
+  };
+}
+function badge(color) {
+  return {
+    fontSize: 10, fontWeight: 700, letterSpacing: 0.5, padding: "2px 8px",
+    borderRadius: 999, color: "#0b1220", background: color, whiteSpace: "nowrap",
+  };
+}
+
+// ------------------------------------------------------------------ styles
+const S = {
+  root: {
+    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+    background: "#0b1220", color: "#cbd5e1", padding: 20, borderRadius: 14,
+    maxWidth: 920, margin: "0 auto",
+  },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" },
+  h1: { margin: 0, fontSize: 20, color: "#f8fafc", fontWeight: 700 },
+  sub: { fontSize: 12.5, color: "#94a3b8", marginTop: 4, lineHeight: 1.5 },
+  tabs: { display: "flex", gap: 4, background: "#0f1729", padding: 4, borderRadius: 10, border: "1px solid #1f2a3a" },
+  tabBtn: { border: "none", padding: "7px 14px", borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: "pointer" },
+  legend: { display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", margin: "16px 0 10px" },
+  chip: {
+    display: "inline-flex", alignItems: "center", gap: 7, padding: "5px 11px",
+    background: "#0f1729", border: "1.5px solid", borderRadius: 999, color: "#e2e8f0",
+    fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+  },
+  dot: { width: 11, height: 11, borderRadius: "50%", display: "inline-block", flexShrink: 0 },
+  legendNote: { color: "#475569", fontSize: 11.5, marginLeft: 4 },
+  matrixWrap: { background: "#0f1729", border: "1px solid #1f2a3a", borderRadius: 12, padding: 8, overflowX: "auto" },
+  detail: {
+    marginTop: 12, background: "#0f1729", border: "1px solid #1f2a3a", borderRadius: 10,
+    padding: 14, minHeight: 58,
+  },
+  tickers: { color: "#7dd3fc", fontSize: 13, fontWeight: 600, marginTop: 8, fontFamily: "ui-monospace, monospace" },
+  recBox: { marginTop: 8, fontSize: 13.5, color: "#e2e8f0", lineHeight: 1.5 },
+  recLabel: {
+    fontSize: 10, fontWeight: 800, letterSpacing: 1, color: "#0b1220", background: "#fbbf24",
+    padding: "2px 7px", borderRadius: 5, marginRight: 8,
+  },
+  ledger: { marginTop: 12, background: "#0f1729", border: "1px solid #1f2a3a", borderRadius: 10, padding: "10px 14px" },
+  ledgerSummary: { cursor: "pointer", color: "#cbd5e1", fontSize: 13, fontWeight: 600 },
+  ledgerRow: { display: "flex", alignItems: "center", gap: 10, padding: "6px 8px", borderRadius: 7, cursor: "pointer", background: "#0b1220" },
+  optHead: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 12 },
+  riskRow: { display: "flex", gap: 6 },
+  riskBtn: {
+    border: "1.5px solid #334155", background: "transparent", color: "#cbd5e1",
+    padding: "6px 12px", borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: "pointer",
+  },
+  optGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))", gap: 12 },
+  optCard: { background: "#0f1729", border: "1px solid #1f2a3a", borderRadius: 12, padding: 14 },
+  optTop: { display: "flex", alignItems: "center", gap: 8, marginBottom: 10 },
+  optRank: { fontSize: 11, fontWeight: 800, color: "#0b1220", background: "#38bdf8", padding: "2px 7px", borderRadius: 6 },
+  optMeta: { fontSize: 12.5, color: "#cbd5e1", marginTop: 4, lineHeight: 1.45 },
+  k: { display: "inline-block", width: 72, color: "#64748b", fontWeight: 600, fontSize: 11 },
+  optThesis: { fontSize: 12.5, color: "#94a3b8", marginTop: 10, lineHeight: 1.5, fontStyle: "italic" },
+  ideaRow: { display: "flex", alignItems: "center", gap: 8, background: "#0b1220", padding: "6px 8px", borderRadius: 7, flexWrap: "wrap" },
+  ideaTag: { fontSize: 10, fontWeight: 800, color: "#0b1220", padding: "2px 7px", borderRadius: 5, width: 88, textAlign: "center", flexShrink: 0 },
+  stratTag: { fontSize: 10, fontWeight: 700, color: "#cbd5e1", border: "1px solid #334155", background: "#0f1729", padding: "2px 7px", borderRadius: 5, whiteSpace: "nowrap", flexShrink: 0 },
+  disclaimer: {
+    marginTop: 16, fontSize: 11.5, color: "#64748b", lineHeight: 1.5,
+    borderTop: "1px solid #1f2a3a", paddingTop: 12,
+  },
+};
