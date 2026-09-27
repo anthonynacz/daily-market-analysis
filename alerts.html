@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Stock Reaction Alerts</title>
+<style>
+  :root {
+    --bg: #0b0f1a; --card: #151c2c; --border: #1e293b; --text: #e2e8f0; --muted: #64748b;
+    --soft: #94a3b8; --accent: #818cf8; --up: #34d399; --down: #f87171; --warn: #fbbf24;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  body { padding: 16px; -webkit-text-size-adjust: 100%; }
+  main { max-width: 560px; margin: 0 auto; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  h1 { font-size: 20px; margin: 4px 0 4px; }
+  h2 { font-size: 14px; margin: 0 0 12px; color: var(--soft); text-transform: uppercase; letter-spacing: .06em; }
+  .sub { color: var(--muted); font-size: 13px; line-height: 1.5; margin-bottom: 16px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 6px; }
+  label:first-of-type { margin-top: 0; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 5px; line-height: 1.45; }
+  input[type=email], input[type=text], input[type=number], input[type=password] {
+    width: 100%; background: #0b1220; color: var(--text); border: 1px solid #334155; border-radius: 8px;
+    padding: 10px 12px; font-size: 15px; }
+  input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .switch { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; margin: 4px 0 0; cursor: pointer; }
+  .switch input { width: 18px; height: 18px; accent-color: var(--accent); }
+  button { border: 0; border-radius: 8px; padding: 10px 16px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  button.primary { background: var(--accent); color: #0b0f1a; }
+  button.ghost { background: transparent; color: var(--soft); border: 1px solid #334155; }
+  button:disabled { opacity: .5; cursor: default; }
+  .actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  .msg { font-size: 13px; margin-top: 12px; line-height: 1.45; min-height: 1em; }
+  .msg.ok { color: var(--up); } .msg.err { color: var(--down); } .msg.info { color: var(--soft); }
+  .pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .pill.on { background: rgba(52,211,153,.15); color: var(--up); }
+  .pill.off { background: rgba(248,113,113,.15); color: var(--down); }
+  .status { font-size: 13px; color: var(--soft); line-height: 1.7; }
+  .status b { color: var(--text); font-weight: 600; }
+  .alert { border-top: 1px solid var(--border); padding: 10px 0; font-size: 13px; line-height: 1.5; }
+  .alert:first-child { border-top: 0; padding-top: 0; }
+  .alert .top { display: flex; justify-content: space-between; gap: 8px; }
+  .alert .tk { font-weight: 800; font-size: 14px; }
+  .alert .when { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .alert .why { color: var(--soft); }
+  .up { color: var(--up); } .down { color: var(--down); }
+  ol { padding-left: 18px; margin: 8px 0 0; font-size: 12.5px; color: var(--soft); line-height: 1.6; }
+  .foot { font-size: 11.5px; color: var(--muted); line-height: 1.5; margin: 18px 0 30px; }
+</style>
+</head>
+<body>
+<main>
+  <a href="index.html">← Latest report</a>
+  <h1>Stock reaction alerts</h1>
+  <div class="sub">During US market hours the alert scanner checks the tickers in the latest report, your watchlist and the day's biggest liquid movers every hour. When a stock reacts sharply you get one email with the move, the reason and the report's take on it.</div>
+
+  <section class="card">
+    <h2>Current settings</h2>
+    <div class="status" id="status">Loading…</div>
+  </section>
+
+  <section class="card">
+    <h2>Change settings</h2>
+    <label for="email">Send alerts to</label>
+    <input id="email" type="email" autocomplete="email" placeholder="Leave blank to keep the current address" />
+    <div class="hint">The address is encrypted in your browser before it is saved, so it never appears in plain text in the public repository.</div>
+
+    <label for="threshold">Alert when a stock moves at least (%)</label>
+    <input id="threshold" type="number" min="1" max="25" step="0.5" value="4" />
+    <div class="hint">Measured against the previous close. Earnings, guidance, FDA, M&amp;A or downgrade news also triggers an alert on a smaller move.</div>
+
+    <label for="watchlist">Extra tickers to watch</label>
+    <input id="watchlist" type="text" autocapitalize="characters" placeholder="e.g. AAPL, TSLA, SPY" />
+    <div class="hint">Optional. Added to the tickers from the latest report.</div>
+
+    <label class="switch"><input id="enabled" type="checkbox" checked /> Alerts on</label>
+
+    <div class="actions">
+      <button class="primary" id="save">Save settings</button>
+      <button class="ghost" id="test">Save &amp; send a test email</button>
+    </div>
+    <div class="msg" id="msg"></div>
+  </section>
+
+  <section class="card">
+    <h2>GitHub access (this device only)</h2>
+    <div class="status" id="tokstate"></div>
+    <label for="token">Access token</label>
+    <input id="token" type="password" autocomplete="off" placeholder="github_pat_…" />
+    <div class="hint">Saving writes the settings file to your repository, so this page needs a GitHub token. It is kept only in this browser's storage and sent only to api.github.com.</div>
+    <ol>
+      <li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub → Fine-grained tokens → Generate new token</a>.</li>
+      <li>Repository access: <b>Only select repositories</b> → <b>daily-market-analysis</b>.</li>
+      <li>Permissions → Repository → <b>Contents: Read and write</b>. Nothing else.</li>
+      <li>Paste the token above and press Remember.</li>
+    </ol>
+    <div class="actions">
+      <button class="ghost" id="remember">Remember token</button>
+      <button class="ghost" id="forget">Forget token</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Recent alerts</h2>
+    <div id="log" class="status">Loading…</div>
+  </section>
+
+  <div class="foot">Alerts are educational analysis, not financial advice. Prices in alerts come from web sources and can lag; confirm live quotes before trading.</div>
+</main>
+
+<script>
+(function () {
+  var REPO = "anthonynacz/daily-market-analysis";
+  var CONFIG_PATH = "config/alerts.json";
+  var LOG_PATH = "alerts/log.json";
+  var TOKEN_KEY = "mm_alerts_gh_token";
+  // Public half of the key pair. The private half lives only in the alert routine's prompt.
+  var PUBLIC_KEY_PEM =
+    "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAn+GINhJsbNCjkNPKIdy/" +
+    "jG+Pk837zBscYsb0mXOmpOVgF+dy+oQVRYMKeOBUuv7jvBmavmdvz8sT+Vw64I3y" +
+    "JGSCeq6p5ktxwI2QlYea4GeZgD+Z+9MRFDaT1DshTC+cWTauEVK8JnoZ7iLdICX/" +
+    "zlX+/3ST9O+OxkGRNNjjkS8YL7Bb5oJ8JY99u2SFhxUh9BmB8CssZ45KyxHVLgt/" +
+    "HRnaPEM+mudwx1H1KmeoOJNE28Ose+c1lpFIDWLocnI1GVpnCuKAlvNGRTgybO9O" +
+    "32eGAfhT7cTOtfMRA2FDwjIV0VfH3CizIw7xbRiipfn05w0SqbQAVHd9IezyLGsh" +
+    "0QIDAQAB";
+
+  var $ = function (id) { return document.getElementById(id); };
+  var current = null, currentSha = null;
+
+  function getToken() { try { return localStorage.getItem(TOKEN_KEY) || ""; } catch (e) { return ""; } }
+  function setToken(t) { try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); } catch (e) {} }
+  function say(text, kind) { var m = $("msg"); m.textContent = text; m.className = "msg " + (kind || "info"); }
+
+  function b64FromBytes(bytes) {
+    var s = ""; for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]); return btoa(s);
+  }
+  function utf8ToB64(str) { return b64FromBytes(new TextEncoder().encode(str)); }
+  function b64ToUtf8(b64) {
+    var bin = atob(b64.replace(/\s/g, "")), bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+
+  function encryptEmail(email) {
+    var der = Uint8Array.from(atob(PUBLIC_KEY_PEM), function (c) { return c.charCodeAt(0); });
+    return crypto.subtle.importKey("spki", der.buffer, { name: "RSA-OAEP", hash: "SHA-256" }, false, ["encrypt"])
+      .then(function (key) { return crypto.subtle.encrypt({ name: "RSA-OAEP" }, key, new TextEncoder().encode(email)); })
+      .then(function (buf) { return b64FromBytes(new Uint8Array(buf)); });
+  }
+  function emailHint(email) {
+    var at = email.indexOf("@"), user = email.slice(0, at);
+    return user.slice(0, 2) + "•".repeat(Math.max(3, user.length - 2)) + email.slice(at);
+  }
+
+  function gh(path, opts) {
+    opts = opts || {};
+    var headers = { "Accept": "application/vnd.github+json" };
+    var t = getToken(); if (t) headers["Authorization"] = "Bearer " + t;
+    if (opts.body) headers["Content-Type"] = "application/json";
+    return fetch("https://api.github.com/repos/" + REPO + "/contents/" + path + (opts.method ? "" : "?ref=main"),
+      { method: opts.method || "GET", headers: headers, body: opts.body, cache: "no-store" });
+  }
+  function readJson(path) {
+    return gh(path).then(function (r) {
+      if (r.status === 404) return { json: null, sha: null };
+      if (!r.ok) throw new Error("GitHub returned " + r.status);
+      return r.json().then(function (d) { return { json: JSON.parse(b64ToUtf8(d.content)), sha: d.sha }; });
+    });
+  }
+
+  function renderStatus() {
+    var s = $("status");
+    if (!current) { s.textContent = "No settings saved yet."; return; }
+    s.innerHTML = "";
+    var rows = [
+      ["Alerts", null],
+      ["Recipient", current.email_hint || "not set"],
+      ["Move threshold", (current.move_threshold_pct || 4) + "%"],
+      ["Extra tickers", (current.watchlist && current.watchlist.length) ? current.watchlist.join(", ") : "none"],
+      ["Last changed", current.updated_at ? new Date(current.updated_at).toLocaleString() : "unknown"]
+    ];
+    rows.forEach(function (r) {
+      var line = document.createElement("div");
+      var b = document.createElement("b"); b.textContent = r[0] + ": "; line.appendChild(b);
+      if (r[1] === null) {
+        var p = document.createElement("span");
+        p.className = "pill " + (current.enabled ? "on" : "off");
+        p.textContent = current.enabled ? "ON" : "OFF";
+        line.appendChild(p);
+        if (current.send_test) line.appendChild(document.createTextNode("  · test email queued for the next run"));
+      } else line.appendChild(document.createTextNode(r[1]));
+      s.appendChild(line);
+    });
+    $("threshold").value = current.move_threshold_pct || 4;
+    $("watchlist").value = (current.watchlist || []).join(", ");
+    $("enabled").checked = current.enabled !== false;
+  }
+
+  function renderTokenState() {
+    $("tokstate").textContent = getToken() ? "A token is saved on this device." : "No token saved on this device yet — saving settings needs one.";
+  }
+
+  function fmtMove(v) {
+    if (typeof v !== "number") return null;
+    var span = document.createElement("span");
+    span.className = v >= 0 ? "up" : "down";
+    span.textContent = (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
+    return span;
+  }
+  function renderLog(log) {
+    var box = $("log"); box.innerHTML = "";
+    var items = (log && log.alerts) || [];
+    if (!items.length) { box.textContent = "No alerts sent yet."; return; }
+    items.slice(0, 25).forEach(function (a) {
+      var row = document.createElement("div"); row.className = "alert";
+      var top = document.createElement("div"); top.className = "top";
+      var left = document.createElement("div");
+      var tk = document.createElement("span"); tk.className = "tk"; tk.textContent = (a.ticker || "?") + " ";
+      left.appendChild(tk);
+      var mv = fmtMove(a.move_pct); if (mv) left.appendChild(mv);
+      if (a.action) left.appendChild(document.createTextNode(" · " + a.action));
+      var when = document.createElement("span"); when.className = "when";
+      when.textContent = a.ts ? new Date(a.ts).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+      top.appendChild(left); top.appendChild(when); row.appendChild(top);
+      var why = document.createElement("div"); why.className = "why";
+      why.textContent = a.trigger || a.headline || "";
+      if (a.url && /^https?:\/\//.test(a.url)) {
+        why.appendChild(document.createTextNode(" "));
+        var link = document.createElement("a"); link.href = a.url; link.target = "_blank"; link.rel = "noopener noreferrer"; link.textContent = "source";
+        why.appendChild(link);
+      }
+      row.appendChild(why); box.appendChild(row);
+    });
+  }
+
+  function load() {
+    readJson(CONFIG_PATH).then(function (res) { current = res.json; currentSha = res.sha; renderStatus(); })
+      .catch(function (e) { $("status").textContent = "Could not load settings (" + e.message + ")."; });
+    readJson(LOG_PATH).then(function (res) { renderLog(res.json); })
+      .catch(function () { $("log").textContent = "Could not load the alert history."; });
+  }
+
+  function parseWatchlist(text) {
+    var out = [], bad = [];
+    text.split(/[\s,;]+/).forEach(function (t) {
+      t = t.trim().toUpperCase(); if (!t) return;
+      if (/^[A-Z][A-Z.\-]{0,5}$/.test(t)) { if (out.indexOf(t) < 0) out.push(t); } else bad.push(t);
+    });
+    if (bad.length) throw new Error("Not valid tickers: " + bad.join(", "));
+    if (out.length > 25) throw new Error("Keep the watchlist to 25 tickers or fewer.");
+    return out;
+  }
+
+  function save(sendTest) {
+    if (!getToken()) { say("Add a GitHub token below first (it is needed to write the settings file).", "err"); return; }
+    var email = $("email").value.trim();
+    var threshold = parseFloat($("threshold").value);
+    var watchlist;
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { say("That email address does not look valid.", "err"); return; }
+    if (!(threshold >= 1 && threshold <= 25)) { say("The threshold must be between 1% and 25%.", "err"); return; }
+    try { watchlist = parseWatchlist($("watchlist").value); } catch (e) { say(e.message, "err"); return; }
+    if (!email && !(current && current.email_enc)) { say("Enter the email address to send alerts to.", "err"); return; }
+
+    $("save").disabled = $("test").disabled = true;
+    say("Saving…");
+    var encP = email ? encryptEmail(email) : Promise.resolve(null);
+    encP.then(function (enc) {
+      // Re-read right before writing so the sha is fresh and routine-side changes (send_test reset) aren't lost.
+      return readJson(CONFIG_PATH).then(function (res) {
+        var base = res.json || {};
+        var next = {
+          version: 1,
+          enabled: $("enabled").checked,
+          email_enc: enc || base.email_enc,
+          email_hint: enc ? emailHint(email) : base.email_hint,
+          move_threshold_pct: threshold,
+          watchlist: watchlist,
+          send_test: !!sendTest || !!base.send_test,
+          updated_at: new Date().toISOString()
+        };
+        var body = { message: sendTest ? "Update alert settings (test email requested)" : "Update alert settings",
+                     content: utf8ToB64(JSON.stringify(next, null, 2) + "\n"), branch: "main" };
+        if (res.sha) body.sha = res.sha;
+        return gh(CONFIG_PATH, { method: "PUT", body: JSON.stringify(body) }).then(function (r) {
+          if (r.ok) { current = next; $("email").value = ""; renderStatus(); return; }
+          if (r.status === 401) throw new Error("GitHub rejected the token (expired or mistyped).");
+          if (r.status === 403 || r.status === 404) throw new Error("The token can't write to this repository — check it has Contents: Read and write on daily-market-analysis.");
+          if (r.status === 409 || r.status === 422) throw new Error("The settings changed at the same moment. Press Save again.");
+          throw new Error("GitHub returned " + r.status + ".");
+        });
+      });
+    }).then(function () {
+      say(sendTest ? "Saved. A test email will be sent on the next scanner run (hourly on market days, or when started manually)."
+                   : "Saved. The next scanner run uses these settings.", "ok");
+    }).catch(function (e) {
+      say(e.message || String(e), "err");
+    }).then(function () { $("save").disabled = $("test").disabled = false; });
+  }
+
+  $("save").onclick = function () { save(false); };
+  $("test").onclick = function () { save(true); };
+  $("remember").onclick = function () {
+    var t = $("token").value.trim();
+    if (!t) { say("Paste a token first.", "err"); return; }
+    setToken(t); $("token").value = ""; renderTokenState(); say("Token saved on this device.", "ok");
+  };
+  $("forget").onclick = function () { setToken(""); renderTokenState(); say("Token removed from this device.", "ok"); };
+
+  if (!window.crypto || !crypto.subtle) say("This browser can't encrypt the email address here (needs HTTPS).", "err");
+  renderTokenState();
+  load();
+})();
+</script>
+</body>
+</html>

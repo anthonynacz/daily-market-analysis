@@ -31,10 +31,14 @@ WRAPPER = r'''<!DOCTYPE html>
   .boot { color:#64748b; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; text-align:center; padding:40px 16px; font-size:14px; }
   .err  { color:#f87171; font-family:ui-monospace,monospace; white-space:pre-wrap; padding:16px; font-size:12px; }
   .retry { background:#818cf8; color:#0b0f1a; border:0; border-radius:8px; padding:10px 22px; font-size:14px; font-weight:700; cursor:pointer; }
+  .alerts-link { position:fixed; right:14px; bottom:14px; z-index:50; background:#151c2c; color:#c7d2fe; border:1px solid #334155;
+    border-radius:999px; padding:8px 14px; font:600 13px system-ui,-apple-system,Segoe UI,Roboto,sans-serif; text-decoration:none;
+    box-shadow:0 4px 14px rgba(0,0,0,.45); }
 </style>
 </head>
 <body>
 <div id="root"><div class="boot">Loading market matrix…</div></div>
+<a class="alerts-link" href="__ALERTS__">🔔 Alerts</a>
 <script id="jsx-source" type="text/plain">
 __SRC__
 
@@ -157,8 +161,12 @@ def convert(jsx_path):
     if leftover:
         raise SystemExit(jsx_path + ": leftover import(s) after conversion: " + repr(leftover[:3]))
 
-    html = WRAPPER.replace("__SRC__", src).replace("__COMP__", comp)
     out_path = os.path.splitext(jsx_path)[0] + ".html"
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    alerts_href = os.path.relpath(os.path.join(repo_root, "alerts.html"),
+                                  os.path.dirname(os.path.abspath(out_path))).replace(os.sep, "/")
+    html = (WRAPPER.replace("__ALERTS__", alerts_href)
+                   .replace("__SRC__", src).replace("__COMP__", comp))
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(html)
     return out_path, comp
