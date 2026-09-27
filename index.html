@@ -46,16 +46,23 @@
         var date = fmt(d);
         candidates.push("reports/" + date + "/DailyMarketAnalysis_" + date + ".html");
       }
-      var idx = 0;
+      var idx = 0, tries = 0;
       function attempt() {
         if (idx >= candidates.length) { fail(); return; }
         var url = candidates[idx];
-        fetch(url, { method: "HEAD" })
+        // A stalled request must not hang the spinner: abort after 8s and retry once.
+        var ctl = window.AbortController ? new AbortController() : null;
+        var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 8000);
+        fetch(url, { method: "HEAD", cache: "no-store", signal: ctl ? ctl.signal : undefined })
           .then(function (r) {
+            clearTimeout(timer);
             if (r.ok) { window.location.replace(url); }
-            else { idx++; attempt(); }
+            else { idx++; tries = 0; attempt(); }
           })
-          .catch(function () { idx++; attempt(); });
+          .catch(function () {
+            clearTimeout(timer);
+            if (++tries < 2) { attempt(); } else { idx++; tries = 0; attempt(); }
+          });
       }
       function fail() {
         document.getElementById("box").innerHTML =
