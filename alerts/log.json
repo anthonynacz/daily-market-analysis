@@ -1,6 +1,28 @@
 {
   "alerts": [
     {
+      "ts": "2026-09-28T20:57:00Z",
+      "ticker": "ORCL",
+      "move_pct": -3.05,
+      "price": 132.92,
+      "session": "after",
+      "trigger": "Michael Burry reopens short on Oracle citing OpenAI-backlog leverage risk",
+      "headline": "Michael Burry Reopens Short Bet on Oracle",
+      "url": "https://www.tipranks.com/news/michael-burry-reopens-short-bet-on-oracle-orcl-heres-why-wall-street-still-sees-80-upside",
+      "action": "In report: Bearish event (Burry AI-complex shorts) - WATCH"
+    },
+    {
+      "ts": "2026-09-28T20:57:00Z",
+      "ticker": "SNDK",
+      "move_pct": -2.42,
+      "price": 1711.11,
+      "session": "after",
+      "trigger": "OpenAI training-pause memory/AI-chip selloff + Micron earnings read-through",
+      "headline": "SanDisk Stock Forecast: Micron Earnings Read-Through",
+      "url": "https://www.fxleaders.com/news/2026/09/28/sandisk-stock-forecast-micron-earnings/",
+      "action": "In report: Bearish event (OpenAI safety-pause chip selloff) - WATCH"
+    },
+    {
       "ts": "2026-09-28T19:53:07Z",
       "ticker": "MSFT",
       "move_pct": 3.66,
