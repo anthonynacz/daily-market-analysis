@@ -1,6 +1,17 @@
 {
   "alerts": [
     {
+      "ts": "2026-09-28T19:53:07Z",
+      "ticker": "MSFT",
+      "move_pct": 3.66,
+      "price": 518.0,
+      "session": "regular",
+      "trigger": "Copilot enterprise relaunch targeting Anthropic + Stifel Hold->Buy upgrade",
+      "headline": "Microsoft (MSFT) Stock Surges on Copilot Overhaul Targeting Anthropic",
+      "url": "https://blockonomi.com/microsoft-msft-stock-surges-4-following-copilot-overhaul-targeting-anthropic/",
+      "action": "In report: impact-3 event (OpenAI DevDay keynote), Mixed - WATCH"
+    },
+    {
       "ts": "2026-09-28T18:50:40Z",
       "ticker": "AMD",
       "move_pct": -3.66,
