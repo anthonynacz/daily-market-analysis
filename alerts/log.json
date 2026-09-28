@@ -1,6 +1,28 @@
 {
   "alerts": [
     {
+      "ts": "2026-09-28T18:50:40Z",
+      "ticker": "AMD",
+      "move_pct": -3.66,
+      "price": 607.53,
+      "session": "regular",
+      "trigger": "OpenAI pauses advanced-model training over safety review; AI-chip sector selloff",
+      "headline": "Advanced Micro Devices Inc Stock (AMD) Moved Down by 3.66% on Sep 28",
+      "url": "https://www.tradingkey.com/news/market-movers/262190003-market-movers-amd-20260928",
+      "action": "In report: Bullish (extended) option play #4"
+    },
+    {
+      "ts": "2026-09-28T18:50:40Z",
+      "ticker": "MU",
+      "move_pct": -3.31,
+      "price": 1046.13,
+      "session": "regular",
+      "trigger": "OpenAI safety-pause hits memory/AI chips + Burry AI-complex short disclosure",
+      "headline": "Micron Technology Inc Stock (MU) Moved Down by 3.31% on Sep 28",
+      "url": "https://www.tradingkey.com/news/market-movers/262190004-market-movers-mu-20260928",
+      "action": "In report: impact-3 event, avoid chasing memory here"
+    },
+    {
       "ts": "2026-09-28T15:52:08Z",
       "ticker": "MDB",
       "move_pct": -23.6,
