@@ -1,3 +1,26 @@
 {
-  "alerts": []
+  "alerts": [
+    {
+      "ts": "2026-09-28T14:51:14.596031Z",
+      "ticker": "MDB",
+      "move_pct": -15.0,
+      "price": 328.82,
+      "session": "regular",
+      "trigger": "CEO CJ Desai resigns effective immediately for Meta role",
+      "headline": "MongoDB Shares Fall 15% as CEO Chirantan Desai Resigns to Join Meta",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/mongodb-shares-fall-15-ceo-135550642.html",
+      "action": "In report: Avoid until leadership clarity"
+    },
+    {
+      "ts": "2026-09-28T14:51:14.596031Z",
+      "ticker": "NVDA",
+      "move_pct": 3.4,
+      "price": 232.71,
+      "session": "regular",
+      "trigger": "$150B buyback increase + bullish Huang revenue guidance",
+      "headline": "NVIDIA Rises as Board Authorizes Record $150B Buyback Increase",
+      "url": "https://247wallst.com/investing/2026/09/28/nvidia-rises-2-as-board-authorizes-record-150b-buyback-increase-amd-and-broadcom-slip/",
+      "action": "In report: Neutral-to-Bullish option play #2"
+    }
+  ]
 }
