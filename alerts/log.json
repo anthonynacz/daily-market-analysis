@@ -1,6 +1,28 @@
 {
   "alerts": [
     {
+      "ts": "2026-09-28T15:52:08Z",
+      "ticker": "MDB",
+      "move_pct": -23.6,
+      "price": 323.49,
+      "session": "regular",
+      "trigger": "CEO Desai resignation compounds Q2 earnings selloff",
+      "headline": "Why MongoDB (MDB) Stock Is Nosediving",
+      "url": "https://markets.financialcontent.com/stocks/article/stockstory-2026-9-28-why-mongodb-mdb-stock-is-nosediving",
+      "action": "In report: Avoid until leadership clarity (re-flag, was -15.0%)"
+    },
+    {
+      "ts": "2026-09-28T15:52:08Z",
+      "ticker": "META",
+      "move_pct": -3.3,
+      "price": 751.66,
+      "session": "regular",
+      "trigger": "NM jury finds Facebook liable for 43M+ privacy violations, ~$200B penalty exposure",
+      "headline": "Meta Platforms Inc Stock (META) Opened Down by 3.77% on Sep 28",
+      "url": "https://www.tradingkey.com/news/market-movers/262189908-market-movers-meta-20260928",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-09-28T14:51:14.596031Z",
       "ticker": "MDB",
       "move_pct": -15.0,
