@@ -34,11 +34,13 @@ WRAPPER = r'''<!DOCTYPE html>
   .alerts-link { position:fixed; right:14px; bottom:14px; z-index:50; background:#151c2c; color:#c7d2fe; border:1px solid #334155;
     border-radius:999px; padding:8px 14px; font:600 13px system-ui,-apple-system,Segoe UI,Roboto,sans-serif; text-decoration:none;
     box-shadow:0 4px 14px rgba(0,0,0,.45); }
+  .float-links { position:fixed; right:14px; bottom:14px; z-index:50; display:flex; gap:8px; }
+  .float-links .alerts-link { position:static; }
 </style>
 </head>
 <body>
 <div id="root"><div class="boot">Loading market matrix…</div></div>
-<a class="alerts-link" href="__ALERTS__">🔔 Alerts</a>
+<nav class="float-links"><a class="alerts-link" href="__RADAR__">📡 Radar</a><a class="alerts-link" href="__ALERTS__">🔔 Alerts</a></nav>
 <script id="jsx-source" type="text/plain">
 __SRC__
 
@@ -163,9 +165,10 @@ def convert(jsx_path):
 
     out_path = os.path.splitext(jsx_path)[0] + ".html"
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    alerts_href = os.path.relpath(os.path.join(repo_root, "alerts.html"),
-                                  os.path.dirname(os.path.abspath(out_path))).replace(os.sep, "/")
-    html = (WRAPPER.replace("__ALERTS__", alerts_href)
+    out_dir = os.path.dirname(os.path.abspath(out_path))
+    alerts_href = os.path.relpath(os.path.join(repo_root, "alerts.html"), out_dir).replace(os.sep, "/")
+    radar_href = os.path.relpath(os.path.join(repo_root, "radar.html"), out_dir).replace(os.sep, "/")
+    html = (WRAPPER.replace("__ALERTS__", alerts_href).replace("__RADAR__", radar_href)
                    .replace("__SRC__", src).replace("__COMP__", comp))
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(html)

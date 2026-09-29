@@ -14,11 +14,13 @@
   .alerts-link { position:fixed; right:14px; bottom:14px; z-index:50; background:#151c2c; color:#c7d2fe; border:1px solid #334155;
     border-radius:999px; padding:8px 14px; font:600 13px system-ui,-apple-system,Segoe UI,Roboto,sans-serif; text-decoration:none;
     box-shadow:0 4px 14px rgba(0,0,0,.45); }
+  .float-links { position:fixed; right:14px; bottom:14px; z-index:50; display:flex; gap:8px; }
+  .float-links .alerts-link { position:static; }
 </style>
 </head>
 <body>
 <div id="root"><div class="boot">Loading market matrix…</div></div>
-<a class="alerts-link" href="../alerts.html">🔔 Alerts</a>
+<nav class="float-links"><a class="alerts-link" href="../radar.html">📡 Radar</a><a class="alerts-link" href="../alerts.html">🔔 Alerts</a></nav>
 <script id="jsx-source" type="text/plain">
 const { useState, useMemo } = React;
 

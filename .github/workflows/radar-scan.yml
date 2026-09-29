@@ -1,0 +1,103 @@
+name: Momentum Radar scanner
+
+# One long-running job scans every 5 minutes through the regular session (radar/SPEC.md 4.9, 9).
+# The crons are only a watchdog: with the concurrency group below, a trigger that arrives while a loop
+# runs waits as its successor and starts the moment the loop retires (330 min) or dies.
+on:
+  schedule:
+    # All times UTC. Scan window = [09:10 ET warmup, close + 5 min]: EDT 13:10-20:05, EST 14:10-21:05
+    # (half days close 13:00 ET). The gate turns every trigger outside [window start - 120 min, window end)
+    # and every holiday into a ~15 s no-op. radar/tests/test_crons.py checks coverage through 2028.
+    - cron: '33 12 * * 1-5'       # starter: 08:33 EDT / 07:33 EST; the loop sleeps until the 09:10 ET warmup
+    - cron: '7,37 13-21 * * 1-5'  # watchdog: keeps one successor queued behind the running loop
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: >-
+          loop = today's session; once = one scan now, even if the market is closed; probe = fetch-only
+          diagnostics in the job summary (timings, HTTP 429 counts, bar finality), writes nothing.
+          During the session, loop/once replace the queued successor: the next watchdog restarts the loop.
+        type: choice
+        options: [loop, once, probe]
+        default: loop
+      push:
+        description: 'Push results to the data branch'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write              # push to the data branch
+  actions: write               # dispatch radar-housekeeping.yml when the scanner asks for it
+
+concurrency:
+  # A probe writes nothing, so it must not take the queued successor's place in the scanner group.
+  group: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'probe' && 'radar-probe' || 'radar-scanner' }}
+  cancel-in-progress: false    # never interrupt the running loop; the newest trigger queues as successor
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  scan:
+    runs-on: ubuntu-24.04      # system python3 is 3.12 with tzdata: the gate runs before any install
+    timeout-minutes: 350       # the loop retires by itself after 330 min
+    env:
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      DATA_DIR: ${{ github.workspace }}/_data
+      MODE: ${{ inputs.mode || 'loop' }}
+      # Scheduled runs have no inputs: `inputs.push != false` would be false for them (null == false).
+      NO_PUSH: ${{ github.event_name == 'workflow_dispatch' && !inputs.push }}
+    steps:
+      - name: Check out radar code (main)
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: main                  # newest code, also for a run that waited in the queue
+          persist-credentials: false # this checkout never pushes
+          sparse-checkout: radar
+
+      - name: Session gate (system python, stdlib only)
+        id: gate
+        run: |
+          args=()
+          if [ "$MODE" != "loop" ]; then args+=(--ignore-calendar); fi
+          python3 -m radar.gate "${args[@]}"
+
+      - name: Check out data branch
+        if: steps.gate.outputs.run == 'true' && env.MODE != 'probe'
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: data
+          path: _data
+          fetch-depth: 1             # the loop only adds commits on top of the fetched head
+
+      - name: Set up Python
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: radar/requirements.lock
+
+      - name: Install pinned dependencies
+        if: steps.gate.outputs.run == 'true'
+        run: python -m pip install --disable-pip-version-check --require-hashes -r radar/requirements.lock
+
+      - name: Probe the data sources (writes nothing)
+        if: steps.gate.outputs.run == 'true' && env.MODE == 'probe'
+        run: python -m radar.tick --probe
+
+      - name: Scan loop
+        if: steps.gate.outputs.run == 'true' && env.MODE != 'probe'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}   # housekeeping dispatch only; removed from every tick process
+        run: |
+          args=(--data-dir "$DATA_DIR" --pending-dir "$RUNNER_TEMP/radar-pending")
+          if [ "$MODE" = "once" ]; then args+=(--once); fi
+          if [ "$NO_PUSH" = "true" ]; then args+=(--no-push); fi
+          python -m radar.loop "${args[@]}"
+
+      - name: Flush unpushed deltas
+        if: always() && steps.gate.outputs.run == 'true' && env.MODE != 'probe' && env.NO_PUSH != 'true'
+        run: python3 -m radar.gitsync --data-dir "$DATA_DIR" --pending-dir "$RUNNER_TEMP/radar-pending" --final

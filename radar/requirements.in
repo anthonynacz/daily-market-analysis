@@ -1,0 +1,13 @@
+# Momentum Radar runtime + CI dependencies. Regenerate the hash-locked file after any change:
+#   uv pip compile radar/requirements.in --generate-hashes --python-version 3.12 \
+#     --python-platform x86_64-manylinux_2_28 -o radar/requirements.lock
+# Workflows install it with: pip install --require-hashes -r radar/requirements.lock
+
+# fetch.py: crumb/session handling (YfData) and the Chrome-impersonating transport
+yfinance==1.2.0
+curl_cffi==0.13.0
+# fetch, baselines, engine: array maths; replay: CSV loading
+numpy==1.26.4
+pandas==3.0.1
+# radar-ci.yml
+pytest==9.0.2

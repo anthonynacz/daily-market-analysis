@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0f1a" />
+<title>Momentum Radar</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%A1%3C/text%3E%3C/svg%3E" />
+<style>
+  :root {
+    --bg: #0b0f1a; --card: #151c2c; --border: #1e293b; --line: #334155; --text: #e2e8f0; --muted: #64748b;
+    --soft: #94a3b8; --accent: #818cf8; --up: #34d399; --down: #f87171; --warn: #fbbf24;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  body { padding: 16px; -webkit-text-size-adjust: 100%; }
+  main { max-width: 1080px; margin: 0 auto; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  button { font-family: inherit; }
+  .top { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+  h1 { font-size: 20px; margin: 10px 0 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  h2 { font-size: 14px; margin: 0; color: var(--soft); text-transform: uppercase; letter-spacing: .06em; }
+  .sub { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 0 0 12px; }
+  .num { font-variant-numeric: tabular-nums; }
+  .up { color: var(--up); } .down { color: var(--down); } .mut { color: var(--muted); }
+  .pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+    letter-spacing: .03em; white-space: nowrap; vertical-align: middle; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
+  .count { color: var(--text); background: var(--border); border-radius: 999px; padding: 1px 8px; font-size: 12px; margin-left: 6px;
+    letter-spacing: 0; }
+  .note { color: var(--muted); font-size: 12.5px; line-height: 1.5; margin: -4px 0 10px; }
+
+  /* status bar and banners */
+  .status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 13px; color: var(--soft);
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; margin-bottom: 10px; }
+  .status b { color: var(--text); font-weight: 600; }
+  .sess { background: rgba(100,116,139,.18); color: var(--soft); }
+  .sess.pre { background: rgba(251,191,36,.14); color: var(--warn); }
+  .sess.open { background: rgba(52,211,153,.15); color: var(--up); }
+  .delayed { background: rgba(251,191,36,.14); color: var(--warn); }
+  .mockpill { background: rgba(251,191,36,.15); color: var(--warn); }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); margin-right: 6px; vertical-align: 1px; }
+  .dot.ok { background: var(--up); box-shadow: 0 0 6px rgba(52,211,153,.7); }
+  .dot.late { background: var(--warn); } .dot.stale { background: var(--down); }
+  .banner { border-radius: 10px; padding: 10px 14px; font-size: 13px; line-height: 1.45; margin-bottom: 10px; border: 1px solid; }
+  .banner.err { background: rgba(248,113,113,.08); border-color: rgba(248,113,113,.35); color: #fecaca; }
+  .banner.warn { background: rgba(251,191,36,.07); border-color: rgba(251,191,36,.3); color: #fde68a; }
+  .banner.info { background: rgba(129,140,248,.07); border-color: rgba(129,140,248,.3); color: #c7d2fe; }
+  .banner.mkt { background: rgba(129,140,248,.1); border-color: rgba(129,140,248,.45); color: var(--text); }
+  .banner.sector { background: rgba(148,163,184,.06); border-color: var(--line); color: var(--soft); }
+  .banner b { color: var(--text); }
+  .banner .tks { font-weight: 600; color: var(--text); }
+
+  /* members toolbar */
+  .head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .chip { background: transparent; color: var(--soft); border: 1px solid var(--line); border-radius: 999px;
+    padding: 5px 12px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+  .chip[aria-pressed="true"] { background: rgba(129,140,248,.16); border-color: var(--accent); color: #e0e7ff; }
+  select, .btn { background: #0b1220; color: var(--text); border: 1px solid var(--line); border-radius: 8px;
+    padding: 5px 8px; font-size: 12.5px; font-family: inherit; max-width: 100%; }
+  .btn { cursor: pointer; font-weight: 600; color: var(--soft); }
+  .btn[aria-pressed="true"] { color: #e0e7ff; border-color: var(--accent); }
+
+  /* member row: a card on phones, a table row from 1000px */
+  .cols { display: none; }
+  .m { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px;
+    grid-template-areas: "id spark" "onr since" "moves moves" "meta meta" "why why" "more more";
+    border-top: 1px solid var(--border); padding: 12px 2px; cursor: pointer; }
+  .m:first-child { border-top: 0; }
+  .m:hover { background: rgba(129,140,248,.05); }
+  .id { grid-area: id; min-width: 0; }
+  .tkline { display: flex; align-items: center; gap: 6px 8px; flex-wrap: wrap; }
+  .dir { font-size: 13px; width: 14px; text-align: center; }
+  .tk { font-weight: 800; font-size: 16px; letter-spacing: .02em; background: none; border: 0; padding: 0; color: var(--text);
+    cursor: pointer; }
+  .tk:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  .nm { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .st-racing.up { background: rgba(52,211,153,.14); } .st-racing.down { background: rgba(248,113,113,.14); }
+  .st-cooling { background: rgba(251,191,36,.13); color: var(--warn); }
+  .st-halted { background: rgba(100,116,139,.22); color: var(--soft); }
+  .lt { background: rgba(129,140,248,.16); color: #c7d2fe; }
+  .spark { grid-area: spark; justify-self: end; align-self: center; display: block; }
+  .onr { grid-area: onr; font-size: 12.5px; color: var(--soft); align-self: end; }
+  .since { grid-area: since; text-align: right; align-self: end; }
+  .since .v { font-size: 17px; font-weight: 700; }
+  .since .l { display: block; font-size: 11px; color: var(--muted); }
+  .moves, .meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; }
+  .moves { grid-area: moves; } .meta { grid-area: meta; }
+  .kv .k { color: var(--muted); margin-right: 4px; }
+  .kv .v { font-weight: 600; }
+  .meter { display: inline-block; width: 36px; height: 6px; border-radius: 3px; background: rgba(129,140,248,.18);
+    vertical-align: middle; margin-left: 6px; overflow: hidden; }
+  .meter i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+  .why { grid-area: why; font-size: 12px; color: var(--soft); line-height: 1.45; }
+  .more { grid-area: more; display: none; font-size: 12.5px; color: var(--soft); line-height: 1.6;
+    background: #0f1524; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-top: 2px; cursor: auto; }
+  .m.open .more { display: block; }
+  .facts { display: flex; flex-wrap: wrap; gap: 2px 16px; }
+  .more p { margin: 6px 0 0; }
+  .empty { color: var(--muted); font-size: 13px; padding: 12px 2px; line-height: 1.5; }
+
+  @media (min-width: 1000px) {
+    .cols, .m { grid-template-columns: minmax(0, 1fr) 62px 72px 52px 52px 52px 58px 50px 58px 86px 104px;
+      grid-template-areas: "id onr since m5 m15 m30 day rvol vwap int spark"; align-items: center; column-gap: 8px; }
+    .cols { display: grid; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em;
+      padding: 0 2px 8px; border-bottom: 1px solid var(--border); }
+    .cols span:not(:first-child) { text-align: right; }
+    .m { padding: 9px 2px; row-gap: 4px; }
+    .m:first-child { border-top: 0; }
+    .moves, .meta { display: contents; }
+    .onr, .since, .kv { text-align: right; align-self: center; }
+    .since .l, .onr .l, .kv .k { display: none; }
+    .since .v { font-size: 14px; }
+    .m5 { grid-area: m5; } .m15 { grid-area: m15; } .m30 { grid-area: m30; } .day { grid-area: day; }
+    .rvol { grid-area: rvol; } .vwap { grid-area: vwap; } .int { grid-area: int; }
+    .m > .why { grid-column: 1 / -1; grid-row: 2; padding-left: 22px; }
+    .m > .more { grid-column: 1 / -1; grid-row: 3; }
+  }
+
+  /* warming up and dropped off */
+  .x { display: flex; justify-content: space-between; gap: 10px; border-top: 1px solid var(--border); padding: 9px 2px;
+    font-size: 13px; line-height: 1.45; }
+  .x:first-child { border-top: 0; }
+  .x > div:first-child { min-width: 0; }
+  .x .why { color: var(--soft); font-size: 12.5px; }
+  .x .when { color: var(--muted); font-size: 12px; white-space: nowrap; text-align: right; }
+  .x .xn { color: var(--muted); font-weight: 400; }
+  .heat .x { color: var(--soft); }
+  .heat .x b { color: var(--soft); }
+
+  details summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--soft); }
+  details p, details li { font-size: 13px; color: var(--soft); line-height: 1.55; }
+  details ul { padding-left: 18px; }
+  details b { color: var(--text); }
+  .kvlist { font-size: 12.5px; color: var(--soft); line-height: 1.8; margin-top: 8px; }
+  .kvlist b { color: var(--text); font-weight: 600; }
+  .foot { font-size: 11.5px; color: var(--muted); line-height: 1.5; margin: 18px 0 30px; }
+  .toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%) translateY(140px); transition: transform .25s ease;
+    background: #1e293b; color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 10px 16px;
+    font-size: 13.5px; box-shadow: 0 8px 24px rgba(0,0,0,.5); max-width: calc(100% - 32px); z-index: 60; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+</style>
+</head>
+<body>
+<main>
+  <nav class="top"><a href="index.html">← Latest report</a><a href="alerts.html">🔔 Alerts</a></nav>
+  <h1>📡 Momentum Radar <span id="mockpill" hidden></span></h1>
+  <p class="sub">US stocks racing up or down right now. The radar checks about 550 stocks every 5 minutes while the market is open, and a stock stays on it until its move is over.</p>
+
+  <div class="status" id="status" aria-live="polite">Loading…</div>
+  <div id="banner" hidden></div>
+  <div id="context"></div>
+
+  <section class="card" aria-labelledby="h-members">
+    <div class="head">
+      <h2 id="h-members">On the radar<span class="count num" id="count">–</span></h2>
+      <div class="tools">
+        <button class="chip" type="button" data-f="all" aria-pressed="true">All</button>
+        <button class="chip" type="button" data-f="up" aria-pressed="false">▲ Up</button>
+        <button class="chip" type="button" data-f="down" aria-pressed="false">▼ Down</button>
+        <select id="sort" aria-label="Sort by">
+          <option value="intensity">Highest intensity</option>
+          <option value="newest">Newest</option>
+          <option value="longest">Longest on radar</option>
+          <option value="move">Biggest move</option>
+        </select>
+        <button class="btn" type="button" id="notify" aria-pressed="false">🔔 Notify me</button>
+      </div>
+    </div>
+    <p class="note" id="summary" hidden></p>
+    <div class="cols" aria-hidden="true"><span>Stock</span><span>On radar</span><span>Since entry</span><span>5 min</span>
+      <span>15 min</span><span>30 min</span><span>Today</span><span>RVol</span><span>vs VWAP</span><span>Intensity</span><span>Path</span></div>
+    <div id="members" role="list"><div class="empty">Loading…</div></div>
+  </section>
+
+  <section class="card heat" aria-labelledby="h-heat">
+    <div class="head"><h2 id="h-heat">Warming up<span class="count num" id="heatcount">–</span></h2></div>
+    <p class="note">Passed the entry checks on the last 5-minute bar and wait for one more bar to confirm. Not on the radar yet.</p>
+    <div id="heating"><div class="empty">Loading…</div></div>
+  </section>
+
+  <section class="card" aria-labelledby="h-exits">
+    <div class="head"><h2 id="h-exits">Recently dropped off<span class="count num" id="exitcount">–</span></h2></div>
+    <p class="note" id="exitnote" hidden></p>
+    <div id="exits"><div class="empty">Loading…</div></div>
+  </section>
+
+  <section class="card">
+    <details>
+      <summary>How the radar works</summary>
+      <p>Every 5 minutes from 09:35 to 16:00 ET on market days, the scanner checks the S&amp;P 500, the Nasdaq-100 and the day's large movers. A stock <b>enters</b> when, over the last 15 to 30 minutes, it moves much faster than the market and than its own normal pace, on heavy volume for that time of day, on the right side of VWAP, and the next 5-minute bar confirms the move. Stocks waiting for that confirming bar are listed under <b>Warming up</b>. New entries are possible from about 09:55 to 15:05 ET, so the list is often empty in the first minutes of the day.</p>
+      <p>A stock <b>drops off</b> when the move is over: momentum fades, volume dries up, it stalls, reverses sharply, gives back most of the move or falls back through VWAP. Everything drops off at the close. Missing data never removes a stock right away: a stock that stops trading is marked <b>Halted</b> and kept.</p>
+      <p>Moves are measured against the market (SPY), so a broad rally does not list every stock. When the whole market moves sharply, a market-wide banner appears and the radar gets stricter with stocks moving the same way as the market. At most 3 stocks per sector and direction are listed; the rest are summed up in a sector banner.</p>
+      <ul>
+        <li><b>Since entry</b>: price change since the stock entered. The line shows the half hour before entry (grey) and the move since (colour); the dashed line and the ring mark the entry price.</li>
+        <li><b>5 / 15 / 30 min, Today</b>: price change over the last 5, 15 and 30 minutes, and since yesterday's close.</li>
+        <li><b>RVol</b>: recent volume compared with what is normal for this stock at this time of day (3× means three times normal).</li>
+        <li><b>vs VWAP</b>: distance from today's volume-weighted average price.</li>
+        <li><b>Intensity</b> (0 to 100): how strong the move's ingredients are right now (pace against the market, volume, steadiness). It is used for sorting only. It is not a probability or a forecast, and in testing a higher intensity did not mean the move was more likely to continue.</li>
+        <li><b>Cooling</b>: the last bar fell short; the stock drops off if the next one does too. <b>Late</b>: added during a catch-up scan, so it appeared here more than 10 minutes after the move was confirmed.</li>
+      </ul>
+    </details>
+  </section>
+
+  <section class="card">
+    <details>
+      <summary>Scanner health</summary>
+      <div class="kvlist" id="health">No data yet.</div>
+    </details>
+  </section>
+
+  <div class="foot">Educational analysis of what is moving now, not a forecast and not financial advice. Prices come from free data sources and can be delayed or missing; confirm live quotes elsewhere. Times are US Eastern (ET).</div>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  "use strict";
+  // ---------------------------------------------------------------- config
+  var REPO = "anthonynacz/daily-market-analysis", BRANCH = "data", STATE_PATH = "radar/state.json";
+  var MOCK_URL = "radar/mock/state.json";
+  var TOKEN_KEY = "mm_alerts_gh_token", NOTIFY_KEY = "mm_radar_notify", VIEW_KEY = "mm_radar_view";
+  var TITLE = "Momentum Radar";
+  var STALE_MIN = 12, LATE_MIN = 7;                    // RUNTIME.stale_warning_min; amber after one missed scan
+  var TICK_MS = 300e3, TICK_OFFSET = 50e3, AFTER_TICK = 40e3, FINAL_GRACE = 5 * 60e3;
+  // Anonymous GitHub API calls cost 1 of 60/hour per network even when answered 304; authorised 304s are free.
+  var POLL_TOKEN = 30e3, POLL_CLOSED = 15 * 60e3, POLL_HIDDEN = 3 * 60e3, POLL_RAW = 2 * 60e3;
+  var MISS_RETRY = 40e3, MAX_MISSES = 3, BUDGET_FLOOR = 15, FOCUS_GAP = 60e3;
+  var API_REF = "https://api.github.com/repos/" + REPO + "/git/ref/heads/" + BRANCH;
+  function rawUrl(ref) { return "https://raw.githubusercontent.com/" + REPO + "/" + ref + "/" + STATE_PATH; }
+
+  // Mirror of radar/calendar_nyse.py: state.json only describes the session it was written in, so the page
+  // needs the table to tell holidays and the next session. Past the table, weekdays count as sessions.
+  var HOLIDAYS = [
+    "2026-01-01", "2026-01-19", "2026-02-16", "2026-04-03", "2026-05-25", "2026-06-19", "2026-07-03", "2026-09-07",
+    "2026-11-26", "2026-12-25",
+    "2027-01-01", "2027-01-18", "2027-02-15", "2027-03-26", "2027-05-31", "2027-06-18", "2027-07-05", "2027-09-06",
+    "2027-11-25", "2027-12-24",
+    "2028-01-17", "2028-02-21", "2028-04-14", "2028-05-29", "2028-06-19", "2028-07-04", "2028-09-04", "2028-11-23",
+    "2028-12-25"];
+  var EARLY_CLOSES = ["2026-11-27", "2026-12-24", "2027-11-26", "2028-07-03", "2028-11-24"];
+
+  var EXIT_TEXT = {
+    FADE: "Momentum faded", DRY: "Volume dried up", STALL: "Stalled – no new high/low", REVERSAL: "Sharp reversal",
+    GIVEBACK: "Gave back most of the move", VWAP_CROSS: "Fell back through VWAP", SESSION_END: "Market closed",
+    HALT_LONG: "Long trading halt", DATA_STALE: "No fresh data", DISPLACED: "Replaced by a stronger mover"
+  };
+  var STATE_TEXT = { racing: "Racing", cooling: "Cooling", halted: "Halted" };
+  var STATE_HINT = {
+    racing: "The move is still going strong.",
+    cooling: "The last bar fell short. It drops off if the next bar also falls short.",
+    halted: "No new trades: possibly a trading halt. It stays on the radar until trading resumes or the pause runs long."
+  };
+
+  // ?mock=1 reads the sample file shipped with the site; the clock is pinned just after that scan
+  // unless &now=<ISO time> asks for another moment (pre-open, closed, stale...).
+  var Q = new URLSearchParams(location.search), MOCK = Q.get("mock") === "1";
+  var CLOCK = 0, clockPinned = false;
+  if (MOCK && isFinite(Date.parse(Q.get("now")))) { CLOCK = Date.parse(Q.get("now")) - Date.now(); clockPinned = true; }
+  function now() { return Date.now() + CLOCK; }
+
+  // ---------------------------------------------------------------- state
+  var S = {
+    state: null, sha: null, refSha: null, missingSha: null, etag: null, via: null, viaWhy: null,
+    rl: { remaining: null, reset: null }, limitedUntil: 0, useToken: true, tokenNote: "",
+    err: null, errCount: 0, notPublished: false, busy: false, timer: 0, misses: 0, lastApiAt: 0,
+    seen: null, unseen: 0, open: {}, ver: 0, drawn: "", view: { f: "all", sort: "intensity" }
+  };
+  function read(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function store(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
+  (function () {
+    var v; try { v = JSON.parse(read(VIEW_KEY) || "null"); } catch (e) { v = null; }
+    if (v && ["all", "up", "down"].indexOf(v.f) >= 0) S.view.f = v.f;
+    if (v && ["intensity", "newest", "longest", "move"].indexOf(v.sort) >= 0) S.view.sort = v.sort;
+  })();
+
+  // ---------------------------------------------------------------- state.json validation (machine-written, still untrusted)
+  function num(v) { return typeof v === "number" && isFinite(v) ? v : null; }
+  function txt(v, max) { return typeof v === "string" ? v.slice(0, max) : ""; }
+  function ts(v) { var t = typeof v === "string" ? Date.parse(v) : NaN; return isFinite(t) ? t : null; }
+  function obj(v) { return v && typeof v === "object" && !Array.isArray(v) ? v : {}; }
+  function arr(v, max) { return Array.isArray(v) ? v.slice(0, max) : []; }
+  function oneOf(v, list, dflt) { return list.indexOf(v) >= 0 ? v : dflt; }
+  function strs(v, max, len) {
+    return arr(v, max).filter(function (s) { return typeof s === "string" && s; }).map(function (s) { return s.slice(0, len); });
+  }
+  function pick(raw, spec) {
+    var o = {};
+    (spec.num || []).forEach(function (k) { o[k] = num(raw[k]); });
+    (spec.ts || []).forEach(function (k) { o[k] = ts(raw[k]); });
+    Object.keys(spec.txt || {}).forEach(function (k) { o[k] = txt(raw[k], spec.txt[k]); });
+    return o;
+  }
+  function withDir(raw, spec) {                         // rows need a ticker and a direction
+    raw = obj(raw);
+    if (!txt(raw.ticker, 12) || (raw.direction !== "up" && raw.direction !== "down")) return null;
+    var o = pick(raw, spec); o.direction = raw.direction; o.reasons = strs(raw.reasons, 5, 140);
+    return o;
+  }
+  var MEMBER = { txt: { ticker: 12, name: 80, sector: 40 }, ts: ["entered_at", "last_bar_at"],
+    num: ["entry_price", "last_price", "minutes_on_radar", "move_since_entry_pct", "peak_since_entry_pct", "chg_5m_pct",
+          "chg_15m_pct", "chg_30m_pct", "chg_day_pct", "rvol", "rvol_day", "vwap_dist_pct", "z15", "z30", "zday",
+          "intensity", "episode"] };
+  var HEAT = { txt: { ticker: 12, name: 80 }, ts: ["since"], num: ["price", "chg_day_pct", "intensity"] };
+  var EXIT = { txt: { ticker: 12, name: 80, exit_detail: 200 }, ts: ["entered_at", "exited_at"],
+    num: ["minutes_on_radar", "move_since_entry_pct"] };
+
+  function normMember(raw) {
+    var m = withDir(raw, MEMBER); if (!m) return null;
+    m.state = oneOf(raw.state, ["racing", "cooling", "halted"], "racing");
+    m.late = raw.late === true;
+    var sp = obj(raw.spark), p = arr(sp.p, 80).map(num);
+    m.spark = p.length > 1 && p.every(function (v) { return v !== null; })
+      ? { p: p, entry_i: Math.max(0, Math.min(p.length - 1, Math.round(num(sp.entry_i) || 0))) } : { p: [], entry_i: 0 };
+    return m;
+  }
+  function normExit(raw) {
+    var x = withDir(raw, EXIT); if (!x) return null;
+    x.exit_reason = txt(obj(raw).exit_reason, 20);
+    return x;
+  }
+  function normState(raw) {
+    raw = obj(raw);
+    if (raw.schema !== 1) throw new Error("The radar data has an unexpected format.");
+    var st = pick(raw, { ts: ["generated_at", "tick_id", "next_tick_at"], txt: { message: 200, params_version: 40 } });
+    if (st.tick_id === null) throw new Error("The radar data has no scan time.");
+    st.status = oneOf(raw.status, ["ok", "degraded", "no_data", "closed", "error"], "error");
+    var s = obj(raw.session);
+    st.session = { date: /^\d{4}-\d{2}-\d{2}$/.test(s.date) ? s.date : null, open: ts(s.open), close: ts(s.close),
+                   half_day: s.half_day === true };
+    var src = obj(raw.source);
+    st.source = pick(src, { txt: { name: 20 }, num: ["consecutive_failures"], ts: ["last_ok_at"] });
+    st.source.status = oneOf(src.status, ["ok", "degraded", "down"], null);
+    var mk = obj(raw.market);
+    st.market = pick(mk, { num: ["spy_chg_day_pct", "breadth30"] });
+    st.market.mode = mk.mode === "market" ? "market" : "normal";
+    st.market.dir = oneOf(mk.dir, ["up", "down"], null);
+    st.counts = pick(obj(raw.counts), { num: ["universe", "stage_b", "entered_today", "exited_today"] });
+    st.health = pick(obj(raw.health), { num: ["ticks_today", "ticks_skipped", "last_tick_ms", "push_backlog"],
+                                        txt: { loop_run_id: 60 }, ts: ["loop_started_at"] });
+    st.members = arr(raw.members, 40).map(normMember).filter(Boolean);
+    st.heating = arr(raw.heating, 40).map(function (h) { return withDir(h, HEAT); }).filter(Boolean);
+    st.recent_exits = arr(raw.recent_exits, 30).map(normExit).filter(Boolean);
+    st.sector_banners = arr(raw.sector_banners, 10).map(function (b) {
+      b = obj(b);
+      var o = { sector: txt(b.sector, 40), count: num(b.count), tickers: strs(b.tickers, 20, 12) };
+      o.direction = oneOf(b.direction, ["up", "down"], null);
+      return o.sector && o.direction ? o : null;
+    }).filter(Boolean);
+    return st;
+  }
+
+  // ---------------------------------------------------------------- data loading
+  function fetchT(url, opt, ms) {                       // fetch with a timeout (stalled mobile requests)
+    var ctl = window.AbortController ? new AbortController() : null;
+    var t = setTimeout(function () { if (ctl) ctl.abort(); }, ms);
+    if (ctl) opt.signal = ctl.signal;
+    return fetch(url, opt).finally(function () { clearTimeout(t); });
+  }
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function notPublished() { var e = new Error("The radar has not published any data yet."); e.notPublished = true; return e; }
+  function hasToken() { return S.useToken && !!read(TOKEN_KEY); }
+  function lowBudget() { return !hasToken() && S.rl.remaining != null && S.rl.remaining <= BUDGET_FLOOR && S.rl.reset > now(); }
+
+  // 1) Where is the data branch now? One small API call; the token (saved on the Alerts page) goes to api.github.com only.
+  async function checkRef() {
+    var h = { "Accept": "application/vnd.github+json" };
+    if (S.etag) h["If-None-Match"] = S.etag;           // weak ETag, sent back as-is
+    var tok = S.useToken ? read(TOKEN_KEY) : null;
+    if (tok) h["Authorization"] = "Bearer " + tok;
+    var r = await fetchT(API_REF, { headers: h, cache: "no-store" }, 10000);
+    var rem = r.headers.get("x-ratelimit-remaining"), reset = r.headers.get("x-ratelimit-reset");
+    if (rem !== null) S.rl = { remaining: +rem, reset: reset ? +reset * 1000 : null };
+    if (r.status === 304 && S.refSha) return S.refSha;
+    if (r.status === 200) {
+      var sha = obj(obj(await r.json()).object).sha;
+      if (typeof sha !== "string" || !/^[0-9a-f]{40}$/.test(sha)) throw new Error("GitHub sent an unexpected answer.");
+      S.etag = r.headers.get("ETag"); S.refSha = sha;
+      return sha;
+    }
+    if (r.status === 401 && tok) {                      // expired or revoked token: carry on anonymously
+      S.useToken = false; S.etag = null;
+      S.tokenNote = "The GitHub token saved on this device was rejected, so the page reads anonymously. Update it on the Alerts page.";
+      return checkRef();
+    }
+    if (r.status === 403 || r.status === 429) {
+      var ra = +r.headers.get("retry-after");
+      if (S.rl.remaining === 0 || ra) {
+        var e = new Error("rate limited"); e.rateLimited = true;
+        e.until = ra ? now() + ra * 1000 : (S.rl.reset || now() + 15 * 60e3);
+        throw e;
+      }
+    }
+    if (r.status === 404) throw notPublished();
+    throw new Error("GitHub answered " + r.status + ".");
+  }
+
+  // 2) Read state.json. A SHA-pinned URL is fresh and immutable (the browser may cache it); the branch URL is
+  //    the CDN's copy, up to about 5 minutes behind. raw.githubusercontent.com lets browsers cache a 404 for
+  //    5 minutes, so the retries go back to the network.
+  async function loadState(url, pinned) {
+    for (var i = 0; ; i++) {
+      var r = await fetchT(url, { cache: !pinned ? "no-store" : i ? "reload" : "force-cache" }, 12000);
+      if (r.ok) return normState(await r.json());
+      if (r.status === 404 && pinned && i < 2) { await wait(3000); continue; }   // brand-new commit not replicated yet
+      if (r.status === 404) throw notPublished();
+      throw new Error("Could not read the radar data (" + r.status + ").");
+    }
+  }
+
+  async function poll() {
+    if (S.busy) return;
+    S.busy = true; clearTimeout(S.timer);
+    var fresh = false;
+    try {
+      var st = null;
+      if (MOCK) { S.via = "mock"; st = await loadState(MOCK_URL, false); }
+      else {
+        var sha = null, why = S.limitedUntil > now() ? "limited" : lowBudget() ? "budget" : null;
+        if (!why) {
+          S.lastApiAt = now();
+          try { sha = await checkRef(); }
+          catch (e) {
+            if (e.notPublished) throw e;
+            if (e.rateLimited) S.limitedUntil = e.until;
+            why = e.rateLimited ? "limited" : "error";
+          }
+        }
+        S.via = why ? "raw" : "api"; S.viaWhy = why;
+        if (why) st = await loadState(rawUrl(BRANCH), false);
+        else if (sha === S.missingSha) throw notPublished();          // branch unchanged since state.json was missing
+        else if (sha !== S.sha || !S.state) {
+          try { st = await loadState(rawUrl(sha), true); } catch (e) { if (e.notPublished) S.missingSha = sha; throw e; }
+          S.sha = sha;
+        }
+      }
+      if (st && isNewer(st)) { apply(st); fresh = true; }
+      S.err = null; S.errCount = 0; S.notPublished = false;
+    } catch (e) {
+      S.err = e; S.errCount++; S.notPublished = !!e.notPublished;
+    } finally {
+      S.misses = fresh ? 0 : S.misses + 1;
+      S.busy = false; render(); schedule();
+    }
+  }
+
+  // The delayed branch copy can lag a snapshot already read through its SHA: never step back to it.
+  function isNewer(st) {
+    var cur = S.state;
+    return !cur || st.tick_id > cur.tick_id || (st.tick_id === cur.tick_id && (st.generated_at || 0) > (cur.generated_at || 0));
+  }
+  function apply(st) {
+    var keys = st.members.map(function (m) { return m.ticker + "|" + m.entered_at; });
+    if (S.seen) {
+      var fresh = st.members.filter(function (m, i) { return !S.seen[keys[i]]; });
+      if (fresh.length) announce(fresh);
+    }
+    S.seen = {}; keys.forEach(function (k) { S.seen[k] = 1; });
+    if (MOCK && !clockPinned) { CLOCK = (st.generated_at || st.tick_id) + 60e3 - Date.now(); clockPinned = true; }
+    S.state = st; S.ver++;
+  }
+
+  // Anonymous readers: one API call per scan, timed for when its commit has usually landed (next_tick_at + 40 s).
+  // If it is not there yet, retry every 40 s a few times, then aim at the next 5-minute tick.
+  function anonymousDelay(c) {
+    var t = now(), st = S.state, target = st && st.next_tick_at ? st.next_tick_at + AFTER_TICK : 0;
+    if (target > t + 5e3) return Math.min(target - t, POLL_CLOSED);
+    if (S.misses <= MAX_MISSES) return MISS_RETRY;
+    var base = c.session.open + TICK_OFFSET + AFTER_TICK;
+    return base + Math.ceil((t + 5e3 - base) / TICK_MS) * TICK_MS - t;
+  }
+  function nextDelay(hidden) {
+    var c = clock(), d;
+    if (S.errCount && !S.notPublished) d = Math.min(15e3 * Math.pow(2, S.errCount - 1), 5 * 60e3);
+    else if (!c.scanning) {                             // closed: at most every 15 min, and just after the first scan
+      var first = c.upcoming ? c.upcoming.open + TICK_MS + TICK_OFFSET + AFTER_TICK : Infinity;
+      d = Math.max(5e3, Math.min(POLL_CLOSED, first - now()));
+    }
+    else if (S.via === "raw") d = POLL_RAW;
+    else if (MOCK || hasToken()) d = POLL_TOKEN;
+    else d = anonymousDelay(c);
+    return hidden ? Math.max(d, POLL_HIDDEN) : d;
+  }
+  function schedule() {
+    clearTimeout(S.timer);
+    var hidden = document.hidden;
+    if (hidden && read(NOTIFY_KEY) !== "1") return;    // paused until the tab is visible again
+    S.timer = setTimeout(poll, nextDelay(hidden));
+  }
+
+  // ---------------------------------------------------------------- market clock (ET)
+  var ET = "America/New_York";
+  var fmtParts = new Intl.DateTimeFormat("en-US", { timeZone: ET, year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  var fmtHM = new Intl.DateTimeFormat("en-US", { timeZone: ET, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  var fmtDay = new Intl.DateTimeFormat("en-US", { timeZone: ET, weekday: "short", month: "short", day: "numeric" });
+  function etParts(t) {
+    var p = {}; fmtParts.formatToParts(new Date(t)).forEach(function (x) { p[x.type] = x.value; });
+    return { date: p.year + "-" + p.month + "-" + p.day, h: +p.hour % 24, m: +p.minute };
+  }
+  function etAt(date, hh, mm) {                         // UTC ms of an ET wall-clock time (EDT or EST)
+    var y = +date.slice(0, 4), mo = +date.slice(5, 7) - 1, d = +date.slice(8, 10);
+    for (var off = 4; off <= 5; off++) {
+      var t = Date.UTC(y, mo, d, hh + off, mm), p = etParts(t);
+      if (p.h === hh && p.m === mm) return t;
+    }
+    return Date.UTC(y, mo, d, hh + 5, mm);
+  }
+  function weekday(date) { return new Date(date + "T12:00:00Z").getUTCDay(); }
+  function addDays(date, n) { var t = new Date(date + "T12:00:00Z"); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); }
+  function sessionFor(date) {
+    var wd = weekday(date);
+    if (wd === 0 || wd === 6 || HOLIDAYS.indexOf(date) >= 0) return null;
+    var half = EARLY_CLOSES.indexOf(date) >= 0;
+    return { date: date, open: etAt(date, 9, 30), close: etAt(date, half ? 13 : 16, 0), half: half };
+  }
+  function nextSession(date) {
+    for (var i = 1; i <= 14; i++) { var s = sessionFor(addDays(date, i)); if (s) return s; }
+    return null;
+  }
+  // kind: pre | open | closed | weekend | holiday. scanning: the scanner should be publishing
+  // (first tick 09:35 ET, last tick just after the close).
+  function clock() {
+    var t = now(), today = etParts(t).date, s = sessionFor(today), st = S.state;
+    if (st && st.session.date === today && st.session.open && st.session.close)   // the scanner's calendar wins
+      s = { date: today, open: st.session.open, close: st.session.close, half: st.session.half_day };
+    var c = { t: t, today: today, session: s, kind: "", scanning: false, firstScan: null, upcoming: null };
+    if (!s) { c.kind = weekday(today) % 6 === 0 ? "weekend" : "holiday"; c.upcoming = nextSession(today); return c; }
+    c.firstScan = s.open + TICK_MS;
+    c.kind = t < s.open ? "pre" : t < s.close ? "open" : "closed";
+    c.scanning = t >= c.firstScan && t < s.close + TICK_OFFSET + FINAL_GRACE;
+    c.upcoming = t < c.firstScan ? s : nextSession(today);
+    return c;
+  }
+  // Freshness while scanning: minutes since the last scan of this session (or since the first one was due).
+  // No upper bound on tick_id: a device clock running a minute or two slow must not read a fresh scan as missing.
+  function freshness(c) {
+    var st = S.state;
+    if (!c.scanning) return null;
+    var today = !!st && st.tick_id >= c.firstScan;
+    var age = c.t - (today ? (st.generated_at || st.tick_id) : c.firstScan + TICK_OFFSET);
+    return { age: age, today: today, level: age > STALE_MIN * 60e3 ? "stale" : age > LATE_MIN * 60e3 || !today ? "late" : "ok" };
+  }
+  // A closed heartbeat names today's (or the next) session but still carries the last session's exits and
+  // counts, so only a scan written during today's session is today's data.
+  function todayScan(c) { var st = S.state; return !!st && st.status !== "closed" && st.session.date === c.today; }
+  function live(c) { return c.scanning && todayScan(c); }
+  // The ET day the exits and day counts belong to (a closed heartbeat: the day of its latest exit).
+  function listsDay(st) {
+    if (st.status !== "closed") return st.session.date;
+    var t = st.recent_exits.reduce(function (a, x) { return Math.max(a, x.exited_at || 0); }, 0);
+    return t ? etParts(t).date : null;
+  }
+
+  // ---------------------------------------------------------------- formatting
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function et(t) { return t == null ? "–" : fmtHM.format(new Date(t)) + " ET"; }
+  function etDay(t) { return fmtDay.format(new Date(t)) + ", " + et(t); }
+  function dayLabel(date) { return fmtDay.format(new Date(date + "T12:00:00Z")); }
+  function pct(v) { return v == null ? "–" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(1) + "%"; }
+  function sig(v) { return v == null ? "–" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(1) + "σ"; }
+  function times(v) { return v == null ? "–" : v.toFixed(1) + "×"; }
+  function price(v) { return v == null ? "–" : v.toFixed(v < 1 ? 4 : 2); }
+  function cls(v) { return v > 0 ? "up" : v < 0 ? "down" : ""; }
+  function dur(min) {
+    min = Math.max(0, Math.round(min));
+    return min < 60 ? min + " min" : Math.floor(min / 60) + " h" + (min % 60 ? " " + (min % 60) + " min" : "");
+  }
+  function ago(ms) {
+    var m = Math.floor(ms / 60e3);
+    return m < 1 ? "just now" : m < 60 ? m + " min ago" : m < 1440 ? Math.floor(m / 60) + " h ago" : Math.floor(m / 1440) + " d ago";
+  }
+  function ordinal(n) { return n + (n % 10 === 2 && n % 100 !== 12 ? "nd" : n % 10 === 3 && n % 100 !== 13 ? "rd" : n % 10 === 1 && n % 100 !== 11 ? "st" : "th"); }
+  function arrow(dir) { return el("span", "dir " + dir, dir === "down" ? "▼" : "▲"); }
+  function kv(k, v, c, area) {
+    var s = el("span", "kv " + area); s.appendChild(el("span", "k", k)); s.appendChild(el("span", "v num " + (c || ""), v)); return s;
+  }
+  function badge(parent, text, hint) { var b = el("span", "pill lt", text); b.title = hint; parent.appendChild(b); }
+  function backText(m) { return "Back on the radar for the " + ordinal(m.episode) + " time today."; }
+  function onRadarMin(m) {
+    return m.minutes_on_radar != null ? m.minutes_on_radar : m.entered_at != null ? (S.state.tick_id - m.entered_at) / 60e3 : null;
+  }
+
+  var SVGNS = "http://www.w3.org/2000/svg";
+  function sv(tag, attrs, parent) { var e = document.createElementNS(SVGNS, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+  // Price path: grey before entry, direction colour after; dashed entry-price line, ring at the entry, dot at the last close.
+  function spark(m) {
+    var W = 104, H = 32, P = 4, p = m.spark.p, ei = m.spark.entry_i;
+    var color = m.direction === "down" ? "var(--down)" : "var(--up)";
+    var svg = sv("svg", { "class": "spark", width: W, height: H, viewBox: "0 0 " + W + " " + H, role: "img",
+      "aria-label": m.ticker + " price path, " + pct(m.move_since_entry_pct) + " since entry" });
+    if (p.length < 2) { sv("line", { x1: P, x2: W - P, y1: H / 2, y2: H / 2, stroke: "#334155", "stroke-dasharray": "2 3" }, svg); return svg; }
+    var entry = m.entry_price != null ? m.entry_price : p[ei];
+    var lo = Math.min.apply(null, p.concat([entry])), hi = Math.max.apply(null, p.concat([entry]));
+    if (hi === lo) hi = lo + 1e-6;
+    function x(i) { return (P + i * (W - 2 * P) / (p.length - 1)).toFixed(1); }
+    function y(v) { return (P + (hi - v) * (H - 2 * P) / (hi - lo)).toFixed(1); }
+    function pts(a, b) { var o = []; for (var i = a; i <= b; i++) o.push(x(i) + "," + y(p[i])); return o.join(" "); }
+    sv("line", { x1: P, x2: W - P, y1: y(entry), y2: y(entry), stroke: "#475569", "stroke-width": 1, "stroke-dasharray": "2 3" }, svg);
+    var line = { fill: "none", "stroke-linejoin": "round", "stroke-linecap": "round" };
+    if (ei > 0) sv("polyline", Object.assign({ points: pts(0, ei), stroke: "#64748b", "stroke-width": 1.5 }, line), svg);
+    if (ei < p.length - 1) sv("polyline", Object.assign({ points: pts(ei, p.length - 1), stroke: color, "stroke-width": 2 }, line), svg);
+    sv("circle", { cx: x(ei), cy: y(p[ei]), r: 2.5, fill: "#151c2c", stroke: "#cbd5e1", "stroke-width": 1.2 }, svg);
+    sv("circle", { cx: x(p.length - 1), cy: y(p[p.length - 1]), r: 3, fill: color, stroke: "#151c2c", "stroke-width": 1.5 }, svg);
+    sv("title", {}, svg).textContent = "Entry " + price(entry) + ", last " + price(m.last_price != null ? m.last_price : p[p.length - 1]);
+    return svg;
+  }
+
+  // ---------------------------------------------------------------- render
+  var $ = function (id) { return document.getElementById(id); };
+
+  // Lists are rebuilt only for a new snapshot, a view change, or when the session goes live or ends.
+  function render() {
+    var c = clock(), key = S.ver + "|" + c.today + "|" + c.scanning + "|" + live(c);
+    renderStatus(c); renderHealth();
+    if (S.drawn === key) return;
+    S.drawn = key; renderContext(c); renderMembers(c); renderHeating(c); renderExits(c);
+  }
+
+  function renderStatus(c) {
+    var box = $("status"), st = S.state, f = freshness(c);
+    box.textContent = "";
+    var label = { pre: "Before the open", open: "Market open", closed: "Market closed", weekend: "Weekend", holiday: "Market holiday" }[c.kind];
+    box.appendChild(el("span", "pill sess " + c.kind, label.toUpperCase()));
+    var info;
+    if (c.session && c.t < c.firstScan) info = "Radar starts at " + et(c.firstScan) + (c.session.half ? " · half day, closes " + et(c.session.close) : "");
+    else if (c.scanning && c.t < c.session.close) info = "Closes " + et(c.session.close) + (c.session.half ? " (half day)" : "");
+    else if (c.upcoming) info = "Radar resumes " + etDay(c.upcoming.open + TICK_MS);
+    if (info) box.appendChild(el("span", "", info));
+    if (st) {
+      var last = st.generated_at || st.tick_id, s = el("span");
+      s.appendChild(el("i", "dot " + (f ? f.level : "")));
+      s.appendChild(el("b", "", "Updated " + ago(c.t - last)));
+      s.appendChild(document.createTextNode((st.status === "closed" ? " · checked at " : " · scan of ") +
+        (etParts(st.tick_id).date === c.today ? et(st.tick_id) : etDay(st.tick_id))));
+      box.appendChild(s);
+      if (c.scanning && st.next_tick_at && st.next_tick_at > c.t) box.appendChild(el("span", "mut", "Next scan ≈ " + et(st.next_tick_at)));
+    }
+    if (S.via === "raw") {
+      var d = el("span", "pill delayed", "DELAYED COPY");
+      d.title = "Read from GitHub's cached copy of the data branch, up to about 5 minutes behind.";
+      box.appendChild(d);
+    }
+    renderBanner(c, f);
+  }
+
+  function renderBanner(c, f) {
+    var st = S.state, msg = null, kind = "warn";
+    if (S.notPublished && !st) { kind = "info"; msg = "The radar has not published any data yet."; }
+    else if (S.err && !st) { kind = "err"; msg = "Couldn't load the radar: " + (S.err.message || "network error") + " Retrying…"; }
+    else if (f && f.level === "stale" && !f.today) {
+      kind = "err"; msg = "No scan yet today, although the radar should have started at " + et(c.firstScan) + ". The scanner may be starting late.";
+    }
+    else if (f && !f.today) { kind = "info"; msg = "Waiting for today's first scan (due at " + et(c.firstScan) + ")."; }
+    else if (f && f.level === "stale") {
+      kind = "err"; msg = "No new scan for " + dur(Math.floor(f.age / 60e3)) + " while the market is open. The scanner may be restarting; what you see is from the scan of " + et(st.tick_id) + ".";
+    }
+    else if (S.via === "raw") {
+      kind = "info";
+      msg = (S.viaWhy === "limited" ? "GitHub's hourly request allowance for your network is used up until " + et(S.limitedUntil)
+           : S.viaWhy === "budget" ? "Your network has used most of GitHub's hourly request allowance (" + S.rl.remaining + " left)"
+           : "GitHub's API did not answer") +
+            ", so the page reads a delayed copy (up to about 5 minutes behind)." +
+            (S.viaWhy === "error" ? "" : " Saving a token on the Alerts page removes this limit.");
+    }
+    else if (st && live(c) && (st.status === "degraded" || st.status === "no_data" || st.status === "error")) {
+      msg = "Last scan: " + { degraded: "data came back incomplete", no_data: "no market data received", error: "failed" }[st.status] +
+            (st.message ? " (" + st.message + ")" : "") + ". Stocks already on the radar are held, not dropped, until data returns.";
+    }
+    else if (S.err && !S.notPublished) msg = "Couldn't refresh (" + (S.err.message || "network error") + "). Showing the last loaded scan; retrying.";
+    else if (S.tokenNote) { kind = "info"; msg = S.tokenNote; }
+    var b = $("banner");
+    b.hidden = !msg; b.className = msg ? "banner " + kind : ""; b.textContent = msg || "";
+  }
+
+  // Market-wide and sector banners describe the live session only.
+  function renderContext(c) {
+    var box = $("context"), st = S.state;
+    box.textContent = "";
+    if (!st || !live(c)) return;
+    var mk = st.market;
+    if (mk.mode === "market") {
+      var b = el("div", "banner mkt"), dir = mk.dir === "up" ? "rising" : mk.dir === "down" ? "falling" : "moving";
+      b.appendChild(el("b", "", "🌐 Market-wide move: "));
+      b.appendChild(document.createTextNode("the whole market is " + dir + " (SPY " + pct(mk.spy_chg_day_pct) + " today" +
+        (mk.breadth30 != null ? ", breadth " + Math.round(mk.breadth30 * 100) + "% over 30 min" : "") +
+        "). The radar is stricter with stocks moving the same way, so the names below stand out from the market."));
+      b.title = "Breadth: how one-sided the market is over the last 30 minutes (net share of stocks moving the same way).";
+      box.appendChild(b);
+    }
+    st.sector_banners.forEach(function (s) {
+      var b = el("div", "banner sector"), down = s.direction === "down";
+      b.appendChild(arrow(s.direction));
+      b.appendChild(el("b", "", " " + s.sector + ": "));
+      b.appendChild(document.createTextNode((s.count != null ? s.count + " stocks " : "Several stocks ") + (down ? "falling" : "rising") + " together "));
+      if (s.tickers.length) b.appendChild(el("span", "tks", "(" + s.tickers.join(", ") + ")"));
+      b.appendChild(document.createTextNode(". The radar lists at most 3 per sector and direction."));
+      box.appendChild(b);
+    });
+  }
+
+  function sortMembers(list) {
+    var by = S.view.sort;
+    return list.slice().sort(function (a, b) {
+      if (by === "newest") return (b.entered_at || 0) - (a.entered_at || 0);
+      if (by === "longest") return (a.entered_at || 0) - (b.entered_at || 0);
+      if (by === "move") return Math.abs(b.move_since_entry_pct || 0) - Math.abs(a.move_since_entry_pct || 0);
+      return (b.intensity || 0) - (a.intensity || 0);
+    });
+  }
+
+  function renderMembers(c) {
+    var box = $("members"), st = S.state;
+    if (!st) { $("count").textContent = "–"; box.textContent = ""; box.appendChild(el("div", "empty", S.err ? "Nothing to show yet." : "Loading…")); return; }
+    var all = live(c) ? st.members : [];                // leftovers of a scan that stopped early are not on the radar now
+    var list = sortMembers(all.filter(function (m) { return S.view.f === "all" || m.direction === S.view.f; }));
+    $("count").textContent = all.length;
+    var k = st.counts, isLive = live(c), scan = st.status !== "closed", day = listsDay(st), bits = [];
+    if (scan && !isLive) bits.push("As of the scan of " + etDay(st.tick_id));
+    if (scan && k.universe) bits.push(isLive ? "Checking " + k.universe + " stocks" : k.universe + " stocks checked");
+    if (day && k.entered_today != null && k.exited_today != null)
+      bits.push(k.entered_today + " entered and " + k.exited_today + " dropped off " + (day === c.today ? "today" : "on " + dayLabel(day)));
+    var sum = $("summary"); sum.hidden = !bits.length; sum.textContent = bits.join(" · ");
+    box.textContent = "";
+    if (!list.length) {
+      box.appendChild(el("div", "empty", all.length ? "Nothing racing in this direction right now." :
+        c.scanning ? "Nothing is racing right now. Stocks appear here within a few minutes of taking off." :
+        "The radar is empty outside market hours." + (c.upcoming ? " It starts again " + (c.upcoming.date === c.today ? "today at " +
+          et(c.upcoming.open + TICK_MS) : "on " + etDay(c.upcoming.open + TICK_MS)) + "." : "")));
+      return;
+    }
+    list.forEach(function (m) { box.appendChild(memberRow(m)); });
+  }
+
+  function memberRow(m) {
+    var key = m.ticker + "|" + m.entered_at, open = !!S.open[key], id = "more-" + m.ticker.replace(/[^A-Za-z0-9]/g, "_");
+    var row = el("div", "m" + (open ? " open" : "")); row.setAttribute("role", "listitem");
+    var idb = el("div", "id"), line = el("div", "tkline");
+    line.appendChild(arrow(m.direction));
+    var tk = el("button", "tk", m.ticker); tk.type = "button";
+    tk.setAttribute("aria-expanded", open ? "true" : "false"); tk.setAttribute("aria-controls", id);
+    tk.title = "Show details";
+    line.appendChild(tk);
+    var chip = el("span", "pill st-" + m.state + " " + m.direction, STATE_TEXT[m.state].toUpperCase()); chip.title = STATE_HINT[m.state];
+    line.appendChild(chip);
+    if (m.late) badge(line, "LATE", "Added during a catch-up scan, more than 10 minutes after the move was confirmed.");
+    if (m.episode > 1) badge(line, "BACK", backText(m));
+    idb.appendChild(line);
+    idb.appendChild(el("div", "nm", m.name || m.sector || ""));
+    row.appendChild(idb);
+    var mins = onRadarMin(m), onr = el("div", "onr num", mins == null ? "–" : dur(mins)); onr.title = "On the radar since " + et(m.entered_at);
+    onr.appendChild(el("span", "l", " on radar"));
+    row.appendChild(onr);
+    var since = el("div", "since"); since.appendChild(el("span", "v num " + cls(m.move_since_entry_pct), pct(m.move_since_entry_pct)));
+    since.appendChild(el("span", "l", "since entry")); row.appendChild(since);
+    var mv = el("div", "moves");
+    mv.appendChild(kv("5m", pct(m.chg_5m_pct), cls(m.chg_5m_pct), "m5"));
+    mv.appendChild(kv("15m", pct(m.chg_15m_pct), cls(m.chg_15m_pct), "m15"));
+    mv.appendChild(kv("30m", pct(m.chg_30m_pct), cls(m.chg_30m_pct), "m30"));
+    mv.appendChild(kv("Today", pct(m.chg_day_pct), cls(m.chg_day_pct), "day"));
+    row.appendChild(mv);
+    var meta = el("div", "meta");
+    meta.appendChild(kv("RVol", times(m.rvol), "", "rvol"));
+    meta.appendChild(kv("vs VWAP", pct(m.vwap_dist_pct), "", "vwap"));
+    var inten = m.intensity == null ? null : Math.max(0, Math.min(100, Math.round(m.intensity)));
+    var ik = kv("Intensity", inten == null ? "–" : String(inten), "", "int");
+    ik.title = "How strong the move's ingredients are right now (0-100). For sorting only: not a probability or a forecast.";
+    var meter = el("span", "meter"), fill = el("i"); fill.style.width = (inten || 0) + "%";
+    meter.appendChild(fill); ik.appendChild(meter); meta.appendChild(ik);
+    row.appendChild(meta);
+    row.appendChild(spark(m));
+    if (m.reasons.length) row.appendChild(el("div", "why", m.reasons.join(" · ")));
+    var more = details(m); more.id = id; row.appendChild(more);
+    function toggle() {
+      S.open[key] = !S.open[key];
+      row.classList.toggle("open", S.open[key]); tk.setAttribute("aria-expanded", S.open[key] ? "true" : "false");
+    }
+    tk.addEventListener("click", function (e) { e.stopPropagation(); toggle(); });
+    row.addEventListener("click", function (e) { if (!more.contains(e.target)) toggle(); });
+    return row;
+  }
+
+  function details(m) {
+    var d = el("div", "more"), f = el("div", "facts num");
+    [["Entered", et(m.entered_at) + (m.entry_price != null ? " at " + price(m.entry_price) : "")],
+     ["Last", price(m.last_price) + (m.last_bar_at ? " (" + et(m.last_bar_at) + ")" : "")],
+     ["Best since entry", pct(m.peak_since_entry_pct)],
+     ["Volume today", m.rvol_day != null ? times(m.rvol_day) + " normal" : "–"],
+     ["Pace vs market", "15 min " + sig(m.z15) + " · 30 min " + sig(m.z30) + " · today " + sig(m.zday)],
+     ["Sector", m.sector || "–"]
+    ].forEach(function (p) {
+      var s = el("span"); s.appendChild(el("span", "mut", p[0] + " ")); s.appendChild(document.createTextNode(p[1])); f.appendChild(s);
+    });
+    d.appendChild(f);
+    if (m.state === "halted") d.appendChild(el("p", "", "No new trades since " + et(m.last_bar_at) + ": possibly a trading halt. It stays on the radar until trading resumes or the pause runs long."));
+    else if (m.state === "cooling") d.appendChild(el("p", "", STATE_HINT.cooling));
+    if (m.late) d.appendChild(el("p", "", "Added during a catch-up scan, so it appeared here more than 10 minutes after the move was confirmed."));
+    if (m.episode > 1) d.appendChild(el("p", "", backText(m)));
+    if (/^[A-Z][A-Z0-9.\-]{0,9}$/.test(m.ticker)) {
+      var p = el("p"), a = el("a", "", "Chart on Yahoo Finance ↗");
+      a.href = "https://finance.yahoo.com/quote/" + encodeURIComponent(m.ticker); a.target = "_blank"; a.rel = "noopener noreferrer";
+      p.appendChild(a); d.appendChild(p);
+    }
+    return d;
+  }
+
+  function renderHeating(c) {
+    var box = $("heating"), st = S.state;
+    box.textContent = "";
+    if (!st) { $("heatcount").textContent = "–"; box.appendChild(el("div", "empty", S.err ? "Nothing to show yet." : "Loading…")); return; }
+    var list = live(c) ? st.heating : [];
+    $("heatcount").textContent = list.length;
+    if (!list.length) { box.appendChild(el("div", "empty", "No stocks warming up right now.")); return; }
+    list.slice().sort(function (a, b) { return (b.intensity || 0) - (a.intensity || 0); }).forEach(function (h) {
+      var row = el("div", "x"), left = el("div"), top = el("div");
+      top.appendChild(arrow(h.direction)); top.appendChild(document.createTextNode(" "));
+      top.appendChild(el("b", "", h.ticker));
+      if (h.name) top.appendChild(el("span", "xn", " " + h.name));
+      top.appendChild(el("span", "num " + cls(h.chg_day_pct), " · " + pct(h.chg_day_pct) + " today"));
+      if (h.intensity != null) top.appendChild(el("span", "mut num", " · intensity " + Math.round(h.intensity)));
+      left.appendChild(top);
+      if (h.reasons.length) left.appendChild(el("div", "why", h.reasons.join(" · ")));
+      row.appendChild(left);
+      row.appendChild(el("div", "when num", price(h.price) + (h.since ? " · since " + et(h.since) : "")));
+      box.appendChild(row);
+    });
+  }
+
+  function renderExits(c) {
+    var box = $("exits"), st = S.state, note = $("exitnote");
+    box.textContent = "";
+    if (!st) { $("exitcount").textContent = "–"; box.appendChild(el("div", "empty", S.err ? "Nothing to show yet." : "Loading…")); return; }
+    var xs = st.recent_exits.slice().sort(function (a, b) { return (b.exited_at || 0) - (a.exited_at || 0); });
+    $("exitcount").textContent = xs.length;
+    var day = listsDay(st);
+    note.hidden = !xs.length || day === c.today;
+    note.textContent = day ? "From the session of " + dayLabel(day) + "." : "From the last session.";
+    if (!xs.length) { box.appendChild(el("div", "empty", "Nothing has dropped off this session.")); return; }
+    xs.forEach(function (x) {
+      var row = el("div", "x"), left = el("div"), top = el("div");
+      top.appendChild(arrow(x.direction)); top.appendChild(document.createTextNode(" "));
+      top.appendChild(el("b", "", x.ticker));
+      if (x.name) top.appendChild(el("span", "xn", " " + x.name));
+      top.appendChild(el("span", "num " + cls(x.move_since_entry_pct), " " + pct(x.move_since_entry_pct)));
+      var mins = x.minutes_on_radar != null ? x.minutes_on_radar : x.exited_at && x.entered_at ? (x.exited_at - x.entered_at) / 60e3 : null;
+      top.appendChild(el("span", "mut", mins != null ? " in " + dur(mins) + " on the radar" : " while on the radar"));
+      left.appendChild(top);
+      var reason = EXIT_TEXT[x.exit_reason] || "Dropped off";
+      left.appendChild(el("div", "why", reason + (x.exit_detail ? ": " + x.exit_detail : "")));
+      row.appendChild(left);
+      row.appendChild(el("div", "when", "left " + et(x.exited_at)));
+      box.appendChild(row);
+    });
+  }
+
+  function renderHealth() {
+    var st = S.state, box = $("health");
+    if (!st) return;
+    box.textContent = "";
+    var h = st.health, src = st.source, k = st.counts;
+    var reading = S.via === "mock" ? "sample data (mock)" : S.via === "raw" ? "delayed copy of the data branch" :
+      hasToken() ? "GitHub API with your token, checked every 30 s" : "GitHub API, checked once per scan";
+    [["Last scan", etDay(st.tick_id) + " · " + st.status + (st.message ? " (" + st.message + ")" : "")],
+     ["Scan took", h.last_tick_ms != null ? (h.last_tick_ms / 1000).toFixed(1) + " s" : "–"],
+     ["Stocks checked", k.universe != null ? k.universe + (k.stage_b != null ? " (" + k.stage_b + " looked at closely)" : "") : "–"],
+     ["Data source", (src.name ? src.name.charAt(0).toUpperCase() + src.name.slice(1) : "–") + (src.status ? " · " + src.status : "") +
+       (src.consecutive_failures ? " · " + src.consecutive_failures + " failed calls in a row" : "") +
+       (src.last_ok_at ? " · last good answer " + et(src.last_ok_at) : "")],
+     ["Scans today", h.ticks_today != null ? h.ticks_today + (h.ticks_skipped ? " (" + h.ticks_skipped + " missed)" : "") : "–"],
+     ["Scanner run", h.loop_started_at ? "started " + et(h.loop_started_at) + (h.loop_run_id ? " · " + h.loop_run_id : "") : "–"],
+     ["Waiting to publish", h.push_backlog != null ? String(h.push_backlog) : "–"],
+     ["Signal settings", st.params_version || "–"],
+     ["Reading via", reading + (S.rl.remaining != null && S.via !== "mock" ? " · " + S.rl.remaining + " GitHub requests left this hour" : "")]
+    ].forEach(function (r) {
+      var d = el("div"); d.appendChild(el("b", "", r[0] + ": ")); d.appendChild(document.createTextNode(r[1])); box.appendChild(d);
+    });
+  }
+
+  // ---------------------------------------------------------------- new-entry notifications (opt-in)
+  function toast(text) {
+    var t = $("toast"); t.textContent = text; t.classList.add("show");
+    clearTimeout(toast.h); toast.h = setTimeout(function () { t.classList.remove("show"); }, 6000);
+  }
+  function announce(fresh) {
+    toast("New on the radar: " + fresh.map(function (m) { return (m.direction === "down" ? "▼ " : "▲ ") + m.ticker; }).join(", "));
+    if (document.hidden) { S.unseen += fresh.length; document.title = "(" + S.unseen + ") " + TITLE; }
+    if (read(NOTIFY_KEY) !== "1") return;
+    var tapped = !navigator.userActivation || navigator.userActivation.hasBeenActive;   // else Chrome blocks and logs it
+    if (navigator.vibrate && tapped) try { navigator.vibrate(80); } catch (e) {}
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    fresh.forEach(function (m) {
+      try {                                             // throws on Android Chrome (needs a service worker)
+        new Notification(m.ticker + (m.direction === "down" ? " racing down" : " racing up"), {
+          body: pct(m.chg_15m_pct) + " in 15 min · volume " + times(m.rvol) + " normal" + (m.name ? " · " + m.name : ""),
+          tag: "radar-" + m.ticker + "-" + m.entered_at
+        });
+      } catch (e) {}
+    });
+  }
+  function renderNotify() {
+    var on = read(NOTIFY_KEY) === "1", b = $("notify");
+    b.setAttribute("aria-pressed", on ? "true" : "false");
+    b.textContent = on ? "🔔 Notifying" : "🔔 Notify me";
+    b.title = on ? "You get a notification when a stock enters while this page is open. Click to stop."
+                 : "Get a notification when a stock enters while this page is open";
+  }
+  $("notify").onclick = async function () {
+    if (read(NOTIFY_KEY) === "1") { store(NOTIFY_KEY, null); renderNotify(); schedule(); return; }
+    if ("Notification" in window && Notification.permission === "default") { try { await Notification.requestPermission(); } catch (e) {} }
+    store(NOTIFY_KEY, "1"); renderNotify(); schedule();
+    toast("Notifications on while this page stays open" +
+      (!("Notification" in window) || Notification.permission !== "granted" ? " (in-page only: this browser blocks system notifications)" : "") + ".");
+  };
+
+  // ---------------------------------------------------------------- controls & lifecycle
+  function redraw() { store(VIEW_KEY, JSON.stringify(S.view)); S.drawn = ""; render(); }
+  Array.prototype.forEach.call(document.querySelectorAll(".chip"), function (b) {
+    b.setAttribute("aria-pressed", b.getAttribute("data-f") === S.view.f ? "true" : "false");
+    b.onclick = function () {
+      S.view.f = b.getAttribute("data-f");
+      Array.prototype.forEach.call(document.querySelectorAll(".chip"), function (o) { o.setAttribute("aria-pressed", o === b ? "true" : "false"); });
+      redraw();
+    };
+  });
+  $("sort").value = S.view.sort;
+  $("sort").onchange = function () { S.view.sort = this.value; redraw(); };
+  function wake() {                                     // tab shown or focused: refresh, without burning the anonymous budget
+    if (document.hidden) { schedule(); return; }
+    S.unseen = 0; document.title = TITLE;
+    if (MOCK || hasToken() || now() - S.lastApiAt >= FOCUS_GAP) poll(); else { render(); schedule(); }
+  }
+  document.addEventListener("visibilitychange", wake);
+  window.addEventListener("focus", wake);
+  window.addEventListener("online", poll);
+  setInterval(function () { if (!document.hidden) render(); }, 15e3);   // keeps "updated N min ago" and the session state honest
+  if (MOCK) { var mp = $("mockpill"); mp.hidden = false; mp.className = "pill mockpill"; mp.textContent = "SAMPLE DATA"; }
+  renderNotify();
+  poll();
+})();
+</script>
+</body>
+</html>
