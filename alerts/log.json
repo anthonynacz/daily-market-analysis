@@ -1,6 +1,28 @@
 {
   "alerts": [
     {
+      "ts": "2026-09-30T17:51:00Z",
+      "ticker": "XOM",
+      "move_pct": 2.61,
+      "price": 163.96,
+      "session": "regular",
+      "trigger": "EIA crude draw to 414.1M bbl (lowest since Dec 2022) + TD Cowen PT raise to $180",
+      "headline": "EIA weekly petroleum status shows crude stockpiles fall 2.2M bbl",
+      "url": "https://www.ogj.com/general-interest/article/17250662/eia-us-crude-stockpiles-fall-3-million-bbl",
+      "action": "In report: Bullish option play #3"
+    },
+    {
+      "ts": "2026-09-30T17:51:00Z",
+      "ticker": "FICO",
+      "move_pct": -2.39,
+      "price": 603.08,
+      "session": "regular",
+      "trigger": "Continued slide after FHFA directs Fannie/Freddie to single-pricing-grid treating VantageScore equally",
+      "headline": "Fair Isaac stock plunges after Fannie and Freddie open door to FICO credit score rival",
+      "url": "https://finance.yahoo.com/markets/stocks/article/fair-isaac-stock-plunges-20-after-fannie-and-freddie-open-door-to-fico-credit-score-rival-142841650.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-09-28T20:57:00Z",
       "ticker": "ORCL",
       "move_pct": -3.05,
