@@ -1,6 +1,28 @@
 {
   "alerts": [
     {
+      "ts": "2026-09-30T19:51:47Z",
+      "ticker": "META",
+      "move_pct": -4.2,
+      "price": 720.16,
+      "session": "regular",
+      "trigger": "AI-capex spending concerns + JPMorgan downgrade to Neutral",
+      "headline": "Why is Meta stock down on Wednesday?",
+      "url": "https://invezz.com/ie/news/2026/09/30/why-is-meta-stock-down-on-wednesday/",
+      "action": "In report: Bullish (Sep 28 event) - WATCH"
+    },
+    {
+      "ts": "2026-09-30T19:51:47Z",
+      "ticker": "AAPL",
+      "move_pct": 2.4,
+      "price": 337.16,
+      "session": "regular",
+      "trigger": "Bloomberg: new CEO John Ternus sets Oct 13 smart-home hub launch",
+      "headline": "Apple Is Finally Ready to Enter Its Next Big Category: the Smart Home",
+      "url": "https://www.bloomberg.com/news/articles/2026-09-30/apple-is-finally-ready-to-enter-its-next-big-category-the-smart-home",
+      "action": "In report: Bullish Option Play #4"
+    },
+    {
       "ts": "2026-09-30T17:51:00Z",
       "ticker": "XOM",
       "move_pct": 2.61,
