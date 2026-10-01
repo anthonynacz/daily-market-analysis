@@ -1,6 +1,39 @@
 {
   "alerts": [
     {
+      "ts": "2026-10-01T18:50:45Z",
+      "ticker": "ACN",
+      "move_pct": 17.55,
+      "price": 215.56,
+      "session": "regular",
+      "trigger": "FY2026 Q4 earnings beat (EPS 3.29 vs 3.18 est), record bookings, best day ever",
+      "headline": "Accenture rallies more than 20% after earnings beat, heads for best day ever",
+      "url": "https://www.cnbc.com/2026/10/01/accenture-rallies-more-than-20percent-after-earnings-beat-heads-for-best-day-ever.html",
+      "action": "In report: Bullish (impact-2 event) - WATCH"
+    },
+    {
+      "ts": "2026-10-01T18:50:45Z",
+      "ticker": "UTHR",
+      "move_pct": 6.98,
+      "price": 515.1,
+      "session": "regular",
+      "trigger": "Court upheld patent Liquidia admitted infringing, Yutrepia litigation win",
+      "headline": "United Therapeutics Won Its Patent War and Liquidia Collapsed",
+      "url": "https://finance.yahoo.com/healthcare/articles/united-therapeutics-won-patent-war-150712736.html",
+      "action": "In report: Bullish (impact-3 event) - WATCH"
+    },
+    {
+      "ts": "2026-10-01T18:50:45Z",
+      "ticker": "RKLB",
+      "move_pct": 5.0,
+      "price": 72.88,
+      "session": "regular",
+      "trigger": "Record 20-mission Electron launch agreement with Synspective, backlog past 100 missions",
+      "headline": "Rocket Lab Climbs 5% as Largest-Ever Electron Deal Lifts Backlog Past 100 Missions",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/rocket-lab-climbs-5-largest-132637806.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-09-30T19:51:47Z",
       "ticker": "META",
       "move_pct": -4.2,
