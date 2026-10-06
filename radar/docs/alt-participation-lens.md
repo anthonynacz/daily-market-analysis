@@ -20,7 +20,7 @@ Volume/participation/structure lens for the Momentum Radar, calibrated by replay
 # Momentum Radar: signal model from the volume, participation and price-structure lens
 
 This is the design phase only, so neither the repo nor the data branch was touched. The reference code (feature engine, replay and sweep harness) and the tuned parameters are scratch files under
-`C:/Users/antho/AppData/Local/Temp/claude/C--Users-antho-Documents-Docs-Personal-claudemisc-misc-financial-marketanalysis/56584ef7-bc4e-44cf-adb0-c08f86caa6db/scratchpad/radar_design/vol_lens/`
+`<design-scratchpad>/radar_design/vol_lens/`
 (`fetch.py`, `features.py`, `build.py`, `replay.py`, `sweep.py`, `final_params.json`, `final_report.json`). Downloaded data is cached in `data/`.
 
 Everything here is educational analysis, not financial advice. The Radar describes what is racing now. It does not forecast.

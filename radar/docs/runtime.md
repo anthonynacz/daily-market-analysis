@@ -33,7 +33,7 @@ Name it Momentum Radar: stocks are "on the radar" or "dropped off", it covers mo
 # Momentum Radar: runtime (GitHub Actions) and page (radar.html)
 
 Role: platform and frontend. This covers the runtime and the page. It is a design only: nothing was changed in the repo or the data worktree. Every artifact is a runnable prototype under
-`C:/Users/antho/AppData/Local/Temp/claude/C--Users-antho-Documents-Docs-Personal-claudemisc-misc-financial-marketanalysis/56584ef7-bc4e-44cf-adb0-c08f86caa6db/scratchpad/radar_design/runtime/` (called `RT/` below).
+`<design-scratchpad>/radar_design/runtime/` (called `RT/` below).
 
 ---
 

@@ -22,7 +22,7 @@ Storage and housekeeping design for Momentum Radar, with a working prototype. 27
 # Momentum Radar: tables, housekeeping and backups (storage design)
 
 Prototype, tests and benchmarks (scratch only; repo and data worktree untouched):
-`C:/Users/antho/AppData/Local/Temp/claude/C--Users-antho-Documents-Docs-Personal-claudemisc-misc-financial-marketanalysis/56584ef7-bc4e-44cf-adb0-c08f86caa6db/scratchpad/radar_design/storage/`
+`<design-scratchpad>/radar_design/storage/`
 - `tables.py`: table registry and policy (paths, primary key, timestamp field, thresholds)
 - `housekeeping.py`: measure → classify → plan → archive/verify/trim → retention → manifest → ops rows; CLI `run | query | restore | verify`
 - `gitops.py`: data-branch write protocol (sync, publish with a head check, squash with lease, retry)

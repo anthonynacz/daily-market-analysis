@@ -25,7 +25,7 @@ I measured every source on Sunday 2026-09-27 from this machine's home connection
 
 All measurements were taken on 2026-09-27 (Sunday, market closed; values are Friday 2026-09-25) on this Windows machine's home connection, with Python 3.12, yfinance 1.2.0, curl_cffi 0.13.0 and pandas 3.0.1.
 
-Scratch folder: `C:/Users/antho/AppData/Local/Temp/claude/C--Users-antho-Documents-Docs-Personal-claudemisc-misc-financial-marketanalysis/56584ef7-bc4e-44cf-adb0-c08f86caa6db/scratchpad/radar_design/` (called `RD/` below).
+Scratch folder: `<design-scratchpad>/radar_design/` (called `RD/` below).
 - Scripts: `RD/t1_screeners.py`, `t2_download.py`, `t2b_semantics.py`, `t2c_direct.py`, `t3_universe.py`, `t4_nasdaq.py`, `t5_replay.py`, `t6_tick_sim.py`, `t7_ws.py`, `t8_replay_stats.py`.
 - Raw results: `RD/out/*.json`.
 - Tested fetch layer: `RD/radar_fetch.py`.

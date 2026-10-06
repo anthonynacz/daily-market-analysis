@@ -378,3 +378,60 @@ The design is runtime.md §3 adapted to `radar/state.json`. It is dependency-fre
 - Code follows the interfaces above exactly.
 - Report any interface gap instead of silently diverging.
 - The ENGINE replay on the design dataset (`scratchpad/radar_design/replay/`) must reproduce signal-model.md REC within tolerance: entries/day 3-12 on the 542 universe, prec@30 ≥ 53%, flap rate ≤ 6%.
+
+## 12. Review amendments (binding, 2026-10-06)
+
+These come from the adversarial review (findings in brackets). Where they change earlier sections, they win.
+
+### 12.1 Fetcher (DATA-1, DATA-2, E2E-1, DATA-7)
+- `Fetcher.__init__` gains keyword-only `deadline: float | None` (an absolute `time.monotonic()`-style value on the fetcher's own clock) and `on_health: Callable[[dict], None] | None`.
+- **Deadline:** past the deadline, no new request is started and no retry is made. The call returns what it has, graded `down` if nothing came back, so the tick always reaches its own `_finish`.
+- **Fail fast:** a Yahoo call stops issuing requests once 20 consecutive replies are 429 or network errors with no 200 in between, and is graded `down`.
+- **Crumb timeout:** the cookie and crumb fetch must honour `timeout_s`.
+- **Breaker per endpoint family:**
+  - The families are `chart` (bars_5m, daily) and `crumb` (quotes, movers). Each has its own consecutive_failures, breaker and probe counter.
+  - `health_state()` keeps top-level `name`, `status`, `consecutive_failures` and `last_ok_at`, derived as the worst of the two families (`name` is `nasdaq` if either breaker is open). It adds `families: {chart: {...}, crumb: {...}}`.
+  - Restoring the old flat format must work.
+- **on_health:** called with `health_state()` after every public call. The tick uses it to write `<pending_dir>/source_health.json` atomically.
+- **Nasdaq replies:** an HTTP 200 with `data: null` and a `bCodeMessage` is retryable (treat as 503). `BRK-B` has no Nasdaq chart and is skipped in fallback.
+- **Provisional bars (DATA-4):** `Bars.provisional_last` is True when the newest grid row starts at t, `last_trade_ts >= t + 300`, and no row t+300 exists.
+
+### 12.2 Engine (ENG-1, ENG-2, ENG-3, E2E-1, E2E-2, DATA-4, DATA-6)
+- `baselines.build_pack` raises `ValueError` when SPY has no prev_close.
+- **DATA_STALE** counts consecutive bars with no fresh print (`present and v > 0` for slot k), not 3-bar windows. The 3-bar `fresh` window stays for entry and confirmation.
+- **Name and sector** are stored in each member and heating dict at entry, and read from there.
+- **Missing baselines:** symbols in state but missing from the pack never raise. Heating entries are dropped. Members stay frozen and exit at SESSION_END.
+- **`Engine.stage_a(quotes, now_epoch, *, quotes_ok: bool = True)`:** when `quotes_ok` is False, return only members, heating names and REFERENCE_SYMBOLS. Never widen to the whole universe during an outage.
+- **`Engine.step(bars, now_epoch, *, halted=frozenset(), degraded_volume: bool = False)`:** while `degraded_volume` is True (bars came from the Nasdaq fallback), make no new HEATING or entries and suspend DRY soft-fails. Members are still refreshed and can exit on price-based rules.
+- **Provisional bars:** for a symbol whose slot-k bar is provisional (`provisional_last` and the newest row is slot k), make no new HEATING, confirmation or entry, and count no DRY/STALL soft-fail at that slot.
+- **Sector banners** list only names that are not members. `count` is the number of names held back beyond the cap.
+
+### 12.3 Tick, loop and workflows (RT-1, RT-2, ENG-1, ENG-3, DATA-3, DATA-4, DATA-5, E2E-4)
+- **Deadline:** the tick passes `deadline = start + tick_timeout_s - 40 s` to the Fetcher, and `on_health` writes `<pending_dir>/source_health.json`.
+- **Failure handling:** when a tick fails or times out, `Loop._write_failure` merges `source_health.json` (if present) into `engine.json.source_health`, then deletes it. On `timeout` it also raises the worst family's `consecutive_failures` by 1, and opens that breaker once it reaches the trip count.
+- **Stage A quotes:** the tick passes `quotes_ok = (quotes report status != "down")` to `stage_a`.
+- **Fallback bars:** it passes `degraded_volume = (bars report source == "nasdaq")` to `step`.
+- **Pack acceptance:** the pack is accepted only if SPY has 5m and daily bars, 5m coverage ≥ 80% and daily coverage ≥ 80%. Otherwise nothing is written and the next tick retries.
+- **Pack gaps:**
+  - Universe names missing from an accepted pack, or ineligible for `no prior close` / `no daily history`, are retried on later ticks, at most 3 times per day and only while the source is ok. They are stored in `baselines_extra` without using the dynamic budget.
+  - Names still missing are listed in scan_log `errors`.
+- **Dynamic adds:**
+  - They need both 5m and daily bars.
+  - Their sector comes from one batched `quotes()` call (Yahoo screens carry no sector), not `"Unknown"`.
+  - When `dynamic_adds` is non-empty but `baselines_extra` is missing or rejected, the tick re-extends those symbols before building the Engine.
+- **`state.json.health.push_backlog` is replaced by `published_late`:** the number of earlier scans this commit delivered after failed pushes. The page labels it "Published late: N earlier scans".
+- **Cancel handling:** `radar-scan.yml` runs `exec python -m radar.loop ...`. The tick runs via Popen and is polled every second so a stop request terminates it, then kills it after 3 s. `gitsync.publish` holds an exclusive `fcntl.flock` (no-op on Windows) on `<pending_dir>/.publish.lock`.
+- **Probe:** the probe samples SPY, QQQ, AAPL plus about 10 thin eligible names (lowest `medbar_usd` from the stored pack, else a fixed thin list) at offsets up to 300 s. It reports per-name stability and whether a fold was in progress.
+- **CI:** `radar-ci.yml` runs `pytest radar/tests -m "not soak"` on pushes and PRs. The soak tests carry `@pytest.mark.soak` and run in a separate job, on `workflow_dispatch` and weekly on Sunday.
+
+### 12.4 Storage (STO-1, STO-2, STO-3, STO-4)
+- **JSONL splitting:** JSONL is split on `"\n"` only, never `str.splitlines()`.
+- **Alerts backup:** every apply run merges all current alerts_log rows into its monthly backup partitions (backup only). Rows are removed from main only when the table is DEGRADED, by heal, or by retention.
+- **Daytime runs:** main is written (Phase B) only by the scheduled run, or by any run outside weekdays 13:00-21:30 UTC. Otherwise the main trim is `deferred` and done by the next nightly heal.
+- **Query matching:** `query --where k=v` matches both the Python and the JSON spelling of the value (`false`, `null`).
+
+### 12.5 Page (E2E-2, E2E-3, E2E-4)
+- **Exit rows** show `exit_detail` alone when present, else the plain-English label for `exit_reason`.
+- **Status banners** show `message` as is for degraded, no_data and error.
+- **Sector banners** read "+N more held back (tickers)" with a singular form for N = 1.
+- **`next_tick_at`** is the expected scan start (5-minute boundary + 50 s).
