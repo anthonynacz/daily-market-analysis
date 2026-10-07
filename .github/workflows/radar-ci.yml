@@ -3,9 +3,9 @@ name: Momentum Radar CI
 on:
   push:
     branches-ignore: [data]    # the scanner pushes the data branch ~80 times a day; never build it
-    paths: ['radar/**', '.github/workflows/**']
+    paths: ['radar/**', 'radar.html', '.github/workflows/**']
   pull_request:
-    paths: ['radar/**', '.github/workflows/**']
+    paths: ['radar/**', 'radar.html', '.github/workflows/**']
   workflow_dispatch:           # runs the soak job
   schedule:
     - cron: '17 6 * * 0'       # soak job, Sundays 06:17 UTC: no scan window, after the 03:30 housekeeping
