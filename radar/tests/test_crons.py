@@ -221,7 +221,7 @@ def test_the_probe_reads_the_stored_pack_without_credentials():
 def test_ci_never_runs_on_the_data_branch():
     text = CI_YML.read_text(encoding="utf-8")
     assert "branches-ignore: [data]" in text
-    assert text.count("paths: ['radar/**', '.github/workflows/**']") == 2
+    assert text.count("paths: ['radar/**', 'radar.html', '.github/workflows/**']") == 2
 
 
 def test_ci_runs_the_soak_tests_in_their_own_weekly_job():
