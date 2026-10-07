@@ -9,9 +9,9 @@ second so a SIGTERM/SIGINT to the loop (the workflow execs it) also ends the tic
 git and publishes every delta per the writer contract. Before each tick it records its own
 health and the previous push timings in the worktree's engine.json ("loop"), which the tick
 carries into state.json and scan_log. A tick that writes nothing still leaves the source health it
-reached (<pending>/source_health.json), and a timeout counts as one more failed call, so a blocked
-source opens the breaker. The loop retires after loop_retire_min; the successor run queued by the
-watchdog cron takes over.
+reached (<pending>/source_health.json), and a timeout counts as one more failed call (on every closed
+endpoint family when no call finished), so a blocked source opens the breaker. The loop retires after
+loop_retire_min; the successor run queued by the watchdog cron takes over.
 """
 from __future__ import annotations
 
@@ -32,8 +32,8 @@ from typing import Callable, Mapping
 from . import calendar_nyse as cal
 from . import delta, gate, gitsync
 from .config import PATHS, REPO, RUNTIME
-from .tick import (HELD, MS_KEYS, NO_GIT, SOURCE_HEALTH_FILE, iso, parse_tick_id, read_json, run_id, scan_log_row,
-                   source_block)
+from .tick import (DEFAULT_MARKET, EMPTY_COUNTS, HELD, MS_KEYS, NO_GIT, SOURCE_HEALTH_FILE, iso, parse_tick_id,
+                   read_json, resolve_session, run_id, same_session_scan, scan_log_row, session_json, source_block)
 
 NAP_S = 5.0
 POLL_S = 1.0                 # a running tick is checked this often for a stop request
@@ -142,18 +142,21 @@ def _fail_once(rec: dict, now: str) -> None:
     rec["breaker"] = breaker
 
 
-def health_after_timeout(health: object, now: str) -> dict:
+def health_after_timeout(health: object, now: str, *, blind: bool = False) -> dict:
     """A tick killed by the timeout counts as one more failed call (SPEC 12.3): the worst endpoint family
     (most failures in a row, among those whose breaker is still closed) is raised by 1 and its breaker
     opens at the trip count, so repeated timeouts reach the Nasdaq fallback even if a hang escapes the
-    tick's deadline. The flat (pre-family) record is handled the same way."""
+    tick's deadline. `blind`: the tick left no source_health.json, so no call finished and nothing tells
+    which family hangs; every family whose breaker is still closed is raised by 1 instead (SPEC 12.6).
+    The flat (pre-family) record is handled the same way."""
     h = dict(health) if isinstance(health, dict) else {}
     families = h.get("families")
     if isinstance(families, dict) and families:
         fams = {k: dict(v) if isinstance(v, dict) else {} for k, v in families.items()}
         closed = [k for k, f in fams.items() if not _breaker_open(f)] or list(fams)
         worst = max(closed, key=lambda k: _count(fams[k].get("consecutive_failures")))
-        _fail_once(fams[worst], now)
+        for k in closed if blind else [worst]:
+            _fail_once(fams[k], now)
         # the flat top level is derived as in fetch.Fetcher.health_state(): the worst family's values
         rank = ("ok", "degraded", "down")
         top = max(fams.values(), key=lambda f: (_breaker_open(f), rank.index(f["status"]) if f.get("status") in rank
@@ -291,7 +294,7 @@ class Loop:
             return
         wrote = any(d.name not in before for d in delta.list_pending(self.pending))
         if res["status"] in ("timeout", "error") and not wrote:
-            self._write_failure(slot, following, res)
+            self._write_failure(slot, following, res, ignore_calendar=ignore_calendar)
         self._publish(slot.final)
         log(f"{iso(slot.tick_epoch)[11:16]}Z {res['status']} · {res.get('members', '?')} on radar "
             f"(+{len(res.get('entered') or [])}/-{len(res.get('exited') or [])}) · tick {res.get('duration_ms', 0)} ms"
@@ -332,10 +335,11 @@ class Loop:
         log(f"housekeeping requested ({reason}): {result}")
         return {**ops, "hk_dispatched_at": iso(self.clock()), "hk_dispatch_result": result}
 
-    def _write_failure(self, slot: Slot, following: int | None, res: dict) -> None:
+    def _write_failure(self, slot: Slot, following: int | None, res: dict, *, ignore_calendar: bool = False) -> None:
         """The tick wrote nothing: log the run, keep this loop's engine.json bookkeeping and the source
         health the tick reached (SPEC 12.3) and, during the session, republish the previous snapshot
-        flagged as an error."""
+        flagged as an error. Only a scan of the same session is republished; otherwise (the pre-open
+        heartbeat, another session) the lists, day counts and last_bar start empty (SPEC 12.6)."""
         now = self.clock()
         engine = read_json(self.data / PATHS["engine"]) or {"schema": 1}
         side = self.pending / SOURCE_HEALTH_FILE
@@ -344,10 +348,17 @@ class Loop:
             stored = engine.get("source_health")
             engine["source_health"] = {**(stored if isinstance(stored, dict) else {}), **reached}
         if res["status"] == "timeout":
-            engine["source_health"] = health_after_timeout(engine.get("source_health"), iso(now))
+            engine["source_health"] = health_after_timeout(engine.get("source_health"), iso(now),
+                                                           blind=reached is None)
         replaces: dict = {PATHS["engine"]: engine}
         state = read_json(self.data / PATHS["state"])
         if state is not None and not slot.warmup:
+            scanned, _ = resolve_session(slot.tick_epoch, now, ignore_calendar=ignore_calendar, final=slot.final)
+            if not same_session_scan(state, scanned.day.isoformat() if scanned else None):
+                state.update(last_bar=None, market=dict(DEFAULT_MARKET), counts=dict(EMPTY_COUNTS),
+                             **{k: [] for k in ("members", "heating", "recent_exits", "sector_banners")})
+            if scanned is not None:
+                state["session"] = session_json(scanned, cal.phase_at(datetime.fromtimestamp(now, cal.UTC))[0])
             what = "timed out" if res["status"] == "timeout" else "failed"
             state.update(generated_at=iso(now), status="error", message=f"The last scan {what}. {HELD}",
                          next_tick_at=iso(following) if following else None,

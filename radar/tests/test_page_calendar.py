@@ -159,6 +159,7 @@ def test_mock_sector_banners_list_only_held_back_names():
 
 # ---------------------------------------------------------------- SPEC 12.5 texts
 def test_page_renders_through_the_spec_12_5_helpers():
+    # Wiring only; test_page_render.py runs the render functions and checks the text they put on the page.
     assert "exitText(x)" in js_decl("renderExits")
     assert "scanProblem(st)" in js_decl("renderBanner")
     assert "heldBack(s)" in js_decl("renderContext")

@@ -348,6 +348,50 @@ def test_a_tick_that_wrote_nothing_is_logged_and_the_snapshot_republished(tmp_pa
     assert state["source"]["status"] == ("down" if timed_out else "ok")
 
 
+FRIDAY_EXITS = [{"ticker": "FSLR", "exited_at": "2026-09-25T19:45:00Z"}, {"ticker": "BALL", "exited_at": "2026-09-25T18:10:00Z"}]
+FRIDAY_COUNTS = {"universe": 517, "stage_b": 40, "members": 0, "heating": 0, "entered_today": 9, "exited_today": 9}
+WARMUP_STATE = {**PREV_STATE, "generated_at": "2026-09-28T13:10:02Z", "tick_id": "2026-09-28T13:10:00Z",
+                "last_bar": "2026-09-25T20:00:00Z", "status": "closed", "message": "The radar starts at 09:35 ET.",
+                "session": {**PREV_STATE["session"], "phase": "pre"}, "next_tick_at": None, "counts": FRIDAY_COUNTS,
+                "members": [], "recent_exits": FRIDAY_EXITS}
+FRIDAY_STATE = {**PREV_STATE, "generated_at": "2026-09-25T20:00:52Z", "tick_id": "2026-09-25T20:00:00Z",
+                "last_bar": "2026-09-25T20:00:00Z", "next_tick_at": None, "counts": FRIDAY_COUNTS,
+                "session": {"date": "2026-09-25", "phase": "post", "open": "2026-09-25T13:30:00Z",
+                            "close": "2026-09-25T20:00:00Z", "half_day": False},
+                "members": [{"ticker": "HUM"}], "recent_exits": FRIDAY_EXITS}
+
+
+@pytest.mark.parametrize("prev", [WARMUP_STATE, FRIDAY_STATE], ids=["after the warmup heartbeat", "warmup wrote nothing"])
+@pytest.mark.parametrize("status", ["timeout", "error"])
+def test_a_failed_first_tick_republishes_nothing_from_another_session(tmp_path, prev, status):
+    """INT-1 (SPEC 12.6): the state before the first scan is the pre-open heartbeat (dated today, still showing
+    Friday's exits) or Friday's last scan. The error state must not present Friday's exits, counts, members or
+    last bar as today's, and is an in-session state of today."""
+    lp, _, fake, _ = make(tmp_path, "2026-09-28T13:35:50Z", state=prev, results={"2026-09-28T13:35:00Z": status},
+                          retire_min=3)
+    lp.run()
+    assert fake.ids == ["2026-09-28T13:35:00Z"]
+    state = json.loads((lp.data / PATHS["state"]).read_bytes())
+    check_state(state)
+    assert state["status"] == "error" and state["message"].startswith("The last scan ")
+    assert state["session"] == {"date": "2026-09-28", "phase": "regular", "open": "2026-09-28T13:30:00Z",
+                                "close": "2026-09-28T20:00:00Z", "half_day": False}
+    assert state["recent_exits"] == [] and state["members"] == [] and state["heating"] == [] and state["last_bar"] is None
+    assert state["counts"] == dict.fromkeys(FRIDAY_COUNTS, 0)
+    assert state["next_tick_at"] == "2026-09-28T13:40:50Z"
+
+
+def test_a_failed_tick_after_a_failed_scan_of_today_keeps_its_snapshot(tmp_path):
+    """An error state the loop wrote for today is a scan of today: a second failure republishes it as is."""
+    lp, _, fake, _ = make(tmp_path, "2026-09-28T14:34:00Z", state={**PREV_STATE, "status": "error"},
+                          results={i: "error" for i in ("2026-09-28T14:35:00Z", "2026-09-28T14:40:00Z")}, retire_min=8)
+    lp.run()
+    assert fake.ids == ["2026-09-28T14:35:00Z", "2026-09-28T14:40:00Z"]
+    state = json.loads((lp.data / PATHS["state"]).read_bytes())
+    assert state["members"] == PREV_STATE["members"] and state["counts"] == PREV_STATE["counts"]
+    assert state["last_bar"] == PREV_STATE["last_bar"] and state["session"] == PREV_STATE["session"]
+
+
 def test_a_failed_warmup_logs_without_touching_the_snapshot(tmp_path):
     lp, _, fake, _ = make(tmp_path, "2026-09-28T13:09:00Z", state=PREV_STATE, results={"2026-09-28T13:10:00Z": "error"},
                           retire_min=10)
@@ -466,6 +510,47 @@ def test_a_timeout_raises_the_worst_family_that_is_still_closed():
     assert out["breaker"]["open"] is True and out["name"] == "nasdaq"                      # the flat format
     out = loop_mod.health_after_timeout(None, now)
     assert out["consecutive_failures"] == 1 and out["breaker"] == {}
+
+
+def test_a_blind_timeout_raises_every_closed_family():
+    """INT-4: without the side file nothing tells which family hangs; dict order must not pick chart."""
+    now = "2026-09-28T14:40:20Z"
+    out = loop_mod.health_after_timeout({"families": {"chart": fam(0), "crumb": fam(0)}}, now, blind=True)
+    assert [out["families"][k]["consecutive_failures"] for k in ("chart", "crumb")] == [1, 1]
+    out = loop_mod.health_after_timeout({"families": {"chart": fam(2), "crumb": fam(2)}}, now, blind=True)
+    assert all(f["breaker"]["open"] and f["breaker"]["opened_at"] == now for f in out["families"].values())
+    out = loop_mod.health_after_timeout({"families": {"chart": fam(4, True), "crumb": fam(1)}}, now, blind=True)
+    assert out["families"]["chart"] == fam(4, True) and out["families"]["crumb"]["consecutive_failures"] == 2
+    out = loop_mod.health_after_timeout({"name": "yahoo", "consecutive_failures": 0, "breaker": {"open": False}}, now,
+                                        blind=True)
+    assert out["consecutive_failures"] == 1 and out["breaker"]["open"] is False             # the flat format
+
+
+FAMILIES_OK = {**HEALTHY, "families": {"chart": fam(0), "crumb": fam(0)}}
+
+
+def counts(run: SimpleNamespace) -> dict:
+    return {k: (f["consecutive_failures"], f["breaker"]["open"]) for k, f in run.source_health["families"].items()}
+
+
+def test_ticks_killed_before_any_call_count_on_both_families(tmp_path):
+    """INT-4 (SPEC 12.6): a crumb-only hang that kills every tick before a call finishes used to open the chart
+    breaker first (dict order), sending healthy chart traffic to Nasdaq. Both families now count."""
+    lp, _, fake, _ = make(tmp_path, "2026-09-28T14:34:00Z", state=PREV_STATE, engine={"schema": 1, "source_health": FAMILIES_OK},
+                          results={i: "timeout" for i in FIVE_MIN}, retire_min=18)
+    lp.run()
+    assert [counts(r) for r in fake.runs] == [{"chart": (n, n >= 3), "crumb": (n, n >= 3)} for n in range(4)]
+    assert fake.runs[-1].source_health["name"] == "nasdaq"
+
+
+def test_a_timeout_with_a_side_file_still_raises_only_the_worst_family(tmp_path):
+    side = {**FAMILIES_OK, "families": {"chart": fam(0), "crumb": {**fam(1), "status": "down"}}}
+    lp, _, _, _ = make(tmp_path, "2026-09-28T14:34:00Z", state=PREV_STATE, engine={"schema": 1, "source_health": FAMILIES_OK},
+                       results={FIVE_MIN[0]: "timeout"}, retire_min=3,
+                       on_run=lambda a: write_json_atomic(Path(a.pending_dir) / SOURCE_HEALTH_FILE, side))
+    lp.run()
+    h = engine_doc(lp)["source_health"]
+    assert h["families"]["chart"] == fam(0) and h["families"]["crumb"]["consecutive_failures"] == 2
 
 
 def test_the_loop_trips_the_breaker_at_the_fetchers_count():

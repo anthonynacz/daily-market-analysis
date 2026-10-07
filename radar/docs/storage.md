@@ -1,3 +1,9 @@
+# AMENDMENTS
+This design predates the review and rehearsal amendments. Where the text below disagrees with `radar/SPEC.md` sections 12.4 and 12.6, the SPEC wins. In particular:
+- **The routine's 200-row cap no longer drops rows before they are backed up** (corrects RISKS, item 2). Every apply run copies all current alerts_log rows into their monthly backup partitions (backup only, SPEC 12.4). The cap can therefore only drop rows a backup already holds, unless more than 200 alerts arrive between two housekeeping runs.
+- **Main is not touched only at 03:30 UTC** (corrects section 1.3). Manual and scanner-requested runs exist. Main is written (phase B) by the scheduled run, or by any run outside weekdays 13:00-21:30 UTC (SPEC 12.4). Inside that window the main trim is `deferred`, and the next run that writes main removes the rows. Every write stays a compare-and-swap on the file `sha`.
+- **Heal on main** (amends sections 3.1 and 3.2, SPEC 12.6): the backup-only copies never take a row off main. An alerts_log row leaves main only by archive (DEGRADED or forced), by retention, or when it is listed in `ops/pending_main_trim.json` on the data branch, i.e. it was archived by a run whose phase B was deferred or failed. The list is written with the data commit, ahead of phase B. A later run drops the rows main no longer has. Main therefore keeps alerts until 180 rows or 3 months.
+
 # SUMMARY
 Storage and housekeeping design for Momentum Radar, with a working prototype. 27 pytest tests pass: 23 on the table engine and 4 on git races against a local bare remote.
 - Tables: 5 append-only JSON Lines hot tables plus 2 snapshots on the `data` branch (radar/member_ticks, radar/events, radar/scan_log, ops/table_metrics, ops/housekeeping_runs; radar/state.json and ops/health.json). alerts/log.json stays on main, keeps its current format and is handled by housekeeping there.

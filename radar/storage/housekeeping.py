@@ -8,6 +8,9 @@ Crash-safety contract (storage.md section 3):
   * the manifest is an index that can always be rebuilt from the partition files;
   * main-branch tables (alerts/log.json) are trimmed only after the data-branch commit is published, and
     every apply run also copies all their current rows into the backups (backup only, SPEC 12.4);
+  * a main row leaves main only by archive (DEGRADED or forced), retention, or because it is listed in
+    ops/pending_main_trim.json (archived by a run whose main trim was deferred or failed, SPEC 12.6). The list
+    is written with the data commit, ahead of the main trim, and a later run drops the rows main no longer has;
   * JSONL is split on "\\n" only (jsonl_lines), never str.splitlines().
 
 CLI: python -m radar.storage.housekeeping run|query|restore|verify ...
@@ -31,9 +34,9 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from typing import Callable, Iterable, Protocol
 
-from radar.storage.tables import (BY_NAME, HEALTH_PATH, LATENCY_MIN_ROW_RATIO, MANIFEST_PATH, RETENTION_MONTHS,
-                                  SNAPSHOT_GUARDS, TABLES, WARN_RATIO, IO_P95_MAX_MS, TableSpec, fmt_bytes,
-                                  write_p95_ms)
+from radar.storage.tables import (BY_NAME, HEALTH_PATH, LATENCY_MIN_ROW_RATIO, MANIFEST_PATH, PENDING_MAIN_TRIM_PATH,
+                                  RETENTION_MONTHS, SNAPSHOT_GUARDS, TABLES, WARN_RATIO, IO_P95_MAX_MS, TableSpec,
+                                  fmt_bytes, write_p95_ms)
 
 SCHEMA_VERSION = 1
 TMP_SUFFIX = ".tmp-hk"
@@ -449,6 +452,67 @@ def reconcile_manifest(root: str, manifest: dict, now: datetime, run_id: str,
     return repairs, errors
 
 
+# ---------------------------------------------------------------- pending main trims (SPEC 12.6)
+
+Pending = dict[str, list[dict]]   # table -> [{"pk", "ts", "sha256" (of the canonical row), "run_id"}]
+
+
+def row_sha(row: dict) -> str:
+    return sha256(canon(row).encode("utf-8"))
+
+
+def load_pending(root: str) -> tuple[Pending, str | None]:
+    """ops/pending_main_trim.json as {table: entries}, plus a problem when it cannot be used. An unusable list
+    counts as empty: main then keeps those rows until the table is DEGRADED or they expire (nothing is lost)."""
+    data = read_file(os.path.join(root, PENDING_MAIN_TRIM_PATH))
+    if data is None:
+        return {}, None
+    try:
+        doc = json.loads(data.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as e:
+        return {}, f"{PENDING_MAIN_TRIM_PATH} unreadable ({e}); ignored and replaced"
+    tables = doc.get("tables") if isinstance(doc, dict) else None
+    if not (isinstance(tables, dict) and all(
+            isinstance(v, list) and all(isinstance(e, dict) and isinstance(e.get("pk"), str)
+                                        and isinstance(e.get("sha256"), str) for e in v) for v in tables.values())):
+        return {}, f"{PENDING_MAIN_TRIM_PATH} malformed; ignored and replaced"
+    return tables, None
+
+
+def plan_pending(plans: dict[str, TablePlan], old: Pending, run_id: str) -> Pending:
+    """The list this run leaves: for each main table it read, the rows it takes off main by archive or heal.
+
+    It is written in phase A, so it is published with the data commit, ahead of phase B: a deferred or failed
+    main trim leaves the rows listed and a later run heals them. A row a later run no longer finds on main (the
+    trim landed) is not healed there, so it drops out. Tables this run did not read or froze keep their entries."""
+    out = {t: v for t, v in old.items() if t not in plans or plans[t].error}
+    for name, tp in plans.items():
+        if tp.spec.branch != "main" or tp.error:
+            continue
+        first = {(e["pk"], e["sha256"]): e.get("run_id") for e in old.get(name, [])}
+        rows: dict[tuple[str, str], dict] = {}
+        for r in tp.archive + tp.heal:
+            h = row_sha(r.row)
+            rows[(r.pk, h)] = {"pk": r.pk, "ts": iso(r.ts), "sha256": h, "run_id": first.get((r.pk, h)) or run_id}
+        if rows:
+            out[name] = sorted(rows.values(), key=lambda e: (e["ts"], e["pk"], e["sha256"]))
+    return out
+
+
+def write_pending(root: str, old: Pending, new: Pending, problem: str | None, now: datetime, run_id: str) -> None:
+    """Rewrite the list only when it changed; an empty list removes the file."""
+    if new == old and not problem:
+        return
+    path = os.path.join(root, PENDING_MAIN_TRIM_PATH)
+    if not new:
+        if os.path.exists(path):
+            os.remove(path)
+        return
+    doc = {"schema_version": SCHEMA_VERSION, "updated_at": iso(now), "last_run_id": run_id,
+           "tables": dict(sorted(new.items()))}
+    atomic_write(path, (json.dumps(doc, indent=2, ensure_ascii=False) + "\n").encode("utf-8"))
+
+
 # ---------------------------------------------------------------- measure / classify / plan
 
 @dataclass
@@ -544,15 +608,23 @@ def plan_table(ht: HotTable, data: bytes | None, now: datetime, cutoff: datetime
     return tp
 
 
-def plan_heal(tp: TablePlan, root: str, manifest: dict, now: datetime) -> None:
-    """Rows older than hot_days that already sit, identical, in a partition (left by an interrupted run)
-    leave the hot table. Never shrinks the hot window below policy."""
+def plan_heal(tp: TablePlan, root: str, manifest: dict, now: datetime, pending: list[dict] | None = None) -> None:
+    """Hot rows that already sit, identical, in a partition leave the hot table.
+
+    Data tables: rows older than hot_days (left by an interrupted run); never shrinks the hot window below policy.
+    Main tables (SPEC 12.6): only rows listed in the pending main trims, whatever their age. Every main row is also
+    copied to the backups (backup only, SPEC 12.4), so a partition copy alone never takes a row off main."""
     spec = tp.spec
-    age_cut = now - timedelta(days=spec.hot_days)
+    if spec.branch == "main":
+        listed = {(e["pk"], e["sha256"]) for e in pending or ()}
+        candidates = [r for r in tp.keep if listed and r.row is not None and r.ts and r.pk
+                      and (r.pk, row_sha(r.row)) in listed]
+    else:
+        age_cut = now - timedelta(days=spec.hot_days)
+        candidates = [r for r in tp.keep if r.ts and r.pk and r.ts < age_cut]
     by_month: dict[str, list[HotRow]] = {}
-    for r in tp.keep:
-        if r.ts and r.pk and r.ts < age_cut:
-            by_month.setdefault(month_of(r.ts), []).append(r)
+    for r in candidates:
+        by_month.setdefault(month_of(r.ts), []).append(r)
     healed = set()
     for month, rows in by_month.items():
         e = manifest["partitions"].get(f"{spec.name}/{month}")
@@ -612,7 +684,7 @@ def snapshot_guards(root: str) -> dict[str, dict]:
 
 def _read_and_plan(stores: dict[str, Store], now: datetime, cutoff: datetime, force_tables: set[str],
                    part_errors: dict[str, str], repeats: int, data_root: str,
-                   manifest: dict) -> dict[str, TablePlan]:
+                   manifest: dict, pending: Pending) -> dict[str, TablePlan]:
     hot: dict[str, tuple[HotTable, bytes | None, str | None]] = {}
     for spec in TABLES:
         store = stores.get(spec.branch)
@@ -634,10 +706,11 @@ def _read_and_plan(stores: dict[str, Store], now: datetime, cutoff: datetime, fo
         if unreadable or name in part_errors:
             tp.freeze(unreadable or part_errors[name])
         else:
-            plan_heal(tp, data_root, manifest, now)
+            plan_heal(tp, data_root, manifest, now, pending.get(name))
             if tp.spec.branch == "main":
                 # SPEC 12.4: back up every current row (backup only), so the routine's 200-row cap can only drop
-                # rows a backup already holds. Rows still leave main only by archive (DEGRADED), heal or retention.
+                # rows a backup already holds. Rows still leave main only by archive (DEGRADED), retention or a
+                # pending main trim (SPEC 12.6), never because of these copies.
                 tp.backup_only = [r for r in tp.keep if r.row is not None and r.ts and r.pk]
         plans[name] = tp
     return plans
@@ -650,8 +723,10 @@ def run(data_root: str, main_store: Store | None = None, *, now: datetime, mode:
 
     Phase A edits the data checkout; `publish_data(report)` must push it and return True only once the
     push is confirmed. Phase B (main-branch trims) runs only after that, and only when `main_writes` is True;
-    otherwise main is only read and its trim is reported as "deferred" (the next nightly run trims the rows,
-    which the backups already hold). dry-run writes nothing anywhere.
+    otherwise main is only read and its trim is reported as "deferred". The rows phase B is to take off main by
+    archive or heal are listed in ops/pending_main_trim.json during phase A, so a deferred or failed trim is
+    redone by the next run that writes main (rows past retention are purged again anyway). dry-run writes
+    nothing anywhere.
     """
     if mode not in ("apply", "dry-run"):
         raise ValueError(f"mode must be apply or dry-run, not {mode!r}")
@@ -666,10 +741,15 @@ def run(data_root: str, main_store: Store | None = None, *, now: datetime, mode:
     repairs, part_errors = reconcile_manifest(data_root, manifest, now, run_id, cutoff)
     if manifest_problem:
         repairs.insert(0, manifest_problem)
+    pending, pending_problem = load_pending(data_root)
+    if pending_problem:
+        repairs.append(pending_problem)
     stores: dict[str, Store] = {"data": DirStore(data_root)}
     if main_store is not None:
         stores["main"] = main_store
-    plans = _read_and_plan(stores, now, cutoff, set(force_tables), part_errors, repeats, data_root, manifest)
+    plans = _read_and_plan(stores, now, cutoff, set(force_tables), part_errors, repeats, data_root, manifest,
+                           pending)
+    new_pending = plan_pending(plans, pending, run_id)
 
     # backup partitions: merge the archive (and backup-only) rows per (table, month)
     part_actions = []  # (spec, month, merged_rows, must_contain, prev_entry)
@@ -713,7 +793,8 @@ def run(data_root: str, main_store: Store | None = None, *, now: datetime, mode:
             if len(kept) != len(rows):
                 ret_actions.append((key, "filter" if kept else "delete", spec, month, kept))
 
-    report = _report_skeleton(run_id, trigger, mode, now, cutoff, plans, repairs, part_errors)
+    report = _report_skeleton(run_id, trigger, mode, now, cutoff, plans, repairs, part_errors, main_writes)
+    report["pending_main_trim"] = {t: len(v) for t, v in new_pending.items()}
     report["snapshots"] = snapshot_guards(data_root)
     report["planned"] = {
         "partitions_write": [f"{s.name}/{m}" for s, m, _, _, _ in part_actions],
@@ -764,6 +845,7 @@ def run(data_root: str, main_store: Store | None = None, *, now: datetime, mode:
 
     _verify_post_conditions(plans, data_root, manifest)
     report.update({"partitions_written": written, "partitions_deleted": deleted, "partitions_filtered": filtered})
+    write_pending(data_root, pending, new_pending, pending_problem, now, run_id)   # ahead of phase B (SPEC 12.6)
     _write_ops(data_root, report, manifest)
     checkpoint("ops_written")
 
@@ -774,21 +856,31 @@ def run(data_root: str, main_store: Store | None = None, *, now: datetime, mode:
     if ok and main_store is not None:
         for tp in plans.values():
             if tp.spec.branch == "main" and tp.changed and not main_writes:
-                report["main_trim"][tp.spec.name] = {
-                    "status": "deferred", "removed": 0,
-                    "detail": "main is not written by this run (daytime); the rows are backed up and the next "
-                              "nightly run trims them"}
+                report["main_trim"][tp.spec.name] = {"status": "deferred", "removed": 0,
+                                                     "detail": _deferred_detail(tp)}
             elif tp.spec.branch == "main" and tp.changed:
                 remove: dict[str, set[str]] = {}
                 for r in tp.archive + tp.purge + tp.heal:
                     remove.setdefault(r.pk, set()).add(canon(r.row))
                 try:
                     report["main_trim"][tp.spec.name] = trim_main_table(main_store, tp.spec, remove)
-                except (StoreError, HotTableUnreadable) as e:   # rows are already backed up; next run heals
+                except (StoreError, HotTableUnreadable) as e:   # backed up and listed as pending: next run heals
                     report["main_trim"][tp.spec.name] = {"status": "error", "removed": 0, "detail": str(e)}
     report["outcome"] = "ok" if ok else "publish_failed"
     report["duration_ms"] = int((time.perf_counter() - t_start) * 1000)
     return report
+
+
+def _deferred_detail(tp: TablePlan) -> str:
+    """What a deferred main trim leaves for later, and who does it."""
+    later = []
+    if tp.archive or tp.heal:
+        later.append(f"the {len(tp.archive) + len(tp.heal)} rows listed in {PENDING_MAIN_TRIM_PATH} "
+                     "(already backed up)")
+    if tp.purge:
+        later.append(f"the {len(tp.purge)} rows past retention")
+    return ("main is not written by this run (daytime, SPEC 12.4); the next run that writes main (at the latest the "
+            f"nightly scheduled run) removes {' and '.join(later)}")
 
 
 def _verify_post_conditions(plans: dict[str, TablePlan], root: str, manifest: dict) -> None:
@@ -807,16 +899,19 @@ def _verify_post_conditions(plans: dict[str, TablePlan], root: str, manifest: di
 
 
 def _report_skeleton(run_id: str, trigger: str, mode: str, now: datetime, cutoff: datetime,
-                     plans: dict[str, TablePlan], repairs: list[str], part_errors: dict[str, str]) -> dict:
+                     plans: dict[str, TablePlan], repairs: list[str], part_errors: dict[str, str],
+                     main_writes: bool = True) -> dict:
     tables = {}
     for name, tp in plans.items():
-        kept_ts = [r.ts for r in tp.keep if r.ts]
+        # "after" = what the table holds once this run is done: a main table this run may not write stays as read
+        after = tp.keep if main_writes or tp.spec.branch != "main" else tp.ht.rows
+        kept_ts = [r.ts for r in after if r.ts]
         tables[name] = {
             "status": tp.status, "reasons": tp.reasons, "warnings": tp.warnings, "error": tp.error,
             "location": f"{tp.spec.branch}:{tp.spec.path}", **tp.metrics,
             "archive_rows": len(tp.archive), "purge_rows": len(tp.purge), "heal_rows": len(tp.heal),
-            "backup_only_rows": len(tp.backup_only), "rows_after": len(tp.keep),
-            "bytes_after": len(render_hot(tp.ht, tp.keep)) if tp.changed else tp.ht.nbytes,
+            "backup_only_rows": len(tp.backup_only), "rows_after": len(after),
+            "bytes_after": len(render_hot(tp.ht, after)) if len(after) != len(tp.ht.rows) else tp.ht.nbytes,
             "min_ts_after": iso(min(kept_ts)) if kept_ts else None,
         }
     return {"v": SCHEMA_VERSION, "run_id": run_id, "trigger": trigger, "mode": mode, "as_of": iso(now),
@@ -957,6 +1052,10 @@ def render_markdown(report: dict) -> str:
     copies = [f"{n} {t['backup_only_rows']} rows" for n, t in report["tables"].items() if t.get("backup_only_rows")]
     if copies:
         lines.append(f"Backed up and kept hot (backup only): {'; '.join(copies)}")
+    pending = [f"{n} {k} rows" for n, k in report.get("pending_main_trim", {}).items() if k]
+    if pending:
+        lines.append(f"Main trims listed in {PENDING_MAIN_TRIM_PATH} (kept until a later run finds the rows gone "
+                     f"from main): {'; '.join(pending)}")
     if report["manifest_repairs"]:
         lines.append(f"Manifest repairs: {'; '.join(report['manifest_repairs'])}")
     if report["partition_errors"]:

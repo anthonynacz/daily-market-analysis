@@ -270,6 +270,52 @@ def test_main_api_failure_is_reported_and_fails_the_job(tmp_path):
     assert "error, 0 rows removed" in job.render_summary(result, AS_OF)
 
 
+@pytest.mark.parametrize("failure", ["error", "conflict"])
+def test_a_failed_main_trim_is_redone_by_the_next_run_from_the_pending_list(tmp_path, failure):
+    """SPEC 12.6: the rows a run archives are listed in ops/pending_main_trim.json with the data commit, before
+    phase B. When phase B then fails (API error, or the sha keeps moving), the next run, which would not archive
+    this OK log on its own, removes exactly those rows; the run after that finds them gone and clears the list."""
+    data = str(tmp_path / "data")
+    alerts = old_alerts(120, days=30)                                    # OK: below the 144-row warning level
+    fake = FakeGitHub({PATH: alerts_doc(alerts)})
+    before = fake.files[PATH]
+    broken, served = {"on": False}, fake.__call__
+
+    def transport(method, url, headers, body, timeout):
+        if broken["on"] and method == "PUT":
+            fake.calls.append((method, url, headers, None))
+            return (502, {}, b'{"message": "injected"}') if failure == "error" else (409, {}, b'{"message": "moved"}')
+        return served(method, url, headers, body, timeout)
+    store = ContentsStore(GitHubApi("tok", transport=transport, sleep=lambda s: None), REPO)
+
+    def publish_then_break(report: dict) -> bool:
+        broken["on"] = True
+        return True
+    rep = hk.run(data, store, now=AS_OF, force_tables=["alerts_log"], publish_data=publish_then_break, repeats=1)
+    t = rep["tables"]["alerts_log"]
+    archived = t["archive_rows"]
+    assert t["status"] == "OK" and archived == 21                       # forced: squeezed to 99 rows
+    assert rep["main_trim"]["alerts_log"]["status"] == failure and fake.files[PATH] == before
+    assert rep["pending_main_trim"] == {"alerts_log": archived}
+    with open(os.path.join(data, T.PENDING_MAIN_TRIM_PATH), encoding="utf-8") as f:
+        listed = json.load(f)["tables"]["alerts_log"]
+    spec = T.BY_NAME["alerts_log"]
+    assert {e["pk"] for e in listed} == {hk.pk_of(spec, a) for a in alerts[-archived:]}
+
+    broken["on"] = False
+    rep = hk.run(data, store, now=AS_OF + timedelta(days=1), repeats=1)  # not forced: only the list says so
+    t = rep["tables"]["alerts_log"]
+    assert t["archive_rows"] == 0 and t["heal_rows"] == archived
+    assert rep["main_trim"]["alerts_log"] == {"status": "trimmed", "removed": archived, "attempts": 1}
+    assert json.loads(fake.files[PATH])["alerts"] == alerts[:-archived]
+
+    puts = fake.puts()
+    rep = hk.run(data, store, now=AS_OF + timedelta(days=2), repeats=1)
+    assert rep["pending_main_trim"] == {} and rep["main_trim"] == {} and fake.puts() == puts
+    assert not os.path.exists(os.path.join(data, T.PENDING_MAIN_TRIM_PATH))
+    assert {hk.pk_of(spec, a) for a in data_backup_rows(data)} == {hk.pk_of(spec, a) for a in alerts}
+
+
 def test_main_unreachable_freezes_the_alerts_log_but_not_the_data_branch(tmp_path):
     data = str(tmp_path / "data")
     fake = FakeGitHub({PATH: alerts_doc(old_alerts(200))})

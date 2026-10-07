@@ -47,7 +47,11 @@ HK_MIN_SAMPLES = 10
 PACK_MIN_COVERAGE = 0.8          # below this share of symbols with 5m (or daily) history, retry the pack next tick
 PACK_GAP_RETRIES = 3             # later ticks that may refetch universe names the accepted pack lacks, per day
 PACK_GAP_REASONS = ("no prior close", "no daily history")   # ineligible only because the daily fetch failed
-DEADLINE_MARGIN_S = 40           # the fetcher stops this long before the loop's tick timeout (SPEC 12.3)
+# The fetcher stops this long before the loop's tick timeout (SPEC 12.3). It must cover a request still in
+# flight at the deadline (up to 2 x fetch_timeout_s on the crumb path) plus the engine step and the write;
+# test_tick pins that. The deadline counts from the start of main(), before the heavy imports, because the
+# loop's timer starts at Popen.
+DEADLINE_MARGIN_S = 40
 SOURCE_HEALTH_FILE = "source_health.json"   # <pending>/..., the fetcher's health after every call (SPEC 12.3)
 BARS_DEGRADED_SHARE = 0.2
 MS_KEYS = ("fetch_quotes", "fetch_movers", "fetch_bars", "baselines", "compute", "write", "total")
@@ -169,6 +173,16 @@ def session_json(s: cal.Session, phase: str) -> dict:
             "half_day": s.early_close}
 
 
+def same_session_scan(state: Any, session_date: str | None) -> bool:
+    """Whether a previous state.json is a scan of session `session_date`: same session.date, phase regular and
+    status not closed. Only then may an in-session state carry its recent_exits, day counts and last_bar
+    (SPEC 12.6). The pre-open heartbeat is dated today but still shows the previous session's exits."""
+    state = state if isinstance(state, dict) else {}
+    s = state.get("session") if isinstance(state.get("session"), dict) else {}
+    return (session_date is not None and s.get("date") == session_date and s.get("phase") == "regular"
+            and state.get("status") != "closed")
+
+
 def first_tick_et(s: cal.Session) -> str:
     return (s.open + timedelta(minutes=5)).astimezone(cal.ET).strftime("%H:%M")
 
@@ -222,11 +236,13 @@ class TickArgs:
 # ---------------------------------------------------------------- the tick
 
 class Tick:
-    def __init__(self, args: TickArgs, deps: Deps, *, clock: Callable[[], float] = time.time):
+    def __init__(self, args: TickArgs, deps: Deps, *, clock: Callable[[], float] = time.time,
+                 started: float | None = None):
         self.a, self.deps, self.clock = args, deps, clock
         self.data = Path(args.data_dir)
         self.tick_epoch = parse_tick_id(args.tick_id)
-        self.started = clock()
+        # main() passes the time it started (on `clock`), before real_deps() imported numpy and the HTTP stack.
+        self.started = clock() if started is None else started
         # The fetcher stops starting requests here, so a slow or blocked source still lets the tick reach
         # _finish (and save the breaker progress) before the loop's timeout kills it.
         self.deadline = self.started + RUNTIME["tick_timeout_s"] - DEADLINE_MARGIN_S
@@ -342,7 +358,12 @@ class Tick:
     def _extend(self, what: str, pack: Any, session: cal.Session, syms: list[str],
                 meta: Callable[[list[str]], dict[str, dict]], *, replace_existing: bool = False) -> tuple[Any, list[str]]:
         """Fetch 1mo 5m and 3mo daily bars for syms and add the ones that have both to the pack, as
-        baselines_extra symbols. Returns (pack, symbols added)."""
+        baselines_extra symbols. Returns (pack, symbols added). Nothing is fetched while the chart breaker is
+        open (SPEC 12.6): these ranges have no Nasdaq fallback, so the calls would go to Yahoo as unscheduled
+        probes. The callers retry on a later tick."""
+        if self._chart_breaker_open():
+            self.errors.append(f"{what}: {', '.join(syms)} deferred while the chart breaker is open")
+            return pack, []
         with self.timed("baselines"):
             bars5, _ = self._fetch(f"{what} bars", self.fetcher().bars_5m, syms, range_="1mo")
             daily, _ = self._fetch(f"{what} daily", self.fetcher().daily, syms, range_="3mo")
@@ -388,15 +409,25 @@ class Tick:
         h = self._source_health()
         return isinstance(h, dict) and h.get("status") == "ok" and h.get("name", "yahoo") == "yahoo"
 
+    def _chart_breaker_open(self) -> bool:
+        """The chart family's breaker, read as fetch.Fetcher restores it (a flat record covers both families)."""
+        h = self._source_health()
+        h = h if isinstance(h, dict) else {}
+        fams = h.get("families")
+        rec = fams.get("chart") if isinstance(fams, dict) else h
+        breaker = rec.get("breaker") if isinstance(rec, dict) else None
+        return isinstance(breaker, dict) and breaker.get("open") is True
+
     def _fill_gaps(self, pack: Any, session: cal.Session) -> Any:
         """Retry the pack's gaps on later ticks, at most PACK_GAP_RETRIES times a day and only while the
-        source is ok; the names go to baselines_extra without using the dynamic budget. Names still
-        missing are listed in scan_log errors."""
+        source is ok and the chart breaker closed; the names go to baselines_extra without using the dynamic
+        budget. Names still missing are listed in scan_log errors."""
         gaps = self._pack_gaps(pack)
         date = session.day.isoformat()
         pg = self.pack_gaps if isinstance(self.pack_gaps, dict) and self.pack_gaps.get("session") == date else {}
         retries = int(pg.get("retries") or 0)
-        if gaps and not self._pack_built and retries < PACK_GAP_RETRIES and self._source_ok():
+        if gaps and not self._pack_built and retries < PACK_GAP_RETRIES and self._source_ok() \
+                and not self._chart_breaker_open():
             retries += 1
             meta = self._universe_meta()
             pack, _ = self._extend("pack gaps", pack, session, gaps, lambda syms: {s: meta.get(s, {}) for s in syms},
@@ -523,9 +554,10 @@ class Tick:
                             message=state["message"], state=state, engine_doc=engine_doc, replaces={})
 
     def _carry(self, session: cal.Session, replaces: dict[str, Any], dyn: list[str], status: str, message: str) -> dict:
-        """No engine step this tick: republish the previous snapshot of the same session."""
+        """No engine step this tick: republish the previous snapshot if it is a scan of this session, else
+        start empty (SPEC 12.6)."""
         date = session.day.isoformat()
-        same = (self.prev_state.get("session") or {}).get("date") == date
+        same = same_session_scan(self.prev_state, date)
         snap = {k: self.prev_state.get(k) for k in ("members", "heating", "recent_exits", "sector_banners", "market")} if same else {}
         counts = {**EMPTY_COUNTS, **(self.prev_state.get("counts") or {})} if same else dict(EMPTY_COUNTS)
         source = self._source()
@@ -541,7 +573,7 @@ class Tick:
         return datetime.fromtimestamp(self.clock(), cal.UTC)
 
     def _prev_same(self, date: str, key: str) -> Any:
-        return self.prev_state.get(key) if (self.prev_state.get("session") or {}).get("date") == date else None
+        return self.prev_state.get(key) if same_session_scan(self.prev_state, date) else None
 
     def _scan_status(self, qrep: FetchReport, brep: FetchReport, bars: dict) -> tuple[str, str]:
         if not bars:
@@ -688,22 +720,23 @@ def _bar_at(bars: Any, ts: int) -> tuple | None:
     return (float(bars.o[i]), float(bars.h[i]), float(bars.l[i]), float(bars.c[i]), int(bars.v[i]))
 
 
-def _fold_at(bars: Any, ts: int) -> tuple[bool, bool]:
-    """(fold in progress for the bar starting at ts, its next row exists). A fold: that bar is the
-    newest row and the last trade is already past its end, so Yahoo is still folding trades into it."""
+def _provisional_at(bars: Any, ts: int) -> tuple[bool, bool]:
+    """(the bar starting at ts was provisional, its next row exists). Provisional is the fetcher's own flag
+    (fetch._parse_bars, SPEC 12.1) on the newest row: the last trade is still inside it, so Yahoo has not
+    closed it yet. The engine holds decisions on such a bar (SPEC 12.2)."""
     if bars is None or not len(bars.ts):
         return False, False
     stamps = bars.ts.tolist()
-    last = getattr(bars, "last_trade_ts", None)
-    return stamps[-1] == ts and last is not None and last >= ts + 300, ts + 300 in stamps
+    return stamps[-1] == ts and getattr(bars, "provisional_last", False) is True, ts + 300 in stamps
 
 
 def bar_finality(fetcher: Any, clock: Callable[[], float], sleep: Callable[[float], None],
                  symbols: tuple[str, ...] = PROBE_FINALITY_SYMBOLS,
                  offsets: tuple[int, ...] = PROBE_FINALITY_OFFSETS) -> dict:
     """Refetch the bar that closes at the next boundary at several offsets and report, per name, when it
-    stopped changing, whether a fold was in progress (newest row, last trade past its end) and when the
-    next row appeared. Only meaningful during the regular session."""
+    stopped changing, at which offsets it was provisional (the fetcher's rule), after which offsets it still
+    changed, and when the next row appeared. A change after an offset where the bar was not provisional is a
+    miss of the rule (`changed_unflagged`). Only meaningful during the regular session."""
     now = clock()
     phase, s = cal.phase_at(datetime.fromtimestamp(now, cal.UTC))
     boundary = (int(now) // 300 + 1) * 300
@@ -714,7 +747,8 @@ def bar_finality(fetcher: Any, clock: Callable[[], float], sleep: Callable[[floa
     for off in offsets:
         sleep(max(0.0, boundary + off - clock()))
         bars, rep = fetcher.bars_5m(list(symbols), range_="1d")
-        samples.append({sym: (_bar_at(bars.get(sym), start), *_fold_at(bars.get(sym), start)) for sym in symbols})
+        samples.append({sym: (_bar_at(bars.get(sym), start), *_provisional_at(bars.get(sym), start))
+                        for sym in symbols})
     result = {}
     for sym in symbols:
         final = samples[-1][sym][0]
@@ -723,15 +757,23 @@ def bar_finality(fetcher: Any, clock: Callable[[], float], sleep: Callable[[floa
             if final is None or snap[sym][0] != final:
                 break
             settled = off
-        result[sym] = {"first_seen_s": next((o for o, sn in zip(offsets, samples) if sn[sym][0]), None),
+        seen = [(off, sn[sym][0], sn[sym][1]) for off, sn in zip(offsets, samples) if sn[sym][0]]
+        result[sym] = {"first_seen_s": seen[0][0] if seen else None,
                        "stable_from_s": settled, "final_close": final[3] if final else None,
                        "final_volume": final[4] if final else None,
-                       "fold_seen": any(sn[sym][1] for sn in samples),
+                       "provisional_s": [off for off, _, prov in seen if prov],
+                       "changed_after_s": [off for i, (off, bar, _) in enumerate(seen)
+                                           if any(later != bar for _, later, _ in seen[i + 1:])],
                        "next_row_s": next((o for o, sn in zip(offsets, samples) if sn[sym][2]), None)}
     late = sorted(sym for sym, v in result.items()
                   if v["stable_from_s"] is None or v["stable_from_s"] > RUNTIME["tick_offset_s"])
+    missed = sorted(sym for sym, v in result.items() if set(v["changed_after_s"]) - set(v["provisional_s"]))
     return {"measured": True, "bar_start": iso(start), "offsets_s": list(offsets), "symbols": result,
-            "unstable_at_tick": late}
+            "unstable_at_tick": late, "changed_unflagged": missed}
+
+
+def _offsets(values: list[int]) -> str:
+    return ", ".join(map(str, values)) or "none"
 
 
 def probe(deps: Deps, *, clock: Callable[[], float] = time.time, sleep: Callable[[float], None] = time.sleep,
@@ -754,7 +796,7 @@ def probe(deps: Deps, *, clock: Callable[[], float] = time.time, sleep: Callable
         except Exception as e:  # noqa: BLE001 - a diagnostic run reports every failure
             rows.append((label, "none", f"error: {type(e).__name__}", 0, 0, 0, 0, int((time.perf_counter() - t) * 1000)))
     thin, thin_source = thin_names(deps, data_dir)
-    # Liquid names settle within seconds; thin ones are where a provisional (still folding) bar shows up.
+    # Liquid names settle within seconds; thin ones are where a provisional (not yet closed) bar shows up.
     finality = bar_finality(fetcher, clock, sleep,
                             symbols=PROBE_FINALITY_SYMBOLS + tuple(s for s in thin if s not in PROBE_FINALITY_SYMBOLS))
     finality.update(thin=thin, thin_source=thin_source)
@@ -765,13 +807,18 @@ def probe(deps: Deps, *, clock: Callable[[], float] = time.time, sleep: Callable
     if finality["measured"]:
         md += [f"Bar starting {finality['bar_start']}, refetched at +{', +'.join(map(str, finality['offsets_s']))} s "
                f"after its close. Compare `stable_from_s` with the {PARAMS['session']['bar_final_grace_s']} s grace and "
-               f"the +{RUNTIME['tick_offset_s']} s tick. A fold means the bar was the newest row while the last trade "
-               "was already past its end, so the source was still adding trades to it.", "",
+               f"the +{RUNTIME['tick_offset_s']} s tick. Provisional uses the fetcher's rule (SPEC 12.1): the bar was "
+               "the newest row and the last trade was still inside it, so the source had not closed it. "
+               "'Changed after' lists the offsets after which the bar still changed; a change after an offset "
+               "where it was not provisional is a miss of the rule.", "",
                f"Not stable by the tick: {', '.join(finality['unstable_at_tick']) or 'none'}.", "",
-               "| Symbol | Kind | First seen (s) | Stable from (s) | Fold seen | Next row from (s) | Close | Volume |",
-               "|---|---|---|---|---|---|---|---|"]
+               f"Changed while not provisional: {', '.join(finality['changed_unflagged']) or 'none'}.", "",
+               "| Symbol | Kind | First seen (s) | Stable from (s) | Provisional at (s) | Changed after (s) "
+               "| Next row from (s) | Close | Volume |",
+               "|---|---|---|---|---|---|---|---|---|"]
         md += [f"| {sym} | {'thin' if sym in thin else 'liquid'} | {v['first_seen_s']} | {v['stable_from_s']} | "
-               f"{'yes' if v['fold_seen'] else 'no'} | {v['next_row_s']} | {v['final_close']} | {v['final_volume']} |"
+               f"{_offsets(v['provisional_s'])} | {_offsets(v['changed_after_s'])} | {v['next_row_s']} | "
+               f"{v['final_close']} | {v['final_volume']} |"
                for sym, v in finality["symbols"].items()]
     else:
         md.append(finality["note"])
@@ -790,6 +837,7 @@ def probe(deps: Deps, *, clock: Callable[[], float] = time.time, sleep: Callable
 # ---------------------------------------------------------------- CLI
 
 def main(argv: list[str] | None = None) -> int:
+    started = time.time()     # the loop's timeout runs from Popen: the deadline counts the imports in real_deps() too
     ap = argparse.ArgumentParser(description="Run one Momentum Radar scan and write its delta.")
     ap.add_argument("--data-dir", type=Path)
     ap.add_argument("--pending-dir", type=Path)
@@ -811,7 +859,7 @@ def main(argv: list[str] | None = None) -> int:
             result = probe(real_deps(), summary_path=os.environ.get("GITHUB_STEP_SUMMARY"), data_dir=a.data_dir)
         else:
             result = Tick(TickArgs(a.data_dir, a.pending_dir, a.tick_id, a.warmup, a.final, a.ignore_calendar),
-                          real_deps()).run()
+                          real_deps(), started=started).run()
     except Exception as e:  # noqa: BLE001 - a bug: report it on the result line, exit non-zero
         traceback.print_exc(file=sys.stderr)
         print(json.dumps({"status": "error", "message": f"tick failed: {type(e).__name__}: {e}"[:300]}), flush=True)

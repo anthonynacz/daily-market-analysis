@@ -9,7 +9,8 @@ The alerts routine keeps only the newest 200 rows, so at the storage.md high end
 between two nightly runs. Every apply run copies all current alerts_log rows into the backups (backup only,
 SPEC 12.4), so each row the routine drops must already be backed up: the soak counts the drops and asserts that
 none of them is unbacked, at every profile (and that the high profile really does drop rows). Housekeeping
-itself must never lose a row it saw.
+itself must never lose a row it saw. Those copies never take a row off main (SPEC 12.6): a log that is not
+DEGRADED loses main rows only by retention or a listed pending main trim.
 
 The git soak checks the history invariant on a local bare remote: 14 days by default, 120 with RADAR_SOAK=1.
 Both tests carry the `soak` marker: CI runs them in their own job (SPEC 12.3).
@@ -158,7 +159,7 @@ def test_soak_120_days(profile, scaled, tmp_path):
         spec = scaled[name]
         generated[name].update({hk.pk_of(spec, r): (hk.parse_ts(r[spec.ts]), hk.canon(r)) for r in rows})
 
-    archived_runs, routine_drops, unbacked_drops = 0, 0, []
+    archived_runs, routine_drops, unbacked_drops, main_trims = 0, 0, [], 0
     for d, session in trading_days(START, DAYS):
         if session is not None:
             day = session_day_rows(session, PROFILES[profile], rng, mt_scale=SCALE["member_ticks"],
@@ -176,11 +177,22 @@ def test_soak_120_days(profile, scaled, tmp_path):
                     generated["alerts_log"].pop(key)
                     unbacked_drops.append((d.isoformat(), key))
         now = morning_after(d)
+        on_main = {k: ts for k, ts, _ in hot_rows(alerts_spec, main)}
+        listed = {e["pk"] for e in hk.load_pending(data)[0].get("alerts_log", [])}
         rep = hk.run(data, hk.DirStore(main), now=now, run_id=f"hk-{d:%Y%m%d}", trigger="schedule", repeats=1)
         archived_runs += any(t["archive_rows"] for t in rep["tables"].values())
         check_invariants(scaled, data, main, now, cache, generated, rep)
+        # SPEC 12.6: a log that is not DEGRADED loses main rows only by retention or a listed pending trim (never
+        # because the backup-only copies hold them), and once the trim lands no listed row is left on main
+        left = {k for k, _, _ in hot_rows(alerts_spec, main)}
+        cutoff = hk.retention_cutoff(now.date())
+        if rep["tables"]["alerts_log"]["status"] != "DEGRADED":
+            assert all(k in listed or on_main[k] < cutoff for k in set(on_main) - left), (profile, now)
+        main_trims += bool(set(on_main) - left)
+        assert left.isdisjoint(e["pk"] for e in hk.load_pending(data)[0].get("alerts_log", [])), (profile, now)
     assert unbacked_drops == [], unbacked_drops[:5]       # SPEC 12.4: the nightly backup-only copy closes the gap
     assert bool(routine_drops) == ROUTINE_DROPS_HAPPEN[profile], routine_drops
+    assert main_trims                    # main was trimmed (retention at least) and the rules above were checked
     if profile != "low":
         assert archived_runs >= 3        # the archive path, not only retention, was exercised
 

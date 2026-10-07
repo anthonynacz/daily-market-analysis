@@ -92,7 +92,8 @@ def scanner_busy_via_api(api: GitHubApi, repo: str) -> str | None:
 def main_writes_allowed(trigger: str, now: datetime) -> bool:
     """SPEC 12.4: main is written (phase B) only by the scheduled run, or by a run outside weekdays
     13:00-21:30 UTC, when the alerts and daily-report routines push main with plain git. Other runs only read
-    main and defer its trim to the next nightly run (the rows are already in the backups)."""
+    main and defer its trim to the next run that writes main (the rows are in the backups and listed in
+    ops/pending_main_trim.json, SPEC 12.6)."""
     if trigger == "schedule":
         return True
     now = now.astimezone(timezone.utc)
@@ -231,7 +232,8 @@ def render_summary(result: JobResult, now: datetime) -> str:
                          + (f" in {t['attempts']} attempt(s)" if "attempts" in t else "")
                          + (f": {t['detail']}" if t.get("detail") else ""))
     elif rep and rep.get("data_published") is False:
-        lines.append("- **Main:** untouched (the data push was not confirmed; the next run heals)")
+        lines.append("- **Main:** untouched (the data push was not confirmed, so nothing was archived; the next run "
+                     "plans the trim again)")
     days = calendar_days_left(now)
     lines.append(f"- **NYSE calendar:** covered through {cal.COVERED_THROUGH} ({days} days left)"
                  + (" - add next year's holidays to radar/calendar_nyse.py" if days < CALENDAR_WARN_DAYS else ""))

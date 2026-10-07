@@ -710,6 +710,60 @@ def test_a_200_between_failures_restarts_the_fail_fast_count():
     assert report.status == "degraded" and not any(n.startswith("stopped") for n in report.notes)
 
 
+def test_fail_fast_after_partial_success_is_still_down():
+    """E2E-1 (fix-verify coverage): 30 symbols answer, then Yahoo blocks. The call keeps the 30 bars it has but
+    is graded down (SPEC 12.1), not degraded by its failure share: the tick reads quotes_ok from the grade, and
+    as the 3rd strike it is the call that opens the breaker, so Nasdaq serves it at once."""
+    symbols = [f"S{i:02d}" for i in range(60)]
+    ok = chart_ok("AAPL", {})
+    t = FakeTransport(chart=scripted(*[ok] * 30, (429, None)))
+    f, _ = make(t, workers=1)                                   # one thread: replies arrive in symbol order
+    bars, report = f.bars_5m(symbols)
+    # S30..S35 fail 3 times each and S36 twice: the 20th failure in a row ends the call before S37
+    assert len(bars) == report.ok == 30 and t.count("chart") == 30 + fetch.FAIL_FAST
+    assert report.status == "down" and report.http_429 == fetch.FAIL_FAST
+    assert report.notes == [f"stopped after {fetch.FAIL_FAST} failed replies in a row, 23 not requested"]
+    t = FakeTransport(chart=scripted(*[ok] * 30, (429, None)), nasdaq=nasdaq_ok)
+    f, _ = make(t, workers=1, health={"families": {"chart": {"consecutive_failures": 2}}})
+    bars, report = f.bars_5m(symbols)
+    assert report.source == "nasdaq" and set(bars) == set(symbols)
+    assert report.notes[0] == "yahoo down: 30/60 ok" and family(f.health_state(), "chart") == (3, True)
+
+
+def test_deadline_cut_of_an_otherwise_good_call_is_degraded():
+    """DATA-2 (fix-verify coverage): the deadline stops a call after 9 of 10 symbols. The 9 answers alone would
+    grade it ok (10% missing, no 429), but a call the deadline cut is at best degraded."""
+    now = [T0]
+
+    def chart_1s(key, params):
+        now[0] += 1.0
+        return chart_ok(key, params)
+    t = FakeTransport(chart=chart_1s)
+    f, _ = make(t, workers=1, clock=lambda: now[0], deadline=T0 + 8.5)
+    bars, report = f.bars_5m([f"S{i}" for i in range(10)])
+    assert len(bars) == report.ok == 9 and report.failed == ["S9"] and report.http_429 == 0
+    assert report.status == "degraded" and report.notes == ["deadline reached, 1 not requested"]
+
+
+@pytest.mark.parametrize("path", ["breaker open", "failed probe", "tripping call"])
+def test_fail_fast_never_cuts_the_nasdaq_fallback(monkeypatch, path):
+    """E2E-1 (fix-verify coverage): fail-fast is for Yahoo calls (SPEC 12.1). Nasdaq is the last source, so a
+    run of failed Nasdaq replies (7 symbols x 3 tries = 21 in a row) does not end the call, on any of the three
+    ways a call reaches it: the remaining symbols are still requested and served."""
+    monkeypatch.setattr(fetch, "_pool_map", lambda fn, items, workers: [fn(x) for x in items])   # replies in order
+    symbols = [f"S{i:02d}" for i in range(30)]
+    broken = {fetch.NASDAQ_CHART.format(s) for s in symbols[:7]}
+    t = FakeTransport(chart=chart_fail, nasdaq=lambda url, p: (503, None) if url in broken else nasdaq_ok(url, p))
+    health = {"breaker open": open_health("chart"), "failed probe": open_health("chart", calls=2),
+              "tripping call": {"families": {"chart": {"consecutive_failures": 2}}}}[path]
+    f, _ = make(t, health=health)
+    bars, report = f.bars_5m(symbols)
+    assert t.count("nasdaq") == 7 * fetch.TRIES + 23 and 7 * fetch.TRIES > fetch.FAIL_FAST
+    assert report.source == "nasdaq" and set(bars) == set(symbols[7:]) and report.failed == symbols[:7]
+    assert report.status == "degraded" and not any(n.startswith("stopped") for n in report.notes)
+    assert (t.count("chart") > 0) == (path != "breaker open")
+
+
 class SimClock:
     """Virtual seconds for the tick-budget tests. `pool_map` stands in for fetch._pool_map: items run one at a
     time, each on the simulated worker that is free first (as a thread pool hands them out), so time advances
@@ -887,16 +941,19 @@ def test_hung_crumbed_call_is_cut_at_the_timeout(monkeypatch, step):
 def test_crumb_and_request_share_one_timeout(monkeypatch):
     """Fix-verify note on DATA-2: with one cap per step, a slow crumb followed by a slow request could take
     twice the timeout (24 s), while the tick's deadline assumes a request ends within fetch_timeout_s. Here
-    each step takes 0.6 x the timeout: the call is cut at the timeout instead of answering after 1.2 x."""
-    cap = 0.3
+    each step takes 0.75 x the timeout, so only a cap shared by both steps cuts the call: at the timeout,
+    instead of answering after 1.5 x. (Updated: the work used to end 0.06 s after the cap, so a join() that
+    returned late on a loaded runner let the call complete. It now ends 0.5 s after the cap, and each step
+    still ends 0.25 s inside it, so a cap per step would let the call answer.)"""
+    cap = 1.0
 
     class SlowYfData(FakeGetter):
         def _get_cookie_and_crumb(self, timeout=30):
-            time.sleep(0.6 * cap)
+            time.sleep(0.75 * cap)
             return "crumb", "basic"
 
         def get(self, url, params=None, timeout=None, headers=None):
-            time.sleep(0.6 * cap)
+            time.sleep(0.75 * cap)
             return FakeResponse(200, {"quoteResponse": {"result": []}})
     monkeypatch.setattr(fetch, "YfData", SlowYfData())
     with pytest.raises(TimeoutError):

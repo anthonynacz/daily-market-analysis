@@ -548,24 +548,142 @@ def test_every_run_backs_up_the_alerts_log_so_the_routine_cap_drops_only_backed_
     assert hk.verify(data)["problems"] == []
 
 
-def test_backed_up_alerts_older_than_hot_days_leave_main_by_heal(tmp_path):
-    """The backup-only copy leaves main as it is; the next run heals the rows older than hot_days off main."""
+def main_alerts(main):
+    with open(os.path.join(main, T.ALERTS_LOG_PATH), encoding="utf-8") as f:
+        return json.load(f)["alerts"]
+
+
+def pending_file(data):
+    path = os.path.join(data, T.PENDING_MAIN_TRIM_PATH)
+    if not os.path.exists(path):
+        return None
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)["tables"]
+
+
+def test_an_ok_alerts_log_keeps_its_rows_on_main_until_retention(tmp_path):
+    """INT-2 / SPEC 12.6: the backup-only copies never heal main. An OK log keeps rows older than hot_days on main
+    night after night (they used to leave after 30 days); only retention (3 months) takes them off."""
     data, main = str(tmp_path / "data"), str(tmp_path / "main")
     rng = random.Random(9)
     spec = T.BY_NAME["alerts_log"]
     alerts = [alert_row(AS_OF - timedelta(days=i + 1), "AMD", rng) for i in range(60)]   # 60 rows: OK
     write_alerts(main, alerts)
     before = digest(main)
-    rep = hk.run(data, hk.DirStore(main), now=AS_OF, repeats=1)
+    rep = hk.run(data, hk.DirStore(main), now=AS_OF, trigger="schedule", repeats=1)
     assert rep["tables"]["alerts_log"]["status"] == "OK" and digest(main) == before
-    rep = hk.run(data, hk.DirStore(main), now=AS_OF + timedelta(hours=1), repeats=1)
-    t = rep["tables"]["alerts_log"]
-    old = [a for a in alerts if hk.parse_ts(a["ts"]) < AS_OF + timedelta(hours=1) - timedelta(days=spec.hot_days)]
-    assert t["heal_rows"] == len(old) > 0 and t["archive_rows"] == 0 and rep["partitions_written"] == []
-    assert rep["main_trim"]["alerts_log"] == {"status": "trimmed", "removed": len(old), "attempts": 1}
-    with open(os.path.join(main, T.ALERTS_LOG_PATH), encoding="utf-8") as f:
-        assert json.load(f)["alerts"] == alerts[:len(alerts) - len(old)]
     assert sorted(map(hk.canon, backup_rows(data, "alerts_log"))) == sorted(map(hk.canon, alerts))
+    expired_nights = 0
+    for night in range(1, 41):
+        now = AS_OF + timedelta(days=night)
+        on_main = main_alerts(main)
+        rep = hk.run(data, hk.DirStore(main), now=now, trigger="schedule", repeats=1)
+        t = rep["tables"]["alerts_log"]
+        alive = [a for a in alerts if hk.parse_ts(a["ts"]) >= hk.retention_cutoff(now.date())]
+        assert t["status"] == "OK" and t["heal_rows"] == t["archive_rows"] == 0, (night, t)
+        assert t["purge_rows"] == len(on_main) - len(alive), night
+        assert main_alerts(main) == alive, night                       # older than hot_days, still on main
+        assert rep["pending_main_trim"] == {} and pending_file(data) is None
+        if len(alive) == len(alerts):
+            assert digest(main) == before, night                       # not even rewritten
+        expired_nights += len(alive) < len(on_main)
+    assert expired_nights and 0 < len(main_alerts(main)) < len(alerts)   # retention did run on main ...
+    assert all(hk.parse_ts(a["ts"]) < now - timedelta(days=spec.hot_days) for a in main_alerts(main))  # hot_days not
+    assert {hk.canon(a) for a in alive} <= set(map(hk.canon, backup_rows(data, "alerts_log")))
+
+
+def test_a_deferred_daytime_archive_is_trimmed_by_the_next_nightly_run(tmp_path):
+    """SPEC 12.6: a daytime forced archive of an OK log (main not written) lists its rows in
+    ops/pending_main_trim.json; the next nightly run removes exactly those rows, then the list is cleared. Before,
+    the nightly heal only removed the few that had meanwhile passed hot_days and left the rest on main."""
+    data, main = str(tmp_path / "data"), str(tmp_path / "main")
+    spec = T.BY_NAME["alerts_log"]
+    t_day = datetime(2026, 10, 6, 15, 0, tzinfo=UTC)                    # Tuesday, inside 13:00-21:30 UTC
+    rng = random.Random(10)
+    alerts = [alert_row(t_day - timedelta(hours=6 * i + 3), f"T{i}", rng) for i in range(120)]   # 30 days, OK
+    write_alerts(main, alerts)
+    before, size = digest(main), os.path.getsize(os.path.join(main, T.ALERTS_LOG_PATH))
+    rep = hk.run(data, hk.DirStore(main), now=t_day, force_tables=["alerts_log"], trigger="manual",
+                 main_writes=False, repeats=1)
+    t = rep["tables"]["alerts_log"]
+    target = int(spec.target_ratio * spec.max_rows)                   # the squeeze goes down to 99 rows
+    archived = alerts[target:]
+    assert t["status"] == "OK" and t["archive_rows"] == len(archived) == 21 and digest(main) == before
+    trim = rep["main_trim"]["alerts_log"]
+    assert trim["status"] == "deferred" and trim["removed"] == 0
+    assert "the 21 rows listed in ops/pending_main_trim.json" in trim["detail"] and "nightly" in trim["detail"]
+    listed = pending_file(data)["alerts_log"]
+    assert [(e["pk"], e["sha256"]) for e in listed] == [(hk.pk_of(spec, a), hk.row_sha(a)) for a in archived[::-1]]
+    assert rep["pending_main_trim"] == {"alerts_log": 21}
+    assert "Main trims listed in ops/pending_main_trim.json" in hk.render_markdown(rep)
+    # the ops tables report what main still holds, not the deferred plan
+    assert (t["rows_after"], t["bytes_after"]) == (120, size)
+    with open(os.path.join(data, T.HEALTH_PATH), encoding="utf-8") as f:
+        health = json.load(f)["tables"]["alerts_log"]
+    assert (health["rows"], health["bytes"]) == (120, size)
+    metric = [r for r in read_jsonl(os.path.join(data, "ops/table_metrics.jsonl")) if r["table"] == "alerts_log"][-1]
+    assert (metric["rows_after"], metric["bytes_after"]) == (120, size)
+
+    night = datetime(2026, 10, 7, 3, 30, tzinfo=UTC)
+    rep = hk.run(data, hk.DirStore(main), now=night, trigger="schedule", repeats=1)
+    t = rep["tables"]["alerts_log"]
+    assert t["archive_rows"] == 0 and t["heal_rows"] == 21 and t["rows_after"] == target
+    assert rep["main_trim"]["alerts_log"] == {"status": "trimmed", "removed": 21, "attempts": 1}
+    assert main_alerts(main) == alerts[:target]
+    assert not [p for p in rep["partitions_written"] if p.startswith("alerts_log/")]   # all backed up by day
+    assert pending_file(data)["alerts_log"] == listed                 # kept until a run sees them gone from main
+
+    after = digest(main)
+    for d in range(1, 8):                     # a week of nights: rows pass hot_days, none leaves main
+        rep = hk.run(data, hk.DirStore(main), now=night + timedelta(days=d), trigger="schedule", repeats=1)
+        t = rep["tables"]["alerts_log"]
+        assert t["heal_rows"] == t["archive_rows"] == t["purge_rows"] == 0 and rep["main_trim"] == {}
+        assert rep["pending_main_trim"] == {} and pending_file(data) is None
+    assert digest(main) == after
+    assert any(hk.parse_ts(a["ts"]) < night + timedelta(days=7 - spec.hot_days) for a in main_alerts(main))
+    window = (t_day - timedelta(days=40), t_day + timedelta(days=1))
+    assert {hk.canon(r) for r in hk.query(data, "alerts_log", *window)} == {hk.canon(a) for a in alerts}
+    assert hk.verify(data)["problems"] == []
+
+
+def test_pending_main_trims_outlive_runs_that_cannot_use_them(tmp_path):
+    """The list is kept by a run without main (data branch only) and by a run whose alerts log is frozen; an
+    unreadable list is reported, ignored (main keeps the rows, nothing is lost) and removed; a listed row whose
+    content changed on main is not removed."""
+    data, main = str(tmp_path / "data"), str(tmp_path / "main")
+    rng = random.Random(11)
+    alerts = [alert_row(AS_OF - timedelta(days=i + 1), f"T{i}", rng) for i in range(50)]
+    write_alerts(main, alerts)
+    rep = hk.run(data, hk.DirStore(main), now=AS_OF, force_tables=["alerts_log"], main_writes=False, repeats=1)
+    archived = rep["tables"]["alerts_log"]["archive_rows"]
+    assert archived == 20 and rep["main_trim"]["alerts_log"]["status"] == "deferred"
+    listed = pending_file(data)
+    rep = hk.run(data, None, now=AS_OF + timedelta(hours=1), repeats=1)          # no main store
+    assert pending_file(data) == listed and rep["pending_main_trim"] == {"alerts_log": archived}
+    with open(os.path.join(main, T.ALERTS_LOG_PATH), "rb") as f:
+        good = f.read()
+    with open(os.path.join(main, T.ALERTS_LOG_PATH), "wb") as f:
+        f.write(b'{"alerts": [')
+    rep = hk.run(data, hk.DirStore(main), now=AS_OF + timedelta(hours=2), repeats=1)   # main unreadable: frozen
+    assert rep["tables"]["alerts_log"]["status"] == "ERROR" and pending_file(data) == listed
+    with open(os.path.join(main, T.ALERTS_LOG_PATH), "wb") as f:
+        f.write(good)
+
+    changed = {**alerts[-1], "headline": "edited by the routine"}             # the oldest listed row, new content
+    write_alerts(main, alerts[:-1] + [changed])
+    rep = hk.run(data, hk.DirStore(main), now=AS_OF + timedelta(hours=3), trigger="schedule", repeats=1)
+    assert rep["tables"]["alerts_log"]["heal_rows"] == archived - 1
+    assert main_alerts(main) == alerts[:30] + [changed]
+    assert pending_file(data)["alerts_log"] == [e for e in listed["alerts_log"] if e["pk"] != hk.pk_of(
+        T.BY_NAME["alerts_log"], changed)]
+
+    with open(os.path.join(data, T.PENDING_MAIN_TRIM_PATH), "w", encoding="utf-8") as f:
+        f.write("{truncated")
+    before = digest(main)
+    rep = hk.run(data, hk.DirStore(main), now=AS_OF + timedelta(hours=4), trigger="schedule", repeats=1)
+    assert any("pending_main_trim.json unreadable" in r for r in rep["manifest_repairs"])
+    assert rep["tables"]["alerts_log"]["heal_rows"] == 0 and digest(main) == before
+    assert pending_file(data) is None and not rep["partition_errors"]
 
 
 def test_backup_only_skips_a_frozen_alerts_log(tmp_path):

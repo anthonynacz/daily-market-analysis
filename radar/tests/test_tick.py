@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 import threading
+import time
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -420,8 +421,9 @@ def test_a_pack_from_other_params_is_rebuilt(tmp_path):
 
 def test_no_history_means_no_data_and_members_are_held(tmp_path):
     data = tmp_path / "data"
-    prev = {"schema": 1, "session": {"date": DAY}, "members": [member()], "heating": [], "recent_exits": [EXIT],
-            "counts": {"members": 1, "entered_today": 3}, "last_bar": "2026-09-28T14:30:00Z",
+    prev = {"schema": 1, "status": "ok", "session": {"date": DAY, "phase": "regular"}, "members": [member()],
+            "heating": [], "recent_exits": [EXIT], "counts": {"members": 1, "entered_today": 3},
+            "last_bar": "2026-09-28T14:30:00Z",
             "source": {"name": "yahoo", "status": "ok", "consecutive_failures": 0, "last_ok_at": "2026-09-28T14:30:50Z"}}
     seed(data, state=prev, engine={"schema": 1, "session": DAY, "engine": {"session": DAY, "last_slot": 11},
                                    "dynamic_adds": ["HOOD"], "ops": {"hk_dispatched_at": None}, "loop": {}})
@@ -783,6 +785,121 @@ def test_non_finite_numbers_become_null(tmp_path):
     assert "non-finite" in jsonl(tmp_path / "data", "scan_log")[0]["errors"][0]
 
 
+# ---------------------------------------------------------------- SPEC 12.6: integration-rehearsal amendments
+
+FRIDAY_EXIT = {**EXIT, "entered_at": "2026-09-25T18:50:00Z", "exited_at": "2026-09-25T19:45:00Z"}
+FRIDAY_FINAL = {"schema": 1, "tick_id": "2026-09-25T20:00:00Z", "status": "ok", "last_bar": "2026-09-25T20:00:00Z",
+                "session": {"date": "2026-09-25", "phase": "post"}, "members": [], "heating": [],
+                "recent_exits": [FRIDAY_EXIT], "counts": {"entered_today": 9, "exited_today": 9}}
+
+
+@pytest.mark.parametrize("history", [False, True], ids=["no pack: carry", "no bars: nothing processed"])
+def test_the_first_scan_carries_nothing_from_the_previous_session(tmp_path, history):
+    """INT-1: the warmup heartbeat is dated today but keeps Friday's exits until the open. A first scan that
+    cannot step (no pack, so _carry) or processes no bar must not republish them, Friday's day counts or
+    Friday's last bar as today's."""
+    data = tmp_path / "data"
+    seed(data, state=FRIDAY_FINAL, pack=pack_for(DAY) if history else None)
+    warm = "2026-09-28T13:10:00Z"
+    run(tmp_path, World(history=history), warm, tick.parse_tick_id(warm) + 2, warmup=True)
+    heartbeat = read(data, "state")
+    assert heartbeat["status"] == "closed" and heartbeat["session"]["date"] == DAY
+    assert heartbeat["recent_exits"] == [FRIDAY_EXIT] and heartbeat["counts"]["exited_today"] == 9   # until the open
+    first = "2026-09-28T13:35:00Z"
+    res, _ = run(tmp_path, World(history=history, no_bars=True), first, tick.parse_tick_id(first) + 50)
+    state = read(data, "state")
+    check_state(state)
+    assert res["status"] == "no_data" and state["status"] == "no_data" and res["processed_slots"] == []
+    assert state["session"]["date"] == DAY and state["session"]["phase"] == "regular"
+    assert state["last_bar"] is None
+    if not history:                                         # _carry: nothing of the heartbeat is today's
+        assert state["recent_exits"] == [] and state["members"] == [] and state["heating"] == []
+        assert state["counts"] == tick.EMPTY_COUNTS
+
+
+@pytest.mark.parametrize("state, same", [
+    ({"status": "ok", "session": {"date": DAY, "phase": "regular"}}, True),
+    ({"status": "no_data", "session": {"date": DAY, "phase": "regular"}}, True),
+    ({"status": "error", "session": {"date": DAY, "phase": "regular"}}, True),     # a failed scan the loop republished
+    ({"status": "closed", "session": {"date": DAY, "phase": "pre"}}, False),       # the warmup heartbeat
+    ({"status": "error", "session": {"date": DAY, "phase": "pre"}}, False),        # what the loop used to make of it
+    ({"status": "closed", "session": {"date": DAY, "phase": "regular"}}, False),
+    ({"status": "ok", "session": {"date": "2026-09-25", "phase": "regular"}}, False),
+    ({"status": "ok", "session": {"date": DAY}}, False),
+    ({"status": "ok", "session": None}, False), ({}, False), (None, False),
+])
+def test_same_session_scan(state, same):
+    assert tick.same_session_scan(state, DAY) is same
+    assert tick.same_session_scan(state, None) is False
+
+
+def chart_health(chart_open: bool) -> dict:
+    def fam(is_open: bool) -> dict:
+        return {"status": "down" if is_open else "ok", "consecutive_failures": 3 if is_open else 0, "last_ok_at": None,
+                "breaker": {"open": is_open, "opened_at": None, "calls": 1 if is_open else 0, "good_probes": 0}}
+    return {**HEALTHY, "name": "nasdaq" if chart_open else "yahoo", "families": {"chart": fam(chart_open), "crumb": fam(False)}}
+
+
+def test_no_baseline_downloads_while_the_chart_breaker_is_open(tmp_path):
+    """INT-5: 1mo/3mo calls have no Nasdaq fallback, so with the chart breaker open they would go to Yahoo as
+    unscheduled probes (and could close it in one tick). New and re-extended dynamic adds and pack-gap retries
+    wait, without using a retry, and resume once the chart family is ok again."""
+    data = tmp_path / "data"
+    pack = pack_for(DAY)
+    pack.symbols["XOM"] = FakeSym(name="XOM", eligible=False, ineligible_reason="no prior close")
+    seed(data, pack=pack, engine={"schema": 1, "session": DAY, "engine": None, "dynamic_adds": ["DYN"],
+                                  "source_health": chart_health(True), "ops": {"hk_dispatched_at": None}, "loop": {}})
+    world = World(movers=[Quote("CRWV", price=90.0, name="CoreWeave")])
+    res, _ = run(tmp_path, world)
+    assert res["status"] == "ok"
+    assert [c for c in world.calls if c[0] in ("bars_5m", "daily") and c[1] != "1d"] == []
+    assert not any(c[0] == "extend_pack" for c in world.calls) and ("quotes", ["CRWV"]) not in world.calls
+    engine = read(data, "engine")
+    assert engine["dynamic_adds"] == ["DYN"] and engine["pack_gaps"] == {"session": DAY, "retries": 0}
+    errors = jsonl(data, "scan_log")[-1]["errors"]
+    assert "dynamic adds: DYN deferred while the chart breaker is open" in errors
+    assert "dynamic adds: CRWV deferred while the chart breaker is open" in errors
+    assert "pack gaps: 1 universe name(s) without usable baselines: XOM" in errors
+
+    engine["source_health"] = chart_health(False)               # the chart family is back
+    (data / PATHS["engine"]).write_bytes(delta.json_bytes(engine))
+    world = World(movers=[Quote("CRWV", price=90.0, name="CoreWeave")])
+    run(tmp_path, world, *later(40))
+    assert ("bars_5m", "1mo", ["DYN"]) in world.calls and ("daily", "3mo", ["XOM"]) in world.calls
+    assert ("bars_5m", "1mo", ["CRWV"]) in world.calls
+    engine = read(data, "engine")
+    assert engine["dynamic_adds"] == ["DYN", "CRWV"] and engine["pack_gaps"] == {"session": DAY, "retries": 1}
+    assert sorted(read_gz(data, "baselines_extra")["symbols"]) == ["CRWV", "DYN", "XOM"]
+
+
+DEADLINE_SAFETY_S = 10       # engine step, delta write and exit after the last request returns
+
+
+def test_the_deadline_margin_covers_a_request_still_in_flight():
+    """A request started just before the deadline can run 2 x fetch_timeout_s on the crumb path (cookie and
+    crumb, then the v7 call). After it the tick still has to step the engine and write its delta before the
+    loop's timeout kills it, so the margin must cover both."""
+    assert tick.DEADLINE_MARGIN_S >= 2 * RUNTIME["fetch_timeout_s"] + DEADLINE_SAFETY_S
+
+
+def test_the_cli_deadline_counts_from_the_start_of_the_process(tmp_path, monkeypatch):
+    """The loop's timeout runs from Popen, and real_deps() imports numpy, curl_cffi and yfinance (seconds on a
+    runner): the deadline must count from before those imports, not from Tick.__init__."""
+    world, seen = World(), {}
+
+    def slow_deps() -> tick.Deps:
+        seen["imports_from"] = time.time()
+        time.sleep(0.3)
+        return world.deps()
+
+    monkeypatch.setattr(tick, "real_deps", slow_deps)
+    seed(tmp_path / "data", pack=pack_for(DAY))
+    before = time.time()
+    assert tick.main(["--data-dir", str(tmp_path / "data"), "--pending-dir", str(tmp_path / "p"), "--tick-id", TICK]) == 0
+    started = world.fetchers[0].deadline - (RUNTIME["tick_timeout_s"] - tick.DEADLINE_MARGIN_S)
+    assert before <= started <= seen["imports_from"]
+
+
 def test_final_tick_has_no_next_tick(tmp_path):
     seed(tmp_path / "data", pack=pack_for(DAY), engine={"schema": 1, "loop": {**LOOP, "next_tick_at": "2026-09-28T20:05:50Z"}})
     res, _ = run(tmp_path, World(), "2026-09-28T20:00:00Z", tick.parse_tick_id("2026-09-28T20:00:00Z") + 50, final=True)
@@ -934,33 +1051,56 @@ def test_bar_finality_reports_when_the_bar_stopped_changing():
     res = tick.bar_finality(Fetcher(), lambda: t[0], lambda s: t.__setitem__(0, t[0] + s), symbols=("SPY",))
     assert res["measured"] and res["bar_start"] == "2026-09-28T14:35:00Z"
     assert res["symbols"]["SPY"] == {"first_seen_s": 30, "stable_from_s": 45, "final_close": 2.0, "final_volume": 1000,
-                                     "fold_seen": False, "next_row_s": None}
+                                     "provisional_s": [], "changed_after_s": [30], "next_row_s": None}
     assert res["unstable_at_tick"] == []
+    assert res["changed_unflagged"] == ["SPY"]              # it changed after +30 s without the provisional flag
 
 
-def test_bar_finality_flags_a_fold_on_a_thin_name():
-    """DATA-4: a thin name's newest bar keeps taking trades from after its end until the next row exists."""
+def chart_body(rows: list[tuple[int, float, int]]) -> dict:
+    """A Yahoo v8 chart body from (ts, close, volume) rows; an off-grid ts is Yahoo's last-trade row."""
+    c, v = [r[1] for r in rows], [r[2] for r in rows]
+    return {"chart": {"result": [{"timestamp": [r[0] for r in rows],
+                                  "indicators": {"quote": [{"open": c, "high": c, "low": c, "close": c, "volume": v}]}}]}}
+
+
+def test_bar_finality_uses_the_fetchers_provisional_rule():
+    """INT-3 (SPEC 12.1, 12.6): the probe's provisional column is fetch._parse_bars' own flag. A thin name's bar
+    is provisional while it is the newest row and the last trade is still inside it; the first trade after its
+    end is folded in (and changes it) and closes it. A last trade past the end is a closed row, not a fold. A
+    bar that changes after an offset where it was not provisional is reported as a miss of the rule."""
+    from radar import fetch
     boundary = tick.parse_tick_id("2026-09-28T14:40:00Z")
     start = boundary - 300
     t = [boundary - 100.0]
 
+    def body(sym: str, age: float) -> dict:
+        if sym == "SPY":                                     # liquid: row k+1 is open from the first sample
+            return chart_body([(start, 2.0, 9000), (boundary, 2.01, 300), (boundary + int(age) - 1, 2.01, 0)])
+        if sym == "THIN":
+            if age < 180:                                    # no trade since start + 290: open, provisional
+                return chart_body([(start, 1.0, 500), (start + 290, 1.0, 0)])
+            if age < 240:                                    # a trade at boundary + 170 was folded in: closed
+                return chart_body([(start, 1.2, 600), (boundary + 170, 1.2, 0)])
+            return chart_body([(start, 1.2, 600), (boundary, 1.25, 100), (boundary + 230, 1.25, 0)])
+        # MISS: the last trade is past the row's end (closed), yet the source revises the bar at +90 s
+        return chart_body([(start, 3.0 if age < 90 else 3.1, 700), (boundary + 5, 3.0, 0)])
+
     class Fetcher:
         def bars_5m(self, symbols, *, range_="1d"):
-            age = t[0] - boundary
-            out = {"SPY": bars("SPY", [2.0], start)}
-            if age < 180:                                    # bar k is the newest row and still folding
-                thin = bars("THIN", [1.0 + age / 1000], start)
-                thin.last_trade_ts = boundary + 30
-            else:                                            # row k+1 exists: bar k is final
-                thin = bars("THIN", [1.2, 1.25], start)
-            out["THIN"] = thin
-            return out, None
+            return {s: fetch._parse_bars(s, body(s, t[0] - boundary)) for s in symbols}, None
 
-    res = tick.bar_finality(Fetcher(), lambda: t[0], lambda s: t.__setitem__(0, t[0] + s), symbols=("SPY", "THIN"))
-    assert res["symbols"]["THIN"] == {"first_seen_s": 15, "stable_from_s": 180, "final_close": 1.2,
-                                      "final_volume": 1000, "fold_seen": True, "next_row_s": 180}
-    assert res["symbols"]["SPY"]["fold_seen"] is False and res["symbols"]["SPY"]["stable_from_s"] == 15
-    assert res["unstable_at_tick"] == ["THIN"] and max(res["offsets_s"]) == 300
+    assert fetch._parse_bars("THIN", body("THIN", 15)).provisional_last is True
+    assert fetch._parse_bars("THIN", body("THIN", 180)).provisional_last is False   # the old rule called this a fold
+    res = tick.bar_finality(Fetcher(), lambda: t[0], lambda s: t.__setitem__(0, t[0] + s),
+                            symbols=("SPY", "THIN", "MISS"))
+    early = [15, 30, 45, 60, 90, 120]
+    assert res["symbols"]["THIN"] == {"first_seen_s": 15, "stable_from_s": 180, "final_close": 1.2, "final_volume": 600,
+                                      "provisional_s": early, "changed_after_s": early, "next_row_s": 240}
+    assert res["symbols"]["SPY"] == {"first_seen_s": 15, "stable_from_s": 15, "final_close": 2.0, "final_volume": 9000,
+                                     "provisional_s": [], "changed_after_s": [], "next_row_s": 15}
+    assert res["symbols"]["MISS"]["provisional_s"] == [] and res["symbols"]["MISS"]["changed_after_s"] == [15, 30, 45, 60]
+    assert res["unstable_at_tick"] == ["MISS", "THIN"] and res["changed_unflagged"] == ["MISS"]
+    assert max(res["offsets_s"]) == 300
 
 
 def test_probe_samples_thin_names_from_the_stored_pack(tmp_path, monkeypatch):
@@ -977,9 +1117,10 @@ def test_probe_samples_thin_names_from_the_stored_pack(tmp_path, monkeypatch):
     def finality(fetcher, clock, sleep, symbols=()):
         seen["symbols"] = symbols
         return {"measured": True, "bar_start": "2026-09-28T14:35:00Z", "offsets_s": [15, 300],
-                "unstable_at_tick": ["T14"],
+                "unstable_at_tick": ["T14"], "changed_unflagged": ["T13"],
                 "symbols": {s: {"first_seen_s": 15, "stable_from_s": 15, "final_close": 1.0, "final_volume": 5,
-                                "fold_seen": s == "T14", "next_row_s": None} for s in symbols}}
+                                "provisional_s": [15] if s == "T14" else [],
+                                "changed_after_s": [15] if s == "T13" else [], "next_row_s": None} for s in symbols}}
 
     monkeypatch.setattr(tick, "bar_finality", finality)
     summary = tmp_path / "summary.md"
@@ -988,8 +1129,10 @@ def test_probe_samples_thin_names_from_the_stored_pack(tmp_path, monkeypatch):
     assert seen["symbols"] == ("SPY", "QQQ", "AAPL", *thin) and res["finality"]["thin"] == thin
     text = summary.read_text(encoding="utf-8")
     assert f"Thin names: {', '.join(thin)} (stored pack of {DAY}" in text
-    assert "| T14 | thin | 15 | 15 | yes | None | 1.0 | 5 |" in text and "| SPY | liquid |" in text
-    assert "Not stable by the tick: T14." in text
+    assert "| T14 | thin | 15 | 15 | 15 | none | None | 1.0 | 5 |" in text and "| SPY | liquid |" in text
+    assert "| T13 | thin | 15 | 15 | none | 15 | None | 1.0 | 5 |" in text
+    assert "Not stable by the tick: T14." in text and "Changed while not provisional: T13." in text
+    assert "the last trade was still inside it" in text and "Fold seen" not in text
 
 
 def test_probe_falls_back_to_a_fixed_thin_list(tmp_path, monkeypatch):

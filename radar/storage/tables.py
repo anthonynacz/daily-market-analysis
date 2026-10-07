@@ -22,6 +22,7 @@ RETENTION_MONTHS = 3
 
 MANIFEST_PATH = "backups/manifest.json"
 HEALTH_PATH = "ops/health.json"
+PENDING_MAIN_TRIM_PATH = "ops/pending_main_trim.json"   # main rows archived whose trim may not have landed (SPEC 12.6)
 ALERTS_LOG_PATH = "alerts/log.json"
 
 

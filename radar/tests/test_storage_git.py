@@ -394,11 +394,17 @@ def test_cli_daytime_scanner_request_defers_the_main_trim_to_the_nightly_run(rem
     rep = json.loads(report.read_text(encoding="utf-8"))["report"]
     assert rep["tables"]["alerts_log"]["archive_rows"] > 0
     assert rep["main_trim"]["alerts_log"]["status"] == "deferred"
-    assert "**Main (alerts/log.json):** deferred, 0 rows removed" in summary.read_text(encoding="utf-8")
+    text = summary.read_text(encoding="utf-8")
+    assert "**Main (alerts/log.json):** deferred, 0 rows removed" in text
+    assert (f"removes the {rep['tables']['alerts_log']['archive_rows']} rows listed in ops/pending_main_trim.json"
+            in text)
     spec = T.BY_NAME["alerts_log"]
     window = (datetime(2026, 7, 1, tzinfo=UTC), datetime(2026, 11, 1, tzinfo=UTC))
     check = clone(bare, str(tmp / "check"))
     assert {hk.canon(r) for r in hk.query(check, "alerts_log", *window)} == {hk.canon(a) for a in alerts}
+    pending = json.loads((Path(check) / T.PENDING_MAIN_TRIM_PATH).read_text(encoding="utf-8"))["tables"]
+    archived = alerts[len(alerts) - rep["tables"]["alerts_log"]["archive_rows"]:]
+    assert {e["pk"] for e in pending["alerts_log"]} == {hk.pk_of(spec, a) for a in archived}   # pushed with the data
 
     rc = job.main(["--data-dir", data, "--main-root", main, "--squash", "skip", "--trigger", "schedule",
                    "--now", "2026-10-07T03:30:00Z", "--report", str(report)])
@@ -410,6 +416,8 @@ def test_cli_daytime_scanner_request_defers_the_main_trim_to_the_nightly_run(rem
     assert len(left) <= spec.target_ratio * spec.max_rows and left == alerts[:len(left)]
     check = clone(bare, str(tmp / "check2"))
     assert {hk.canon(r) for r in hk.query(check, "alerts_log", *window)} == {hk.canon(a) for a in alerts}
+    pending = json.loads((Path(check) / T.PENDING_MAIN_TRIM_PATH).read_text(encoding="utf-8"))["tables"]
+    assert {e["pk"] for e in pending["alerts_log"]} == {hk.pk_of(spec, a) for a in alerts[len(left):]}
 
 
 def test_exit_code_warns_before_the_calendar_runs_out():
