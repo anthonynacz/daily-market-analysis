@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import dataclasses
+import functools
 import gzip
 import json
 import re
 import subprocess
 import sys
+import threading
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -17,7 +19,7 @@ import pytest
 
 from radar import calendar_nyse as cal
 from radar import delta, tick
-from radar.config import PARAMS, PATHS
+from radar.config import PARAMS, PATHS, RUNTIME
 from radar.types import Bars, DailyBars, FetchReport, Quote
 
 TS = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
@@ -36,12 +38,22 @@ STATE_KEYS = {"schema", "generated_at", "tick_id", "last_bar", "status", "messag
 SCAN_KEYS = {"v", "tick", "run_id", "written_at", "session", "phase", "status", "lag_s", "universe", "stage_b",
              "quotes_ok", "quotes_err", "bars_ok", "bars_err", "members", "heating", "entered", "exited",
              "processed_slots", "source", "ms", "git_prev", "hot_bytes", "errors"}
-ENGINE_KEYS = {"schema", "session", "engine", "source_health", "dynamic_adds", "ops", "loop"}
+ENGINE_KEYS = {"schema", "session", "engine", "source_health", "dynamic_adds", "pack_gaps", "ops", "loop"}
 RESULT_KEYS = {"status", "message", "members", "entered", "exited", "processed_slots", "source", "ms", "hot_bytes"}
 STATUSES = {"ok", "degraded", "no_data", "closed", "error"}
 
 
 # ---------------------------------------------------------------- fakes
+
+@dataclass
+class FakeSym:
+    """The SymbolBaseline fields the tick reads."""
+    name: str | None = None
+    sector: str | None = None
+    eligible: bool = True
+    ineligible_reason: str | None = None
+    medbar_usd: float = 1e6
+
 
 @dataclass
 class FakePack:
@@ -50,15 +62,24 @@ class FakePack:
     symbols: dict
 
     def to_json(self) -> dict:
-        return {"asof": self.asof, "params_version": self.params_version, "symbols": self.symbols}
+        return {"asof": self.asof, "params_version": self.params_version,
+                "symbols": {s: dataclasses.asdict(b) for s, b in self.symbols.items()}}
 
     @classmethod
     def from_json(cls, d: dict) -> FakePack:
-        return cls(d["asof"], d["params_version"], dict(d["symbols"]))
+        return cls(d["asof"], d["params_version"], {s: FakeSym(**b) for s, b in d["symbols"].items()})
 
 
-def pack_for(day: str, symbols=SCAN) -> FakePack:
-    return FakePack(day, PARAMS["params_version"], {s: {"name": s} for s in symbols})
+def pack_for(day: str, symbols=SCAN, **fields) -> FakePack:
+    return FakePack(day, PARAMS["params_version"], {s: FakeSym(name=s, **fields) for s in symbols})
+
+
+def baseline(symbol: str, daily: dict, meta: dict | None = None) -> FakeSym:
+    """Like baselines._eligibility: a symbol without daily bars has no prior close."""
+    m = (meta or {}).get(symbol) or {}
+    have = symbol in daily
+    return FakeSym(name=m.get("name", symbol), sector=m.get("sector"), eligible=have,
+                   ineligible_reason=None if have else "no prior close")
 
 
 def bars(symbol: str, closes: list[float], start: int) -> Bars:
@@ -96,8 +117,15 @@ class World:
     nan_price: bool = False
     build_error: Exception | None = None
     extend_error: Exception | None = None
+    quotes_status: str = "ok"
+    step_error: Exception | None = None
+    sectors: dict = field(default_factory=dict)          # sector in the quote of these symbols
+    no_daily: set = field(default_factory=set)           # symbols the daily call leaves out
+    no_history: set = field(default_factory=set)         # symbols the 1mo 5m call leaves out
     now: float = NOW                     # the fake fetcher's clock, for last_ok_at
+    pending: Path | None = None
     calls: list = field(default_factory=list)
+    side_files: list = field(default_factory=list)       # <pending>/source_health.json seen before each call
     engines: list = field(default_factory=list)
     fetchers: list = field(default_factory=list)
     packs_built: list = field(default_factory=list)
@@ -109,9 +137,10 @@ class World:
             """Keeps its health like fetch.Fetcher: the last call sets the status, failed calls count in a
             row, and the record round-trips through engine.json as `health`."""
 
-            def __init__(self, *, health=None, workers=16, timeout_s=12.0):
+            def __init__(self, *, health=None, workers=16, timeout_s=12.0, deadline=None, on_health=None):
                 self.health = health
                 self.h = {**HEALTHY, **(health or {})}
+                self.deadline, self.on_health = deadline, on_health
                 world.fetchers.append(self)
 
             def _served(self, result, report: FetchReport):
@@ -119,34 +148,51 @@ class World:
                 self.h.update(name=report.source, status=report.status,
                               consecutive_failures=0 if ok else self.h["consecutive_failures"] + 1,
                               last_ok_at=tick.iso(world.now) if ok else self.h["last_ok_at"])
+                if self.on_health:                          # like fetch.Fetcher after every public call
+                    self.on_health(self.health_state())
                 return result, report
 
+            def _seen(self):
+                if world.pending is not None:
+                    world.side_files.append(tick.read_json(world.pending / tick.SOURCE_HEALTH_FILE))
+
             def quotes(self, symbols):
+                self._seen()
                 world.calls.append(("quotes", list(symbols)))
                 if world.quotes_error:
                     raise world.quotes_error
-                return self._served({s: Quote(s, price=10.0, prev_close=9.8, day_volume=10_000) for s in symbols},
-                                    FetchReport(world.source, "ok", requested=len(symbols), ok=len(symbols)))
+                ok = world.quotes_status != "down"
+                got = {s: Quote(s, price=10.0, prev_close=9.8, day_volume=10_000, sector=world.sectors.get(s))
+                       for s in symbols} if ok else {}
+                return self._served(got, FetchReport(world.source, world.quotes_status, requested=len(symbols),
+                                                     ok=len(got), failed=[] if ok else list(symbols)))
 
             def movers(self):
+                self._seen()
                 world.calls.append(("movers",))
                 return self._served(list(world.movers), FetchReport(world.source, "ok", requested=3, ok=3))
 
             def bars_5m(self, symbols, *, range_="1d", include_prepost=False):
+                self._seen()
                 world.calls.append(("bars_5m", range_, list(symbols)))
                 if range_ == "1mo" and not world.history or range_ == "1d" and world.no_bars:
                     return self._served({}, FetchReport(world.source, "down", requested=len(symbols), failed=list(symbols)))
-                got = {s: bars(s, [10.0, 10.5], SESSION.slot_start(11)) for s in symbols}
-                return self._served(got, FetchReport(world.source, world.bars_status, requested=len(symbols), ok=len(got)))
+                got = {s: bars(s, [10.0, 10.5], SESSION.slot_start(11)) for s in symbols
+                       if not (range_ == "1mo" and s in world.no_history)}
+                return self._served(got, FetchReport(world.source, world.bars_status, requested=len(symbols), ok=len(got),
+                                                     failed=[s for s in symbols if s not in got]))
 
             def daily(self, symbols, *, range_="3mo"):
+                self._seen()
                 world.calls.append(("daily", range_, list(symbols)))
                 if not world.history:
                     return self._served({}, FetchReport(world.source, "down", requested=len(symbols), failed=list(symbols)))
                 c = np.array([9.0, 9.8])
-                return self._served({s: DailyBars(s, np.array(["2026-09-24", "2026-09-25"], dtype="datetime64[D]"),
-                                                  c, c, c, c, np.array([1, 1])) for s in symbols},
-                                    FetchReport(world.source, "ok", requested=len(symbols), ok=len(symbols)))
+                got = {s: DailyBars(s, np.array(["2026-09-24", "2026-09-25"], dtype="datetime64[D]"), c, c, c, c,
+                                    np.array([1, 1])) for s in symbols if s not in world.no_daily}
+                return self._served(got, FetchReport(world.source, "ok" if len(got) == len(symbols) else "degraded",
+                                                     requested=len(symbols), ok=len(got),
+                                                     failed=[s for s in symbols if s not in got]))
 
             def health_state(self):
                 return dict(self.h)
@@ -158,11 +204,14 @@ class World:
                 self.st = dict(state) if same else {"session": session.day.isoformat(), "last_slot": -1}
                 world.engines.append(self)
 
-            def stage_a(self, quotes, now_epoch):
-                self.quotes = quotes
+            def stage_a(self, quotes, now_epoch, *, quotes_ok=True):
+                self.quotes, self.quotes_ok = quotes, quotes_ok
                 return ["NVDA", "SPY"]
 
-            def step(self, bars_, now_epoch, *, halted=frozenset()):
+            def step(self, bars_, now_epoch, *, halted=frozenset(), degraded_volume=False):
+                self.degraded_volume = degraded_volume
+                if world.step_error:
+                    raise world.step_error
                 k_now = min((now_epoch - self.session.open_epoch - 300 - 45) // 300, self.session.n_slots - 1)
                 due = list(range(self.st["last_slot"] + 1, k_now + 1)) if "SPY" in bars_ else []
                 if due:
@@ -187,12 +236,16 @@ class World:
             world.packs_built.append(sorted(bars5))
             if world.build_error:
                 raise world.build_error
-            return FakePack(session.day.isoformat(), params["params_version"], {s: {"name": s} for s in bars5})
+            return FakePack(session.day.isoformat(), params["params_version"],
+                            {s: baseline(s, daily, meta) for s in bars5})
 
         def extend_pack(pack, session, bars5, daily, meta, params):
+            """Like baselines.extend_pack: adds the symbols not yet in the pack, leaves the others."""
+            world.calls.append(("extend_pack", sorted(bars5), sorted(daily), meta))
             if world.extend_error:
                 raise world.extend_error
-            return dataclasses.replace(pack, symbols={**pack.symbols, **{s: {"name": meta[s]["name"]} for s in bars5}})
+            new = {s: baseline(s, daily, meta) for s in bars5 if s not in pack.symbols}
+            return dataclasses.replace(pack, symbols={**pack.symbols, **new})
 
         def dynamic_candidates(movers, known, params):
             return [q for q in movers if q.symbol not in known]
@@ -219,7 +272,7 @@ def seed(data: Path, *, pack: FakePack | None = None, engine: dict | None = None
 def run(tmp_path: Path, world: World, tick_id: str = TICK, now: float = NOW, **flags) -> tuple[dict, Path]:
     data, pending = tmp_path / "data", tmp_path / "pending"
     before = set(delta.list_pending(pending))
-    world.now = now
+    world.now, world.pending = now, pending
     args = tick.TickArgs(data, pending, tick_id, **flags)
     res = tick.Tick(args, world.deps(), clock=lambda: now).run()
     new = [d for d in delta.list_pending(pending) if d not in before]
@@ -230,6 +283,16 @@ def run(tmp_path: Path, world: World, tick_id: str = TICK, now: float = NOW, **f
 
 def read(data: Path, key: str) -> dict:
     return json.loads((data / PATHS[key]).read_bytes())
+
+
+def read_gz(data: Path, key: str) -> dict:
+    return json.loads(gzip.decompress((data / PATHS[key]).read_bytes()))
+
+
+def later(minute: int) -> tuple[str, float]:
+    """A later tick of the same session: (tick id, now)."""
+    tick_id = f"2026-09-28T14:{minute:02d}:00Z"
+    return tick_id, tick.parse_tick_id(tick_id) + 50
 
 
 def jsonl(data: Path, key: str) -> list[dict]:
@@ -257,7 +320,7 @@ def check_state(state: dict) -> None:
     assert set(state["market"]) == {"mode", "dir", "spy_chg_day_pct", "spy_z30", "breadth30"}
     assert set(state["counts"]) == {"universe", "stage_b", "members", "heating", "entered_today", "exited_today"}
     assert set(state["health"]) == {"ticks_today", "ticks_skipped", "last_tick_ms", "loop_run_id", "loop_started_at",
-                                    "push_backlog"}
+                                    "published_late"}
     assert all(isinstance(state[k], list) for k in ("members", "heating", "recent_exits", "sector_banners"))
     assert "not financial advice" in state["disclaimer"]
     assert len(delta.json_bytes(state)) < 256 * 1024
@@ -274,7 +337,7 @@ def check_scan_row(row: dict) -> None:
 
 
 LOOP = {"run_id": "gha-99-1", "started_at": "2026-09-28T12:33:20Z", "session": DAY, "ticks_today": 13,
-        "ticks_skipped": 1, "last_tick": TICK, "push_backlog": 2,
+        "ticks_skipped": 1, "last_tick": TICK, "published_late": 2,
         "git_prev": {"stage": 40, "commit": 25, "push": 900, "attempts": 1, "status": "ok"},
         "write_ms": [65], "next_tick_at": "2026-09-28T14:40:50Z"}
 
@@ -308,7 +371,7 @@ def test_regular_tick_end_to_end(tmp_path):
     assert state["members"] == [member()] and state["recent_exits"] == [EXIT]
     assert state["counts"]["universe"] == 5 and state["counts"]["entered_today"] == 1   # the engine's counts win
     assert state["health"] == {"ticks_today": 13, "ticks_skipped": 1, "last_tick_ms": state["health"]["last_tick_ms"],
-                               "loop_run_id": "gha-99-1", "loop_started_at": "2026-09-28T12:33:20Z", "push_backlog": 2}
+                               "loop_run_id": "gha-99-1", "loop_started_at": "2026-09-28T12:33:20Z", "published_late": 2}
 
     engine = read(data, "engine")
     assert set(engine) == ENGINE_KEYS and engine["schema"] == 1 and engine["session"] == DAY
@@ -390,6 +453,7 @@ def test_fetch_failures_never_kill_the_tick(tmp_path):
     check_scan_row(row)
     assert row["quotes_ok"] == 0 and row["quotes_err"] == 6 and row["bars_err"] == 2
     assert row["errors"][0] == "quotes: TimeoutError: read timed out"
+    assert world.engines[0].quotes_ok is False                   # Stage B is not widened to the universe
 
 
 def test_source_is_the_fetchers_own_health(tmp_path):
@@ -452,11 +516,246 @@ def test_a_failed_dynamic_add_leaves_the_scan_running(tmp_path):
     assert jsonl(data, "scan_log")[0]["errors"] == ["dynamic adds: pack has no SPY base returns"]
 
 
+# ---------------------------------------------------------------- SPEC 12.3: deadline, health side file, outage flags
+
+def test_the_fetcher_gets_a_deadline_and_saves_its_health_after_every_call(tmp_path):
+    """RT-1/E2E-1: the fetcher stops 40 s before the loop's timeout, and its health reaches
+    <pending>/source_health.json after every call, so a killed tick still advances the breaker."""
+    seed(tmp_path / "data", pack=pack_for(DAY))
+    world = World(no_bars=True)
+    run(tmp_path, world)
+    assert world.fetchers[0].deadline == NOW + RUNTIME["tick_timeout_s"] - tick.DEADLINE_MARGIN_S
+    before_quotes, before_movers, before_bars = world.side_files
+    assert before_quotes is None and before_movers["status"] == "ok" and before_bars["name"] == "yahoo"
+    assert not (tmp_path / "pending" / tick.SOURCE_HEALTH_FILE).exists()      # the delta's engine.json carries it
+    assert read(tmp_path / "data", "engine")["source_health"]["consecutive_failures"] == 1
+
+
+def test_a_tick_that_dies_leaves_its_source_health_for_the_loop(tmp_path):
+    seed(tmp_path / "data", pack=pack_for(DAY))
+    world = World(no_bars=True, step_error=KeyError("DYN"))
+    args = tick.TickArgs(tmp_path / "data", tmp_path / "pending", TICK)
+    world.pending = tmp_path / "pending"
+    with pytest.raises(KeyError):
+        tick.Tick(args, world.deps(), clock=lambda: NOW).run()
+    side = tick.read_json(tmp_path / "pending" / tick.SOURCE_HEALTH_FILE)
+    assert side == world.fetchers[0].health_state() and side["consecutive_failures"] == 1   # after the bars call
+    assert delta.list_pending(tmp_path / "pending") == []
+
+
+class VirtualClock:
+    def __init__(self, t: float):
+        self.t, self.lock = t, threading.Lock()
+
+    def __call__(self) -> float:
+        return self.t
+
+    def sleep(self, s: float) -> None:
+        with self.lock:
+            self.t += s
+
+
+class BlockedTransport:
+    """Yahoo answers 429 to everything (the cloud-IP throttle); Nasdaq is down as well."""
+
+    def __init__(self):
+        self.calls, self.lock = 0, threading.Lock()
+
+    def _hit(self, status: int) -> tuple[int, None]:
+        with self.lock:
+            self.calls += 1
+        return status, None
+
+    def yahoo_chart(self, symbol, params, timeout):
+        return self._hit(429)
+
+    def yahoo_quote(self, params, timeout):
+        return self._hit(429)
+
+    def yahoo_screen(self, name, count, timeout):
+        return self._hit(429)
+
+    def nasdaq(self, url, params, timeout):
+        return self._hit(503)
+
+
+def test_a_yahoo_block_reaches_the_fallback_within_two_ticks(tmp_path):
+    """RT-1/E2E-1 with the real Fetcher: a blocked tick ends well inside the loop's timeout and saves its
+    failures, and the next tick, fed that health, opens the breaker and uses Nasdaq."""
+    from radar import fetch
+    data, pending = tmp_path / "data", tmp_path / "pending"
+    seed(data, pack=pack_for(DAY))
+    clock, transport = VirtualClock(float(NOW)), BlockedTransport()
+    world = World()
+    deps = dataclasses.replace(world.deps(), fetcher=functools.partial(fetch.Fetcher, transport=transport, clock=clock,
+                                                                        sleep=clock.sleep))
+    for tick_id in (TICK, "2026-09-28T14:40:00Z"):
+        clock.t = max(clock.t, tick.parse_tick_id(tick_id) + 50.0)
+        start = clock()
+        before = set(delta.list_pending(pending))
+        res = tick.Tick(tick.TickArgs(data, pending, tick_id), deps, clock=clock).run()
+        assert clock() - start < RUNTIME["tick_timeout_s"] - tick.DEADLINE_MARGIN_S
+        (new,) = [d for d in delta.list_pending(pending) if d not in before]
+        delta.apply_delta(new, data)
+        health = read(data, "engine")["source_health"]
+        if tick_id == TICK:
+            assert health["consecutive_failures"] >= 2 and health["name"] == "yahoo"
+            assert world.engines[-1].quotes_ok is False                       # no full-universe sweep
+    assert transport.calls < 500
+    assert health["name"] == "nasdaq" and any(f["breaker"]["open"] for f in health["families"].values())
+    assert res["source"]["name"] == "nasdaq" and read(data, "state")["source"]["name"] == "nasdaq"
+
+
+def test_a_failed_quote_call_keeps_stage_b_narrow(tmp_path):
+    seed(tmp_path / "data", pack=pack_for(DAY))
+    world = World(quotes_status="down")
+    run(tmp_path, world)
+    assert world.engines[0].quotes_ok is False and world.engines[0].degraded_volume is False
+
+
+def test_fallback_bars_flag_degraded_volume(tmp_path):
+    """DATA-6: Nasdaq bar volume is not on the Yahoo basis of the baselines."""
+    seed(tmp_path / "data", pack=pack_for(DAY))
+    world = World(source="nasdaq", bars_status="degraded")
+    run(tmp_path, world)
+    assert world.engines[0].quotes_ok is True and world.engines[0].degraded_volume is True
+
+
+# ---------------------------------------------------------------- SPEC 12.3: pack acceptance and gaps
+
+def test_a_pack_without_spy_daily_bars_is_rejected_and_retried(tmp_path):
+    """ENG-1: without SPY's prior close no stock could enter all day; nothing is written and the next tick
+    builds the pack."""
+    data = tmp_path / "data"
+    seed(data)
+    world = World(no_daily={"SPY"})
+    res, d = run(tmp_path, world)
+    assert res["status"] == "no_data" and world.packs_built == [] and world.engines == []
+    assert not (d / "replace" / PATHS["baselines"]).exists() and not (data / PATHS["baselines"]).exists()
+    assert jsonl(data, "scan_log")[0]["errors"][0].startswith("baselines: no SPY daily bars; ")
+    world = World()
+    res, d = run(tmp_path, world, *later(40))
+    assert res["status"] == "ok" and world.packs_built == [sorted(SCAN)]
+    assert read_gz(data, "baselines")["asof"] == DAY and (d / "replace" / PATHS["baselines"]).exists()
+
+
+def test_a_pack_with_partial_daily_history_is_rejected(tmp_path):
+    """DATA-5: daily bars for 2 of 6 symbols would leave most names ineligible for the whole day."""
+    seed(tmp_path / "data")
+    world = World(no_daily={"AAPL", "NVDA", "XOM", "QQQ"})
+    res, _ = run(tmp_path, world)
+    assert res["status"] == "no_data" and world.packs_built == []
+    err = jsonl(tmp_path / "data", "scan_log")[0]["errors"][0]
+    assert "5-minute history for 100% and daily history for 33% of symbols" in err
+
+
+def test_pack_gaps_are_listed_then_retried_on_a_later_tick(tmp_path):
+    """DATA-5: an accepted pack below 100% keeps its gaps visible and refetches them later, in
+    baselines_extra, without using the dynamic budget."""
+    data = tmp_path / "data"
+    seed(data)
+    world = World(no_daily={"XOM"}, no_history={"AAPL"})               # 5 of 6 for both: accepted
+    res, _ = run(tmp_path, world)
+    assert res["status"] == "ok" and world.packs_built == [sorted(set(SCAN) - {"AAPL"})]
+    gap = "pack gaps: 2 universe name(s) without usable baselines: AAPL, XOM"
+    assert gap in jsonl(data, "scan_log")[-1]["errors"]
+    assert not any(c[0] == "extend_pack" for c in world.calls)          # not on the tick that built the pack
+
+    world = World()
+    run(tmp_path, world, *later(40))
+    assert ("bars_5m", "1mo", ["AAPL", "XOM"]) in world.calls and ("daily", "3mo", ["AAPL", "XOM"]) in world.calls
+    pack = world.engines[0].pack
+    assert pack.symbols["XOM"].eligible and pack.symbols["AAPL"].eligible
+    assert sorted(read_gz(data, "baselines_extra")["symbols"]) == ["AAPL", "XOM"]
+    engine = read(data, "engine")
+    assert engine["pack_gaps"] == {"session": DAY, "retries": 1} and engine["dynamic_adds"] == []
+    assert not any(e.startswith("pack gaps") for e in jsonl(data, "scan_log")[-1]["errors"])
+
+    world = World()
+    run(tmp_path, world, *later(45))                                     # filled: nothing left to retry
+    assert not any(c[0] == "extend_pack" for c in world.calls) and world.engines[0].pack.symbols["XOM"].eligible
+
+
+def test_pack_gap_retries_need_a_healthy_source_and_stop_after_three_a_day(tmp_path):
+    data = tmp_path / "data"
+    pack = pack_for(DAY)
+    pack.symbols["XOM"] = FakeSym(name="XOM", eligible=False, ineligible_reason="no prior close")
+    seed(data, pack=pack)
+    world = World(source="nasdaq", no_daily={"XOM"})                     # on the backup source: no retry
+    run(tmp_path, world)
+    assert not any(c[0] == "daily" for c in world.calls)
+    assert read(data, "engine")["pack_gaps"] == {"session": DAY, "retries": 0}
+    for i, minute in enumerate((40, 45, 50, 55)):
+        world = World(no_daily={"XOM"})                                  # XOM's daily keeps failing
+        run(tmp_path, world, *later(minute))
+        assert (("daily", "3mo", ["XOM"]) in world.calls) == (i < tick.PACK_GAP_RETRIES)
+        assert "pack gaps: 1 universe name(s) without usable baselines: XOM" in jsonl(data, "scan_log")[-1]["errors"]
+    assert read(data, "engine")["pack_gaps"] == {"session": DAY, "retries": 3}
+
+
 def test_a_pack_the_builder_rejects_means_no_data(tmp_path):
     world = World(build_error=ValueError("no SPY bars in the baseline window"))
     res, _ = run(tmp_path, world)
     assert res["status"] == "no_data" and world.engines == []
     assert jsonl(tmp_path / "data", "scan_log")[0]["errors"] == ["baselines: no SPY bars in the baseline window"]
+
+
+def test_dynamic_adds_take_their_sector_from_one_batched_quote_call(tmp_path):
+    """DATA-3: Yahoo's screens carry no sector, so a mover's sector comes from a v7 quote."""
+    data = tmp_path / "data"
+    seed(data, pack=pack_for(DAY))
+    movers = [Quote("CRWV", price=90.0, name="CoreWeave"), Quote("TWST", price=40.0, name="Twist Bioscience")]
+    world = World(movers=movers, sectors={"TWST": "Health Care", "CRWV": "Information Technology"})
+    run(tmp_path, world)
+    assert world.calls.count(("quotes", ["CRWV", "TWST"])) == 1
+    saved = read_gz(data, "baselines_extra")["symbols"]
+    assert {s: (b["name"], b["sector"]) for s, b in saved.items()} == {
+        "CRWV": ("CoreWeave", "Information Technology"), "TWST": ("Twist Bioscience", "Health Care")}
+    assert world.engines[0].quotes["TWST"].sector == "Health Care"
+
+
+def test_a_dynamic_candidate_without_daily_bars_is_not_added(tmp_path):
+    """DATA-5: it would be ineligible all day and use up the budget; it is retried next tick instead."""
+    data = tmp_path / "data"
+    seed(data, pack=pack_for(DAY))
+    world = World(movers=[Quote("CRWV", price=90.0), Quote("RKLB", price=40.0)], no_daily={"RKLB"})
+    run(tmp_path, world)
+    assert read(data, "engine")["dynamic_adds"] == ["CRWV"]
+    (ext,) = [c for c in world.calls if c[0] == "extend_pack"]
+    assert ext[1] == ["CRWV"] and ext[2] == ["CRWV"] and ("quotes", ["CRWV"]) in world.calls
+    world = World(movers=[Quote("RKLB", price=40.0)])
+    run(tmp_path, world, *later(40))
+    assert read(data, "engine")["dynamic_adds"] == ["CRWV", "RKLB"]
+
+
+def test_dynamic_adds_are_re_extended_when_baselines_extra_is_rejected(tmp_path):
+    """ENG-3: a params bump mid-session rebuilds the main pack and rejects baselines_extra; a member that
+    is a dynamic add gets its baselines again before the engine is built."""
+    data = tmp_path / "data"
+    old = "radar-sm-0"
+    seed(data, pack=dataclasses.replace(pack_for(DAY), params_version=old),
+         engine={"schema": 1, "session": DAY, "engine": {"session": DAY, "last_slot": 20}, "dynamic_adds": ["DYN"],
+                 "ops": {"hk_dispatched_at": None}, "loop": {}},
+         files={PATHS["baselines_extra"]: tick.gz_json(dataclasses.replace(pack_for(DAY, ["DYN"]),
+                                                                            params_version=old).to_json())})
+    world = World(sectors={"DYN": "Energy"})
+    res, d = run(tmp_path, world)
+    assert res["status"] == "ok" and world.packs_built == [sorted(SCAN)]
+    assert ("quotes", SCAN + ["DYN"]) in world.calls and ("bars_5m", "1mo", ["DYN"]) in world.calls
+    assert "DYN" in world.engines[0].pack.symbols
+    extra = read_gz(data, "baselines_extra")
+    assert extra["params_version"] == PARAMS["params_version"] and list(extra["symbols"]) == ["DYN"]
+    assert extra["symbols"]["DYN"]["sector"] == "Energy" and read(data, "engine")["dynamic_adds"] == ["DYN"]
+
+
+def test_a_dynamic_add_that_cannot_be_re_extended_is_kept_and_reported(tmp_path):
+    data = tmp_path / "data"
+    seed(data, pack=pack_for(DAY), engine={"schema": 1, "session": DAY, "dynamic_adds": ["DYN"]})
+    world = World(no_daily={"DYN"})
+    res, _ = run(tmp_path, world)
+    assert res["status"] == "ok" and "DYN" not in world.engines[0].pack.symbols
+    assert read(data, "engine")["dynamic_adds"] == ["DYN"] and not (data / PATHS["baselines_extra"]).exists()
+    assert "dynamic adds: no baselines yet for DYN; retrying next scan" in jsonl(data, "scan_log")[0]["errors"]
 
 
 def test_an_unreadable_pack_is_rebuilt(tmp_path):
@@ -634,7 +933,72 @@ def test_bar_finality_reports_when_the_bar_stopped_changing():
 
     res = tick.bar_finality(Fetcher(), lambda: t[0], lambda s: t.__setitem__(0, t[0] + s), symbols=("SPY",))
     assert res["measured"] and res["bar_start"] == "2026-09-28T14:35:00Z"
-    assert res["symbols"]["SPY"] == {"first_seen_s": 30, "stable_from_s": 45, "final_close": 2.0, "final_volume": 1000}
+    assert res["symbols"]["SPY"] == {"first_seen_s": 30, "stable_from_s": 45, "final_close": 2.0, "final_volume": 1000,
+                                     "fold_seen": False, "next_row_s": None}
+    assert res["unstable_at_tick"] == []
+
+
+def test_bar_finality_flags_a_fold_on_a_thin_name():
+    """DATA-4: a thin name's newest bar keeps taking trades from after its end until the next row exists."""
+    boundary = tick.parse_tick_id("2026-09-28T14:40:00Z")
+    start = boundary - 300
+    t = [boundary - 100.0]
+
+    class Fetcher:
+        def bars_5m(self, symbols, *, range_="1d"):
+            age = t[0] - boundary
+            out = {"SPY": bars("SPY", [2.0], start)}
+            if age < 180:                                    # bar k is the newest row and still folding
+                thin = bars("THIN", [1.0 + age / 1000], start)
+                thin.last_trade_ts = boundary + 30
+            else:                                            # row k+1 exists: bar k is final
+                thin = bars("THIN", [1.2, 1.25], start)
+            out["THIN"] = thin
+            return out, None
+
+    res = tick.bar_finality(Fetcher(), lambda: t[0], lambda s: t.__setitem__(0, t[0] + s), symbols=("SPY", "THIN"))
+    assert res["symbols"]["THIN"] == {"first_seen_s": 15, "stable_from_s": 180, "final_close": 1.2,
+                                      "final_volume": 1000, "fold_seen": True, "next_row_s": 180}
+    assert res["symbols"]["SPY"]["fold_seen"] is False and res["symbols"]["SPY"]["stable_from_s"] == 15
+    assert res["unstable_at_tick"] == ["THIN"] and max(res["offsets_s"]) == 300
+
+
+def test_probe_samples_thin_names_from_the_stored_pack(tmp_path, monkeypatch):
+    """DATA-4: the finality check covers the 10 thinnest eligible names, not only SPY/QQQ/AAPL."""
+    data = tmp_path / "data"
+    pack = pack_for(DAY, [f"T{i:02d}" for i in range(15)])
+    for i, b in enumerate(pack.symbols.values()):
+        b.medbar_usd = 1000.0 * (15 - i)                     # T14 is the thinnest
+    pack.symbols["ILLQ"] = FakeSym(eligible=False, ineligible_reason="thin 5-minute bars", medbar_usd=1.0)
+    pack.symbols["AAPL"] = FakeSym(medbar_usd=0.5)           # already sampled as a liquid reference
+    seed(data, pack=pack)
+    seen = {}
+
+    def finality(fetcher, clock, sleep, symbols=()):
+        seen["symbols"] = symbols
+        return {"measured": True, "bar_start": "2026-09-28T14:35:00Z", "offsets_s": [15, 300],
+                "unstable_at_tick": ["T14"],
+                "symbols": {s: {"first_seen_s": 15, "stable_from_s": 15, "final_close": 1.0, "final_volume": 5,
+                                "fold_seen": s == "T14", "next_row_s": None} for s in symbols}}
+
+    monkeypatch.setattr(tick, "bar_finality", finality)
+    summary = tmp_path / "summary.md"
+    res = tick.probe(World().deps(), clock=lambda: NOW, sleep=lambda s: None, summary_path=str(summary), data_dir=data)
+    thin = [f"T{i:02d}" for i in range(14, 4, -1)]
+    assert seen["symbols"] == ("SPY", "QQQ", "AAPL", *thin) and res["finality"]["thin"] == thin
+    text = summary.read_text(encoding="utf-8")
+    assert f"Thin names: {', '.join(thin)} (stored pack of {DAY}" in text
+    assert "| T14 | thin | 15 | 15 | yes | None | 1.0 | 5 |" in text and "| SPY | liquid |" in text
+    assert "Not stable by the tick: T14." in text
+
+
+def test_probe_falls_back_to_a_fixed_thin_list(tmp_path, monkeypatch):
+    seen = {}
+    monkeypatch.setattr(tick, "bar_finality", lambda f, c, s, symbols=(): seen.update(symbols=symbols) or
+                        {"measured": False, "note": "market closed"})
+    res = tick.probe(World().deps(), clock=lambda: NOW, sleep=lambda s: None, data_dir=tmp_path / "missing")
+    assert seen["symbols"] == ("SPY", "QQQ", "AAPL", *tick.PROBE_THIN_FALLBACK)
+    assert res["finality"]["thin_source"] == "fixed thin list (no stored pack)"
 
 
 # ---------------------------------------------------------------- CLI

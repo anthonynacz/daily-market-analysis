@@ -255,6 +255,25 @@
     cooling: "The last bar fell short. It drops off if the next bar also falls short.",
     halted: "No new trades: possibly a trading halt. It stays on the radar until trading resumes or the pause runs long."
   };
+  // Plain-English texts (SPEC 12.5). Pure functions: radar/tests/test_page_calendar.py runs them.
+  // Exit rows: the scanner's exit_detail is already a full sentence that starts with the reason.
+  function exitText(x) { return x.exit_detail || EXIT_TEXT[x.exit_reason] || "Dropped off"; }
+  // Problem scans: the scanner's message already says what went wrong and that members are held.
+  var SCAN_PROBLEM = { degraded: "The last scan ran into a data problem", no_data: "The last scan received no market data",
+    error: "The last scan failed" };
+  function scanProblem(st) {
+    return st.message || SCAN_PROBLEM[st.status] + ". Stocks already on the radar are held, not dropped, until data returns.";
+  }
+  // Sector banners list the names the per-sector cap kept off the radar (never members); count = how many.
+  function heldBack(s) {
+    var n = s.count != null ? s.count : s.tickers.length;
+    if (!(n > 0)) return null;
+    return { head: "+" + n + " more held back", tickers: s.tickers.length ? "(" + s.tickers.join(", ") + ")" : "",
+             tail: (n === 1 ? "It is" : "They are") + " also " + (s.direction === "down" ? "falling" : "rising") +
+                   ", but the radar lists at most 3 stocks per sector and direction." };
+  }
+  // health.published_late: earlier scans this snapshot's commit delivered after failed pushes.
+  function publishedLate(n) { return n == null || n < 0 ? "–" : n === 0 ? "none" : n + " earlier scan" + (n === 1 ? "" : "s"); }
 
   // ?mock=1 reads the sample file shipped with the site; the clock is pinned just after that scan
   // unless &now=<ISO time> asks for another moment (pre-open, closed, stale...).
@@ -301,6 +320,13 @@
     var o = pick(raw, spec); o.direction = raw.direction; o.reasons = strs(raw.reasons, 5, 140);
     return o;
   }
+  // The fields the page reads (SPEC section 6); radar/tests/test_page_calendar.py checks them against the spec.
+  var TOP = { ts: ["generated_at", "tick_id", "next_tick_at"], txt: { message: 200, params_version: 40 } };
+  var SOURCE = { txt: { name: 20 }, num: ["consecutive_failures"], ts: ["last_ok_at"] };
+  var MARKET = { num: ["spy_chg_day_pct", "breadth30"] };
+  var COUNTS = { num: ["universe", "stage_b", "entered_today", "exited_today"] };
+  var HEALTH = { num: ["ticks_today", "ticks_skipped", "last_tick_ms", "published_late"], txt: { loop_run_id: 60 },
+    ts: ["loop_started_at"] };
   var MEMBER = { txt: { ticker: 12, name: 80, sector: 40 }, ts: ["entered_at", "last_bar_at"],
     num: ["entry_price", "last_price", "minutes_on_radar", "move_since_entry_pct", "peak_since_entry_pct", "chg_5m_pct",
           "chg_15m_pct", "chg_30m_pct", "chg_day_pct", "rvol", "rvol_day", "vwap_dist_pct", "z15", "z30", "zday",
@@ -326,22 +352,21 @@
   function normState(raw) {
     raw = obj(raw);
     if (raw.schema !== 1) throw new Error("The radar data has an unexpected format.");
-    var st = pick(raw, { ts: ["generated_at", "tick_id", "next_tick_at"], txt: { message: 200, params_version: 40 } });
+    var st = pick(raw, TOP);
     if (st.tick_id === null) throw new Error("The radar data has no scan time.");
     st.status = oneOf(raw.status, ["ok", "degraded", "no_data", "closed", "error"], "error");
     var s = obj(raw.session);
     st.session = { date: /^\d{4}-\d{2}-\d{2}$/.test(s.date) ? s.date : null, open: ts(s.open), close: ts(s.close),
                    half_day: s.half_day === true };
     var src = obj(raw.source);
-    st.source = pick(src, { txt: { name: 20 }, num: ["consecutive_failures"], ts: ["last_ok_at"] });
+    st.source = pick(src, SOURCE);
     st.source.status = oneOf(src.status, ["ok", "degraded", "down"], null);
     var mk = obj(raw.market);
-    st.market = pick(mk, { num: ["spy_chg_day_pct", "breadth30"] });
+    st.market = pick(mk, MARKET);
     st.market.mode = mk.mode === "market" ? "market" : "normal";
     st.market.dir = oneOf(mk.dir, ["up", "down"], null);
-    st.counts = pick(obj(raw.counts), { num: ["universe", "stage_b", "entered_today", "exited_today"] });
-    st.health = pick(obj(raw.health), { num: ["ticks_today", "ticks_skipped", "last_tick_ms", "push_backlog"],
-                                        txt: { loop_run_id: 60 }, ts: ["loop_started_at"] });
+    st.counts = pick(obj(raw.counts), COUNTS);
+    st.health = pick(obj(raw.health), HEALTH);
     st.members = arr(raw.members, 40).map(normMember).filter(Boolean);
     st.heating = arr(raw.heating, 40).map(function (h) { return withDir(h, HEAT); }).filter(Boolean);
     st.recent_exits = arr(raw.recent_exits, 30).map(normExit).filter(Boolean);
@@ -667,10 +692,7 @@
             ", so the page reads a delayed copy (up to about 5 minutes behind)." +
             (S.viaWhy === "error" ? "" : " Saving a token on the Alerts page removes this limit.");
     }
-    else if (st && live(c) && (st.status === "degraded" || st.status === "no_data" || st.status === "error")) {
-      msg = "Last scan: " + { degraded: "data came back incomplete", no_data: "no market data received", error: "failed" }[st.status] +
-            (st.message ? " (" + st.message + ")" : "") + ". Stocks already on the radar are held, not dropped, until data returns.";
-    }
+    else if (st && live(c) && SCAN_PROBLEM[st.status]) msg = scanProblem(st);
     else if (S.err && !S.notPublished) msg = "Couldn't refresh (" + (S.err.message || "network error") + "). Showing the last loaded scan; retrying.";
     else if (S.tokenNote) { kind = "info"; msg = S.tokenNote; }
     var b = $("banner");
@@ -693,12 +715,14 @@
       box.appendChild(b);
     }
     st.sector_banners.forEach(function (s) {
-      var b = el("div", "banner sector"), down = s.direction === "down";
+      var t = heldBack(s);
+      if (!t) return;
+      var b = el("div", "banner sector");
       b.appendChild(arrow(s.direction));
       b.appendChild(el("b", "", " " + s.sector + ": "));
-      b.appendChild(document.createTextNode((s.count != null ? s.count + " stocks " : "Several stocks ") + (down ? "falling" : "rising") + " together "));
-      if (s.tickers.length) b.appendChild(el("span", "tks", "(" + s.tickers.join(", ") + ")"));
-      b.appendChild(document.createTextNode(". The radar lists at most 3 per sector and direction."));
+      b.appendChild(document.createTextNode(t.head + (t.tickers ? " " : "")));
+      if (t.tickers) b.appendChild(el("span", "tks", t.tickers));
+      b.appendChild(document.createTextNode(". " + t.tail));
       box.appendChild(b);
     });
   }
@@ -849,8 +873,7 @@
       var mins = x.minutes_on_radar != null ? x.minutes_on_radar : x.exited_at && x.entered_at ? (x.exited_at - x.entered_at) / 60e3 : null;
       top.appendChild(el("span", "mut", mins != null ? " in " + dur(mins) + " on the radar" : " while on the radar"));
       left.appendChild(top);
-      var reason = EXIT_TEXT[x.exit_reason] || "Dropped off";
-      left.appendChild(el("div", "why", reason + (x.exit_detail ? ": " + x.exit_detail : "")));
+      left.appendChild(el("div", "why", exitText(x)));
       row.appendChild(left);
       row.appendChild(el("div", "when", "left " + et(x.exited_at)));
       box.appendChild(row);
@@ -872,7 +895,7 @@
        (src.last_ok_at ? " · last good answer " + et(src.last_ok_at) : "")],
      ["Scans today", h.ticks_today != null ? h.ticks_today + (h.ticks_skipped ? " (" + h.ticks_skipped + " missed)" : "") : "–"],
      ["Scanner run", h.loop_started_at ? "started " + et(h.loop_started_at) + (h.loop_run_id ? " · " + h.loop_run_id : "") : "–"],
-     ["Waiting to publish", h.push_backlog != null ? String(h.push_backlog) : "–"],
+     ["Published late", publishedLate(h.published_late)],
      ["Signal settings", st.params_version || "–"],
      ["Reading via", reading + (S.rl.remaining != null && S.via !== "mock" ? " · " + S.rl.remaining + " GitHub requests left this hour" : "")]
     ].forEach(function (r) {

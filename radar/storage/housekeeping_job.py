@@ -1,5 +1,7 @@
 """Entry point of .github/workflows/radar-housekeeping.yml: housekeeping on a fresh data head, published per
-the writer contract (SPEC section 7), optionally squashed, then the alerts log on main trimmed.
+the writer contract (SPEC section 7), optionally squashed, then the alerts log on main trimmed. Main is written
+only by the scheduled run or outside weekdays 13:00-21:30 UTC; other runs report the main trim as deferred
+(SPEC 12.4).
 
 python -m radar.storage.housekeeping_job --data-dir _data --main-repo OWNER/REPO --mode apply|dry-run
     --squash auto|force|skip [--force-archive TABLE ...] [--reason TEXT] [--run-id ID] [--report PATH]
@@ -19,6 +21,7 @@ import time
 import traceback
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
+from datetime import time as dtime
 from typing import Callable
 
 from radar import calendar_nyse as cal
@@ -32,6 +35,7 @@ SCAN_WORKFLOW = "radar-scan.yml"
 SQUASH_GUARD_MARGIN = timedelta(minutes=70)
 CALENDAR_WARN_DAYS = 45
 SCANNER_REQUEST_PREFIX = "scanner"
+MAIN_BUSY_UTC = (dtime(13, 0), dtime(21, 30))   # weekdays: the routines push main (SPEC 12.4)
 
 
 @dataclass
@@ -85,6 +89,16 @@ def scanner_busy_via_api(api: GitHubApi, repo: str) -> str | None:
     return f"{n} {SCAN_WORKFLOW} run(s) in progress" if n else None
 
 
+def main_writes_allowed(trigger: str, now: datetime) -> bool:
+    """SPEC 12.4: main is written (phase B) only by the scheduled run, or by a run outside weekdays
+    13:00-21:30 UTC, when the alerts and daily-report routines push main with plain git. Other runs only read
+    main and defer its trim to the next nightly run (the rows are already in the backups)."""
+    if trigger == "schedule":
+        return True
+    now = now.astimezone(timezone.utc)
+    return now.weekday() >= 5 or not (MAIN_BUSY_UTC[0] <= now.time() < MAIN_BUSY_UTC[1])
+
+
 def in_auto_window(now: datetime) -> bool:
     """02:00-07:00 UTC (22:00-03:00 EDT / 21:00-02:00 EST) or any time on a UTC weekend."""
     return 2 <= now.hour < 7 or now.weekday() >= 5
@@ -124,11 +138,15 @@ def run_job(data_dir: str, main_store: hk.Store | None, *, now: datetime, squash
             scanner_busy: Callable[[], str | None], force_tables: tuple[str, ...] = (), run_id: str | None = None,
             trigger: str = "manual", attempts: int = gitops.MAX_ATTEMPTS, repeats: int = 3,
             sleep: Callable[[float], None] = time.sleep, rng: random.Random | None = None,
-            before_publish: Callable[[int], None] | None = None) -> JobResult:
-    """Apply mode. Every attempt re-runs housekeeping on a freshly synced head, so a lost race loses nothing."""
+            before_publish: Callable[[int], None] | None = None, main_writes: bool | None = None) -> JobResult:
+    """Apply mode. Every attempt re-runs housekeeping on a freshly synced head, so a lost race loses nothing.
+
+    `main_writes` None applies the SPEC 12.4 rule (main_writes_allowed); the data branch is always processed."""
     rng = rng or random.Random()
     result = JobResult("apply", decide_squash(squash_policy, now, scanner_busy))
     squash = result.squash.squash
+    if main_writes is None:
+        main_writes = main_writes_allowed(trigger, now)
     for attempt in range(1, attempts + 1):
         try:
             base = gitops.sync(data_dir)
@@ -140,7 +158,7 @@ def run_job(data_dir: str, main_store: hk.Store | None, *, now: datetime, squash
         pub: dict = {}
         hook = (lambda n=attempt: before_publish(n)) if before_publish else None
         result.report = hk.run(data_dir, main_store, now=now, mode="apply", force_tables=force_tables,
-                               run_id=run_id, trigger=trigger, repeats=repeats,
+                               run_id=run_id, trigger=trigger, repeats=repeats, main_writes=main_writes,
                                publish_data=_publisher(data_dir, base, squash, pub, hook))
         result.publish = {**pub, "attempts": attempt, "previous_head": base}
         status = pub.get("status")

@@ -27,8 +27,8 @@ class Bars:
     v: np.ndarray           # int64
     last_trade_ts: int | None = None    # Yahoo's appended off-grid "last trade" row, if present
     last_trade_px: float | None = None
-    # True when the newest grid row may still be revised: the last trade is past that row's end
-    # and the next row does not exist yet (Yahoo folds later trades into it). SPEC 12.4.
+    # True when the newest grid row may still be revised: the last trade is still inside that row, so Yahoo
+    # has not yet folded the first post-boundary trade in and closed it. SPEC 12.1.
     provisional_last: bool = False
 
     def __len__(self) -> int:

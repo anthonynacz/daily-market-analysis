@@ -6,7 +6,10 @@ import io
 import json
 import os
 import signal
+import subprocess
 import sys
+import threading
+import time
 import urllib.error
 from datetime import date
 from pathlib import Path
@@ -20,7 +23,7 @@ from radar import loop as loop_mod
 from radar.config import PATHS, RUNTIME
 from radar.tests.test_gitsync import clone, remote, rows, sh  # noqa: F401 - remote is a fixture
 from radar.tests.test_tick import check_scan_row, check_state
-from radar.tick import iso, parse_tick_id
+from radar.tick import SOURCE_HEALTH_FILE, iso, parse_tick_id, read_json, write_json_atomic
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MON = cal.session_for(date(2026, 9, 28))          # EDT
@@ -67,20 +70,21 @@ class FakeTick:
         self.clock, self.durations, self.results, self.on_run = clock, durations or {}, results or {}, on_run
         self.runs: list[SimpleNamespace] = []
 
-    def __call__(self, cmd: list[str], timeout_s: float, env: dict[str, str]) -> dict:
+    def __call__(self, cmd: list[str], timeout_s: float, env: dict[str, str], stop=None) -> dict:
         a = parse_cmd(cmd)
         data = Path(a.data_dir)
         engine = json.loads((data / PATHS["engine"]).read_bytes())
         self.runs.append(SimpleNamespace(tick_id=a.tick_id, warmup=a.warmup, final=a.final, ignore=a.ignore_calendar,
                                          at=self.clock(), loop=engine["loop"], ops=engine.get("ops"), env=env,
-                                         timeout=timeout_s))
+                                         timeout=timeout_s, stop=stop, source_health=engine.get("source_health")))
         if self.on_run:
             self.on_run(a)
         self.clock.t += self.durations.get(a.tick_id, 20)
         status = self.results.get(a.tick_id, "ok")
         if status in ("timeout", "error"):
             return {"status": status, "message": "boom", "duration_ms": 1234}
-        state = {"schema": 1, "tick_id": a.tick_id, "status": status, "members": [], "heating": []}
+        state = {"schema": 1, "tick_id": a.tick_id, "status": status, "members": [], "heating": [],
+                 "health": {"published_late": engine["loop"]["published_late"]}}       # as Tick._health does
         delta.write_delta(a.pending_dir, a.tick_id, {PATHS["scan_log"]: [{"tick": a.tick_id}]},
                           {PATHS["state"]: state, PATHS["engine"]: engine}, kind="warmup" if a.warmup else "tick",
                           summary={"status": status, "members": 0, "entered": [], "exited": []})
@@ -92,15 +96,20 @@ class FakeTick:
 
 
 class Publisher:
-    """Stands in for gitsync.publish: applies and drops every pending delta, like a push that landed."""
+    """Stands in for gitsync.publish: applies and drops every pending delta, like a push that landed. The
+    first `fail` calls are rejected pushes that leave everything pending."""
 
-    def __init__(self, error: Exception | None = None):
+    def __init__(self, error: Exception | None = None, fail: int = 0):
         self.calls: list[tuple[float, list[str]]] = []
-        self.error = error
+        self.error, self.fail = error, fail
 
     def __call__(self, repo, pending_root, *, budget_s: float) -> gitsync.PublishResult:
         if self.error:
             raise self.error
+        if self.fail:
+            self.fail -= 1
+            self.calls.append((budget_s, []))
+            return gitsync.PublishResult(status="failed", attempts=5, detail="push rejected")
         names = []
         for d in delta.list_pending(pending_root):
             delta.apply_delta(d, repo)
@@ -183,7 +192,8 @@ def test_full_session_from_the_starter_cron(tmp_path):
     assert first["next_tick_at"] == "2026-09-28T13:40:50Z" and last["next_tick_at"] is None
     assert first["git_prev"] == {"stage": 1, "commit": 2, "push": 300, "attempts": 1, "status": "ok"}  # the warmup's push
     assert second["git_prev"]["stage"] == 2 and last["ticks_today"] == 78 and last["ticks_skipped"] == 0
-    assert last["write_ms"][-1] == 78 + 2 and last["push_backlog"] == 0
+    assert last["write_ms"][-1] == 78 + 2 and last["published_late"] == 0
+    assert all(callable(r.stop) and r.stop() is False for r in runs)    # the tick can be stopped
 
     assert [b for b, _ in pub.calls] == [RUNTIME["push_budget_s"]] * 78 + [RUNTIME["final_push_budget_s"]]
     assert all(len(names) == 1 for _, names in pub.calls) and delta.list_pending(lp.pending) == []
@@ -310,7 +320,7 @@ PREV_STATE = {"schema": 1, "generated_at": "2026-09-28T14:30:51Z", "tick_id": "2
               "counts": {"universe": 5, "stage_b": 2, "members": 1, "heating": 0, "entered_today": 1, "exited_today": 0},
               "members": [{"ticker": "NVDA"}], "heating": [], "recent_exits": [], "sector_banners": [],
               "health": {"ticks_today": 12, "ticks_skipped": 0, "last_tick_ms": 900, "loop_run_id": "local",
-                         "loop_started_at": "2026-09-28T12:33:00Z", "push_backlog": 0},
+                         "loop_started_at": "2026-09-28T12:33:00Z", "published_late": 0},
               "disclaimer": "Educational analysis of what is moving now, not a forecast and not financial advice."}
 
 
@@ -333,6 +343,9 @@ def test_a_tick_that_wrote_nothing_is_logged_and_the_snapshot_republished(tmp_pa
     assert row["errors"] == [f"{status}: boom"]
     engine = json.loads((lp.data / PATHS["engine"]).read_bytes())
     assert engine["loop"]["last_tick"] == "2026-09-28T14:35:00Z"      # the loop's bookkeeping survives
+    timed_out = status == "timeout"                                     # a killed tick counts as a failed call
+    assert state["source"]["consecutive_failures"] == int(timed_out)
+    assert state["source"]["status"] == ("down" if timed_out else "ok")
 
 
 def test_a_failed_warmup_logs_without_touching_the_snapshot(tmp_path):
@@ -356,7 +369,117 @@ def test_a_publish_error_is_reported_on_the_next_tick(tmp_path):
                           retire_min=8)
     lp.run()
     assert fake.runs[1].loop["git_prev"] == {"stage": 0, "commit": 0, "push": 0, "attempts": 0, "status": "failed"}
-    assert fake.runs[1].loop["push_backlog"] == 1
+    assert fake.runs[1].loop["published_late"] == 1
+
+
+def test_published_late_counts_the_earlier_scans_a_commit_delivers(tmp_path):
+    """E2E-4: after two failed pushes the third commit carries three scans; its state.json says two were
+    late, never that anything is still waiting."""
+    lp, _, fake, pub = make(tmp_path, "2026-09-28T14:34:00Z", publish=Publisher(fail=2), retire_min=13)
+    lp.run()
+    assert fake.ids == ["2026-09-28T14:35:00Z", "2026-09-28T14:40:00Z", "2026-09-28T14:45:00Z"]
+    assert [len(names) for _, names in pub.calls] == [0, 0, 3] and delta.list_pending(lp.pending) == []
+    assert [r.loop["published_late"] for r in fake.runs] == [0, 1, 2]
+    state = json.loads((lp.data / PATHS["state"]).read_bytes())
+    assert state["tick_id"] == "2026-09-28T14:45:00Z" and state["health"] == {"published_late": 2}
+
+
+# ---------------------------------------------------------------- source health of a tick that wrote nothing
+
+HEALTHY = {"schema": 1, "name": "yahoo", "status": "ok", "consecutive_failures": 0, "last_ok_at": "2026-09-28T14:30:51Z",
+           "workers": 16, "breaker": {"open": False, "opened_at": None, "calls": 0, "good_probes": 0}}
+FIVE_MIN = ["2026-09-28T14:35:00Z", "2026-09-28T14:40:00Z", "2026-09-28T14:45:00Z"]
+
+
+def engine_doc(lp) -> dict:
+    return json.loads((lp.data / PATHS["engine"]).read_bytes())
+
+
+def test_timed_out_ticks_open_the_breaker(tmp_path):
+    """RT-1/E2E-1/DATA-2: a tick killed by the timeout saves no health of its own, so the loop counts it as a
+    failed call; BREAKER_TRIP of them in a row switch the next tick to the Nasdaq fallback."""
+    lp, clock, fake, _ = make(tmp_path, "2026-09-28T14:34:00Z", state=PREV_STATE,
+                              engine={"schema": 1, "source_health": HEALTHY},
+                              results={i: "timeout" for i in FIVE_MIN}, retire_min=18)
+    lp.run()
+    assert fake.ids == FIVE_MIN + ["2026-09-28T14:50:00Z"]
+    assert [r.source_health["consecutive_failures"] for r in fake.runs] == [0, 1, 2, 3]
+    assert [r.source_health["breaker"]["open"] for r in fake.runs] == [False, False, False, True]
+    opened = fake.runs[-1].source_health
+    assert opened["name"] == "nasdaq" and opened["status"] == "down" and opened["workers"] == 16
+    assert opened["breaker"] == {"open": True, "opened_at": "2026-09-28T14:46:10Z", "calls": 0, "good_probes": 0}
+    logged = [json.loads(line) for line in (lp.data / PATHS["scan_log"]).read_text(encoding="utf-8").splitlines()]
+    assert [r["source"] for r in logged[:3]] == ["yahoo", "yahoo", "nasdaq"]
+
+
+def test_the_killed_ticks_own_health_is_merged_before_counting_the_timeout(tmp_path):
+    """The fetcher writes <pending>/source_health.json after every call; the loop merges it, then deletes it."""
+    side = {**HEALTHY, "status": "down", "consecutive_failures": 2, "workers": 4}
+
+    def tick_reached_two_failures(a):
+        write_json_atomic(Path(a.pending_dir) / SOURCE_HEALTH_FILE, side)
+
+    lp, _, _, _ = make(tmp_path, "2026-09-28T14:34:00Z", state=PREV_STATE,
+                       engine={"schema": 1, "source_health": {**HEALTHY, "kept": True}},
+                       results={FIVE_MIN[0]: "timeout"}, retire_min=3, on_run=tick_reached_two_failures)
+    lp.run()
+    h = engine_doc(lp)["source_health"]
+    assert h["consecutive_failures"] == 3 and h["breaker"]["open"] is True and h["workers"] == 4 and h["kept"] is True
+    assert not (lp.pending / SOURCE_HEALTH_FILE).exists()
+
+
+def test_a_failed_tick_keeps_its_health_without_counting_and_a_stale_side_file_is_ignored(tmp_path):
+    side = {**HEALTHY, "status": "degraded", "consecutive_failures": 1}
+    stale = {**HEALTHY, "consecutive_failures": 9}
+    (tmp_path / "pending").mkdir()
+    write_json_atomic(tmp_path / "pending" / SOURCE_HEALTH_FILE, stale)      # left by an earlier tick
+    lp, _, _, _ = make(tmp_path, "2026-09-28T14:34:00Z", state=PREV_STATE, engine={"schema": 1, "source_health": HEALTHY},
+                       results={FIVE_MIN[0]: "error"}, retire_min=3)
+    lp.run()
+    assert engine_doc(lp)["source_health"] == HEALTHY                       # nothing new from this tick
+    lp, _, _, _ = make(tmp_path / "2", "2026-09-28T14:34:00Z", state=PREV_STATE,
+                       engine={"schema": 1, "source_health": HEALTHY}, results={FIVE_MIN[0]: "error"}, retire_min=3,
+                       on_run=lambda a: write_json_atomic(Path(a.pending_dir) / SOURCE_HEALTH_FILE, side))
+    lp.run()
+    assert engine_doc(lp)["source_health"] == side                          # a crash is not a timeout: not counted
+
+
+def fam(failures: int, is_open: bool = False) -> dict:
+    return {"status": "ok", "consecutive_failures": failures,
+            "breaker": {"open": is_open, "opened_at": None, "calls": 0, "good_probes": 0}}
+
+
+def test_a_timeout_raises_the_worst_family_that_is_still_closed():
+    now = "2026-09-28T14:40:20Z"
+    h = {"name": "yahoo", "status": "degraded", "consecutive_failures": 2, "last_ok_at": None,
+         "families": {"chart": fam(2), "crumb": fam(1)}}
+    out = loop_mod.health_after_timeout(h, now)
+    assert out["families"]["chart"] == {"status": "down", "consecutive_failures": 3,
+                                        "breaker": {"open": True, "opened_at": now, "calls": 0, "good_probes": 0}}
+    assert out["families"]["crumb"] == fam(1) and h["families"]["chart"] == fam(2)        # the input is not changed
+    assert (out["name"], out["status"], out["consecutive_failures"]) == ("nasdaq", "down", 3)
+    assert out["breaker"] == out["families"]["chart"]["breaker"]                          # as health_state() derives it
+    out = loop_mod.health_after_timeout({"families": {"chart": fam(5, True), "crumb": fam(0)}}, now)
+    assert out["families"]["chart"] == fam(5, True) and out["families"]["crumb"]["consecutive_failures"] == 1
+    assert out["families"]["crumb"]["breaker"]["open"] is False and out["name"] == "nasdaq"
+    out = loop_mod.health_after_timeout({"name": "yahoo", "consecutive_failures": 2, "breaker": {"open": False}}, now)
+    assert out["breaker"]["open"] is True and out["name"] == "nasdaq"                      # the flat format
+    out = loop_mod.health_after_timeout(None, now)
+    assert out["consecutive_failures"] == 1 and out["breaker"] == {}
+
+
+def test_the_loop_trips_the_breaker_at_the_fetchers_count():
+    """The loop stays stdlib-only, so it keeps its own copy of the trip count; the record it writes must
+    restore into the real fetcher as an open breaker."""
+    from radar import fetch
+    assert loop_mod.BREAKER_TRIP == fetch.BREAKER_TRIP
+    h = fetch.Fetcher(transport=object()).health_state()
+    for _ in range(fetch.BREAKER_TRIP):
+        assert fetch.Fetcher(health=h, transport=object()).health_state()["name"] == "yahoo"
+        h = loop_mod.health_after_timeout(h, "2026-09-28T14:40:20Z")
+    restored = fetch.Fetcher(health=h, transport=object()).health_state()
+    assert restored["name"] == "nasdaq" and restored["consecutive_failures"] == fetch.BREAKER_TRIP
+    assert restored["families"]["chart"]["breaker"]["opened_at"] == "2026-09-28T14:40:20Z"
 
 
 # ---------------------------------------------------------------- the tick subprocess
@@ -374,6 +497,39 @@ def test_subprocess_result_is_the_last_json_line():
     res = loop_mod.run_tick_subprocess(py("print('progress'); print('{\"status\": \"ok\", \"members\": 3}'); print('bye')"),
                                        30, dict(os.environ))
     assert res["status"] == "ok" and res["members"] == 3 and res["duration_ms"] >= 0
+
+
+def test_subprocess_stop_request_terminates_the_tick():
+    t0 = time.monotonic()
+    res = loop_mod.run_tick_subprocess(py("import time; time.sleep(60)"), 30, dict(os.environ),
+                                       stop=lambda: time.monotonic() - t0 > 0.3)
+    assert res["status"] == "stopped" and res["duration_ms"] < 5_000
+
+
+def test_a_stop_request_ends_a_running_tick_within_seconds(tmp_path, monkeypatch):
+    """RT-2: on a cancel the runner signals the loop (exec in the workflow); the loop must not wait 270 s
+    for its tick, and must leave no tick running behind it."""
+    procs = []
+
+    class Recording(subprocess.Popen):
+        def __init__(self, *a, **kw):
+            super().__init__(*a, **kw)
+            procs.append(self)
+
+    monkeypatch.setattr(loop_mod.subprocess, "Popen", Recording)
+    (tmp_path / "data" / "radar").mkdir(parents=True)
+    lp = loop_mod.Loop(tmp_path / "data", tmp_path / "pending", push=False, env=dict(os.environ),
+                       tick_cmd=(sys.executable, "-c", "import time; time.sleep(60)"))
+    timer = threading.Timer(0.5, lp.request_stop, args=(signal.SIGTERM, None))
+    timer.start()
+    t0 = time.monotonic()
+    try:
+        lp._run(loop_mod.Slot(int(at("2026-09-28T14:35:00Z")), int(at("2026-09-28T14:35:50Z"))), None)
+    finally:
+        timer.cancel()
+    assert time.monotonic() - t0 < 5
+    (proc,) = procs
+    assert proc.poll() is not None and delta.list_pending(lp.pending) == []
 
 
 def test_subprocess_crash_is_an_error():

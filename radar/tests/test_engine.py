@@ -6,6 +6,7 @@ import json
 import math
 import re
 from collections import Counter
+from dataclasses import replace
 from datetime import date
 
 import numpy as np
@@ -79,6 +80,18 @@ def upto(bars: dict[str, Bars], session: Session, k: int) -> dict[str, Bars]:
     return {s: Bars(s, *(getattr(b, a)[b.ts <= cut] for a in ("ts", "o", "h", "l", "c", "v"))) for s, b in bars.items()}
 
 
+def feed_at(bars: dict[str, Bars], session: Session, k: int, *, vscale: float | None = None,
+            provisional: set[str] | frozenset[str] = frozenset()) -> dict[str, Bars]:
+    """`upto`, with volumes scaled by `vscale` (a fallback source on another volume basis) and, for `provisional`
+    symbols, no row k+1 yet while bar k may still be revised (Bars.provisional_last)."""
+    out = {}
+    for s, b in upto(bars, session, k).items():
+        keep = b.ts <= session.slot_start(k) if s in provisional else np.ones(len(b), dtype=bool)
+        v = b.v[keep] if vscale is None else np.round(b.v[keep] * vscale).astype(np.int64)
+        out[s] = Bars(s, b.ts[keep], b.o[keep], b.h[keep], b.l[keep], b.c[keep], v, provisional_last=s in provisional)
+    return out
+
+
 def quotes_at(bars: dict[str, Bars], session: Session, k: int) -> dict[str, Quote]:
     out = {}
     for s, b in bars.items():
@@ -89,15 +102,17 @@ def quotes_at(bars: dict[str, Bars], session: Session, k: int) -> dict[str, Quot
 
 
 def drive(engine: Engine, bars: dict[str, Bars], session: Session, slots, *, stage_a: bool = False,
-          drop: set[str] = frozenset(), halted: set[str] = frozenset()) -> list[TickOutput]:
+          drop: set[str] = frozenset(), halted: set[str] = frozenset(), degraded: bool = False,
+          vscale: float | None = None, provisional: set[str] = frozenset()) -> list[TickOutput]:
     outs = []
     for k in slots:
         now = now_after(session, k)
-        feed = {s: b for s, b in upto(bars, session, k).items() if s not in drop}
+        feed = {s: b for s, b in feed_at(bars, session, k, vscale=vscale, provisional=provisional).items()
+                if s not in drop}
         if stage_a:
             wanted = set(engine.stage_a(quotes_at(bars, session, k), now))
             feed = {s: b for s, b in feed.items() if s in wanted}
-        outs.append(engine.step(feed, now, halted=halted))
+        outs.append(engine.step(feed, now, halted=halted, degraded_volume=degraded))
     return outs
 
 
@@ -257,6 +272,19 @@ def test_stage_a_selects_in_play_names_members_and_references():
     assert set(eng.stage_a(few, now_after(session, 10))) >= {s for s, b in pack.symbols.items() if b.eligible}
 
 
+def test_stage_a_never_widens_while_quotes_are_down():
+    """E2E-1: with the quote call down, Stage B is members, heating names and the references only."""
+    session, pack, bars = build({"RUN": racer()})
+    eng = Engine(PARAMS, pack, session)
+    eng.st["members"]["N1"] = {}
+    eng.st["heating"]["N2"] = {}
+    want = ["IWM", "N1", "N2", "QQQ", "SPY"]
+    q = quotes_at(bars, session, 10)
+    for quotes in ({}, {s: q[s] for s in ("SPY", "RUN")}, q):
+        assert eng.stage_a(quotes, now_after(session, 10), quotes_ok=False) == want
+    assert "RUN" in eng.stage_a(q, now_after(session, 10), quotes_ok=True)
+
+
 def test_missing_bars_never_evict_a_member():
     session, pack, bars = build({"RUN": racer()})
     eng = Engine(PARAMS, pack, session)
@@ -268,11 +296,172 @@ def test_missing_bars_never_evict_a_member():
     assert len({r["price"] for r in rows(outs, "RUN") if r["slot"] >= 26}) == 1
 
 
+def test_names_missing_from_a_rebuilt_pack_never_raise():
+    """ENG-3: a mid-session pack without a member or heating name (params bump, lost extra pack).
+
+    Heating is dropped, the member stays frozen on its stored name and sector and exits at SESSION_END. A name of
+    the same sector admitted later counts the frozen member on its stored sector."""
+    meta = {"RUN": {"name": "Run Corp", "sector": "Industrials"}, "LATE": {"name": "Late Co", "sector": "Industrials"}}
+    session, pack, bars = build({"RUN": racer(up=30, down=0), "LATE": racer(start=34, up=14, down=0)}, meta=meta)
+    eng = Engine(PARAMS, pack, session)
+    h = [r["slot"] for r in rows(drive(eng, bars, session, range(26)), "RUN") if r["role"] == "heating"][0]
+    state = eng.state_dict()
+    run = state["members"]["RUN"]
+    assert (run["name"], run["sector"]) == ("Run Corp", "Industrials")
+    probe = Engine(PARAMS, pack, session)
+    drive(probe, bars, session, range(h + 1))
+    hot = probe.state_dict()["heating"]["RUN"]
+    assert (hot["name"], hot["sector"]) == ("Run Corp", "Industrials")
+    state["heating"]["DYN"] = {"dir": 1, "heat_px": 50.0, "heat_slot": 25, "name": "Dyn Inc", "sector": "Energy",
+                               "view": copy.deepcopy(run["view"])}
+    smaller = replace(pack, symbols={s: b for s, b in pack.symbols.items() if s != "RUN"})
+    again = Engine(PARAMS, smaller, session, state=state)
+    assert "DYN" not in again.state_dict()["heating"] and "RUN" in again.state_dict()["members"]
+    outs = drive(again, bars, session, range(26, 78), stage_a=True)
+    m = next(x for x in outs[0].snapshot["members"] if x["ticker"] == "RUN")
+    assert (m["name"], m["sector"], m["last_price"]) == ("Run Corp", "Industrials", round(run["view"]["price"], 4))
+    ev = events(outs, "RUN")
+    assert [(e["type"], e["reason"], e["slot"]) for e in ev] == [("EXIT", "SESSION_END", 76)]
+    assert outs[-1].snapshot["recent_exits"][0]["name"] == "Run Corp"
+    late = events(outs, "LATE")[0]                               # admitted through the sector count
+    assert (late["type"], late["reason"]) == ("ENTER", "ENTRY") and late["slot"] > 26
+    assert sorted((x["ticker"], x["sector"]) for x in outs[late["slot"] - 26].snapshot["members"]) == [
+        ("LATE", "Industrials"), ("RUN", "Industrials")]
+    old = copy.deepcopy(state)                                   # engine.json written before names were stored
+    del old["members"]["RUN"]["name"], old["members"]["RUN"]["sector"]
+    for p, want in ((pack, ("Run Corp", "Industrials")), (smaller, (None, "Unknown"))):
+        snap = Engine(PARAMS, p, session, state=old).snapshot()
+        assert (snap["members"][0]["name"], snap["members"][0]["sector"]) == want
+
+
+def test_fallback_volume_makes_no_entries_and_suspends_dry():
+    """DATA-6: while the bars come from the fallback source (volume ~30% low or worse), nothing new heats or
+    enters and DRY never counts; members still exit on price rules."""
+    session, pack, bars = build({"RUN": racer(), "LATE": racer(start=40, up=12, down=0)})
+    outs = {}
+    for degraded, vscale in ((True, 0.05), (False, 0.05), (True, None), (False, None)):
+        eng = Engine(PARAMS, pack, session)
+        outs[degraded, vscale] = (drive(eng, bars, session, range(25))
+                                  + drive(eng, bars, session, range(25, 60), degraded=degraded, vscale=vscale))
+    reason = lambda key, t: [(e["type"], e["reason"]) for e in events(outs[key], t)]
+    assert reason((False, 0.05), "RUN")[-1] == ("EXIT", "DRY")             # the bias alone would evict it
+    assert reason((True, 0.05), "RUN") == [("ENTER", "ENTRY"), ("EXIT", "REVERSAL")]
+    assert events(outs[True, 0.05], "RUN")[1]["slot"] == events(outs[False, None], "RUN")[1]["slot"]
+    assert reason((False, None), "LATE") == [("ENTER", "ENTRY")]
+    assert not rows(outs[True, None], "LATE") and not events(outs[True, None], "LATE")
+
+
+def test_provisional_bar_blocks_heating_and_entry():
+    """DATA-4: a newest bar still being revised (no row k+1 yet) cannot heat, confirm or enter at slot k."""
+    session, pack, bars = build({"RUN": racer()})
+    clean = drive(Engine(PARAMS, pack, session), bars, session, range(40))
+    heat = [r["slot"] for r in rows(clean, "RUN") if r["role"] == "heating"]
+    enter = events(clean, "RUN")[0]["slot"]
+    eng = Engine(PARAMS, pack, session)
+    held = (drive(eng, bars, session, range(heat[0] - 2))
+            + drive(eng, bars, session, range(heat[0] - 2, enter + 2), provisional={"RUN"})
+            + drive(eng, bars, session, range(enter + 2, 40)))
+    assert not [r for r in rows(held, "RUN") if r["slot"] <= enter + 1]
+    assert events(held, "RUN")[0]["slot"] > enter + 2
+    confirm = Engine(PARAMS, pack, session)                       # heated on a settled bar, confirm bar provisional
+    late = (drive(confirm, bars, session, range(enter)) + drive(confirm, bars, session, [enter], provisional={"RUN"})
+            + drive(confirm, bars, session, range(enter + 1, 40)))
+    assert [r["slot"] for r in rows(late, "RUN") if r["role"] == "heating"][0] == heat[0]
+    assert events(late, "RUN")[0]["slot"] > enter
+    flagged = {}                                                   # the flag on an older row changes nothing
+    eng = Engine(PARAMS, pack, session)
+    for k in range(40):
+        feed = upto(bars, session, k)
+        b = feed["RUN"]
+        feed["RUN"] = Bars("RUN", b.ts, b.o, b.h, b.l, b.c, b.v, provisional_last=True)
+        flagged[k] = eng.step(feed, now_after(session, k))
+    assert as_json(list(flagged.values())) == as_json(clean)
+
+
+def test_provisional_bar_counts_no_dry_soft_fail():
+    session, pack, bars = build({"RUN": racer()})
+    outs = {}
+    for prov in (frozenset(), {"RUN"}):
+        eng = Engine(PARAMS, pack, session)
+        outs[bool(prov)] = drive(eng, bars, session, range(25)) + drive(eng, bars, session, range(25, 31),
+                                                                       vscale=0.05, provisional=prov)
+        if prov:
+            assert eng.state_dict()["members"]["RUN"]["soft"] == 0
+    assert events(outs[False], "RUN")[-1]["reason"] == "DRY"
+    assert [e["type"] for e in events(outs[True], "RUN")] == ["ENTER"]
+
+
+def plateau(**extra) -> dict:
+    """Enters on the racer's thrust, edges down, then goes nearly flat: no new high, so the stall clock runs."""
+    r = racer(up=12, down=0, **extra)
+    r["ret"][32:34] = -0.001
+    r["ret"][34:64] = 0.0001
+    r["vmult"][32:64] = 6.0
+    return r
+
+
+def test_provisional_bar_counts_no_stall_soft_fail():
+    """DATA-4: a bar still being revised neither counts a STALL soft-fail nor clears one already counted."""
+    session, pack, bars = build({"RUN": plateau()}, seed=3)
+    clean = drive(Engine(PARAMS, pack, session), bars, session, range(46))
+    assert [(e["type"], e["reason"], e["slot"]) for e in events(clean, "RUN")][1:] == [("EXIT", "STALL", 41)]
+    eng = Engine(PARAMS, pack, session)
+    held = drive(eng, bars, session, range(36)) + drive(eng, bars, session, range(36, 42), provisional={"RUN"})
+    assert [e["type"] for e in events(held, "RUN")] == ["ENTER"] and eng.state_dict()["members"]["RUN"]["soft"] == 0
+    eng = Engine(PARAMS, pack, session)                            # one soft-fail at 40, a provisional bar at 41
+    kept = (drive(eng, bars, session, range(41)) + drive(eng, bars, session, [41], provisional={"RUN"})
+            + drive(eng, bars, session, range(42, 46)))
+    assert [(e["type"], e["reason"], e["slot"]) for e in events(kept, "RUN")][1:] == [("EXIT", "STALL", 42)]
+
+
 def test_data_stale_exit_after_three_bars_without_volume():
     session, pack, bars = build({"RUN": racer(zero_vol=(27, 28, 29))})
     outs = drive(Engine(PARAMS, pack, session), bars, session, range(40))
     leave = events(outs, "RUN")[1]
     assert leave["reason"] == "DATA_STALE" and leave["slot"] == 29 and "3 scans" in leave["detail"]
+
+
+def drifter(**extra) -> dict:
+    """Enters on the racer's thrust, then drifts up gently (no halt-sized move) with steady volume."""
+    r = racer(up=12, down=0, **extra)
+    r["ret"][32:60] = 0.0012
+    r["vmult"][32:60] = 6.0
+    return r
+
+
+@pytest.mark.parametrize("spec", [racer(up=24, down=0, zero_vol=(27,)), drifter(drop=(34,))],
+                         ids=["one-zero-volume-bar", "one-missing-bar"])
+def test_one_bad_bar_is_not_data_stale(spec):
+    """ENG-2: DATA_STALE counts consecutive bars without a fresh print, not 3-bar windows."""
+    session, pack, bars = build({"RUN": spec})
+    outs = drive(Engine(PARAMS, pack, session), bars, session, range(50))
+    ev = events(outs, "RUN")
+    assert ev[0]["type"] == "ENTER" and ev[0]["slot"] < 27
+    assert not [e for e in ev if e["reason"] == "DATA_STALE"]
+    assert [r["slot"] for r in rows(outs, "RUN") if r["role"] == "member"] == list(range(ev[0]["slot"], 50))
+
+
+def test_fallback_bars_never_count_toward_data_stale():
+    """SPEC 4.5: missing data counts toward DATA_STALE only while the source is healthy."""
+    session, pack, bars = build({"RUN": racer(up=24, down=0, zero_vol=(27, 28, 29))})
+    eng = Engine(PARAMS, pack, session)
+    outs = drive(eng, bars, session, range(26)) + drive(eng, bars, session, range(26, 40), degraded=True)
+    assert not [e for e in events(outs, "RUN") if e["reason"] == "DATA_STALE"]
+    assert "RUN" in eng.state_dict()["members"]
+
+
+def test_a_fresh_fallback_bar_ends_a_stale_run():
+    """SPEC 12.2: any fresh print ends a DATA_STALE run, fallback bars included (they only never add to it).
+    Two bad bars, fresh fallback bars, then one bad bar are never three stale scans."""
+    session, pack, bars = build({"RUN": racer(up=30, down=0, zero_vol=(27, 28, 35))})
+    eng = Engine(PARAMS, pack, session)
+    outs = drive(eng, bars, session, range(29))
+    assert eng.state_dict()["members"]["RUN"]["stale"] == 2
+    outs += drive(eng, bars, session, range(29, 35), degraded=True)
+    assert eng.state_dict()["members"]["RUN"]["stale"] == 0
+    outs += drive(eng, bars, session, range(35, 45))
+    assert [(e["type"], e["reason"]) for e in events(outs, "RUN")] == [("ENTER", "ENTRY")]
+    assert "RUN" in eng.state_dict()["members"]
 
 
 def test_long_halt_freezes_then_exits():
@@ -364,6 +553,27 @@ def test_sector_cap_and_banner():
     b = banners[0]
     assert b["sector"] == "Financials" and b["direction"] == "up" and b["count"] == len(b["tickers"]) >= 1
     assert not set(b["tickers"]) & {m["ticker"] for m in fin}
+
+
+def test_sector_banner_drops_a_name_once_it_is_admitted():
+    """E2E-2: B is held back by the cap while A is on the radar; when A exits and B enters, the banner no
+    longer lists B (count = names held back beyond the cap)."""
+    params = copy.deepcopy(PARAMS)
+    params["caps"]["max_per_sector_dir"] = 1
+    meta = {"A": {"name": "A Corp", "sector": "Technology"}, "B": {"name": "B Corp", "sector": "Technology"}}
+    first = racer(start=20, up=10, down=4, jump=0.015)
+    first["vmult"][20] = 18.0
+    session, pack, bars = build({"A": first, "B": racer(start=24, up=30, down=0)}, meta=meta)
+    outs = drive(Engine(params, pack, session), bars, session, range(45))
+    a_exit = events(outs, "A")[1]
+    b_enter = events(outs, "B")[0]
+    assert b_enter["type"] == "ENTER" and b_enter["slot"] >= a_exit["slot"]
+    held = [b for b in outs[a_exit["slot"] - 1].snapshot["sector_banners"] if b["sector"] == "Technology"]
+    assert held and held[0]["tickers"] == ["B"] and held[0]["count"] == 1
+    for o in outs[b_enter["slot"]:]:
+        members = {m["ticker"] for m in o.snapshot["members"]}
+        for ban in o.snapshot["sector_banners"]:
+            assert not set(ban["tickers"]) & members and ban["count"] == len(ban["tickers"]) >= 1
 
 
 def test_full_radar_displaces_the_weakest_member():

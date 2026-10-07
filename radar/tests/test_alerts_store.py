@@ -224,7 +224,33 @@ def test_two_phase_main_untouched_until_the_data_push_is_confirmed(tmp_path):
     assert after == sorted(after, key=lambda a: a["ts"], reverse=True) and after[0] == alerts[0]
     kept = {hk.pk_of(spec, a) for a in after}
     backed = {hk.pk_of(spec, a) for a in data_backup_rows(data)}
-    assert kept | backed == {hk.pk_of(spec, a) for a in alerts} and not kept & backed
+    # SPEC 12.4: the rows left on main are backed up too (backup only), so the backups hold every row
+    assert backed == {hk.pk_of(spec, a) for a in alerts} and kept <= backed
+
+
+def test_a_run_without_main_writes_defers_the_trim_to_the_next_nightly_run(tmp_path):
+    """STO-3 / SPEC 12.4: a daytime run reads main and backs it up, but never PUTs; the nightly run trims."""
+    data = str(tmp_path / "data")
+    alerts = old_alerts(200)
+    fake = FakeGitHub({PATH: alerts_doc(alerts)})
+    before = fake.files[PATH]
+    rep = hk.run(data, make_store(fake), now=AS_OF, main_writes=False, repeats=1)
+    t = rep["tables"]["alerts_log"]
+    assert t["status"] == "DEGRADED" and t["archive_rows"] > 0 and rep["outcome"] == "ok"
+    assert rep["main_trim"]["alerts_log"]["status"] == "deferred"
+    assert fake.puts() == 0 and fake.files[PATH] == before and {m for m, *_ in fake.calls} == {"GET"}
+    spec = T.BY_NAME["alerts_log"]
+    assert {hk.pk_of(spec, a) for a in data_backup_rows(data)} == {hk.pk_of(spec, a) for a in alerts}
+    result = job.JobResult("apply", job.SquashDecision(False, "squash=skip"), report=rep,
+                           publish={"status": "pushed", "sha": "a" * 40, "attempts": 1, "previous_head": "b" * 40})
+    assert job.exit_code(result, AS_OF) == 0
+    assert "**Main (alerts/log.json):** deferred, 0 rows removed" in job.render_summary(result, AS_OF)
+
+    rep = hk.run(data, make_store(fake), now=AS_OF + timedelta(days=1), repeats=1)
+    assert rep["main_trim"]["alerts_log"]["status"] == "trimmed" and fake.puts() == 1
+    assert not [p for p in rep["partitions_written"] if p.startswith("alerts_log/")]   # nothing new to back up
+    after = json.loads(fake.files[PATH])["alerts"]
+    assert len(after) <= spec.target_ratio * spec.max_rows and after[0] == alerts[0]
 
 
 def test_main_api_failure_is_reported_and_fails_the_job(tmp_path):

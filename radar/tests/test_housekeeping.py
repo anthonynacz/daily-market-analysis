@@ -47,7 +47,7 @@ def read_jsonl(path):
     if not os.path.exists(path):
         return []
     with open(path, "rb") as f:
-        return [json.loads(x) for x in f.read().decode().splitlines() if x.strip()]
+        return [json.loads(x) for x in hk.jsonl_lines(f.read().decode()) if x.strip()]
 
 
 def digest(root, exclude=("ops/",)):
@@ -69,7 +69,7 @@ def backup_rows(root, table):
         for fn in sorted(os.listdir(bdir)):
             if fn.endswith(".jsonl.gz"):
                 with open(os.path.join(bdir, fn), "rb") as f:
-                    rows += [json.loads(x) for x in gzip.decompress(f.read()).decode().splitlines()]
+                    rows += [json.loads(x) for x in hk.jsonl_lines(gzip.decompress(f.read()).decode())]
     return rows
 
 
@@ -365,6 +365,56 @@ def test_unparseable_lines_are_kept(tmp_path, small_limits):
     assert rep["tables"]["member_ticks"]["bad_rows"] == 1
 
 
+LINE_BREAKERS = (" ", " ", "\x85")   # str.splitlines() breaks on them; json.dumps leaves them literal
+
+
+def test_jsonl_lines_splits_on_newline_only():
+    text = "".join(dumps({"k": f"a{ch}b"}) + "\n" for ch in LINE_BREAKERS)
+    assert [json.loads(x)["k"] for x in hk.jsonl_lines(text)] == [f"a{ch}b" for ch in LINE_BREAKERS]
+    assert hk.jsonl_lines("") == [] and hk.jsonl_lines("a\n\nb") == ["a", "", "b"]   # inner blank line kept
+
+
+def test_unicode_line_separators_in_alerts_are_archived_intact(tmp_path):
+    """STO-1: partition lines are canonical JSON with ensure_ascii=False, so U+2028, U+2029 and U+0085 sit in them
+    literally. Splitting on those made write_partition_verified raise PartitionCorrupt and fail the whole job."""
+    data, main = str(tmp_path / "data"), str(tmp_path / "main")
+    rng = random.Random(4)
+    alerts = [alert_row(AS_OF - timedelta(hours=8 * (i + 1)), rng.choice(["NVDA", "TSLA", "AMD"]), rng)
+              for i in range(185)]                                  # newest first; 185 rows > max_rows
+    for i, ch in enumerate(LINE_BREAKERS):
+        alerts[-1 - i]["headline"] = f"a{ch}b"                      # among the oldest rows: archived
+    write_alerts(main, alerts)                                       # json.dump stores them as   escapes
+    rep = hk.run(data, hk.DirStore(main), now=AS_OF, force_tables=["alerts_log"], repeats=1)
+    assert rep["outcome"] == "ok" and not rep["partition_errors"]
+    assert rep["main_trim"]["alerts_log"]["status"] == "trimmed"
+    spec = T.BY_NAME["alerts_log"]
+    index = {hk.pk_of(spec, r): hk.canon(r) for r in backup_rows(data, "alerts_log")}
+    assert all(index[hk.pk_of(spec, a)] == hk.canon(a) for a in alerts[-3:])
+    assert hk.verify(data)["problems"] == []
+    with open(os.path.join(main, T.ALERTS_LOG_PATH), encoding="utf-8") as f:
+        left = {hk.pk_of(spec, a) for a in json.load(f)["alerts"]}
+    assert not left & {hk.pk_of(spec, a) for a in alerts[-3:]}
+
+
+def test_unicode_line_separators_in_jsonl_rows_survive_a_trim(tmp_path):
+    """STO-1: a hot JSONL row holding U+2029 / U+0085 is one row, not two unparseable fragments that the trim
+    rewrites with a newline between them (destroying the row and keeping the fragments forever)."""
+    root = str(tmp_path)
+    spec = T.BY_NAME["events"]
+    rng = random.Random(6)
+    old = {**event_row(AS_OF - timedelta(days=40), "AMD", "EXIT", rng), "detail": "old\x85row"}
+    young = {**event_row(AS_OF - timedelta(days=2), "NVDA", "ENTER", rng), "detail": "young row"}
+    plain = [event_row(AS_OF - timedelta(days=d), "TSLA", "ENTER", rng) for d in (35, 3)]
+    write_jsonl(os.path.join(root, spec.path), [old, plain[0], plain[1], young])
+    rep = hk.run(root, now=AS_OF, force_tables=["events"], repeats=1)
+    t = rep["tables"]["events"]
+    assert t["bad_rows"] == 0 and t["rows"] == 4 and t["archive_rows"] == 2 and t["rows_after"] == 2
+    with open(os.path.join(root, spec.path), "rb") as f:
+        assert f.read().decode("utf-8") == dumps(plain[1]) + "\n" + dumps(young) + "\n"   # exact lines kept
+    assert backup_rows(root, "events") == [old, plain[0]]
+    assert hk.verify(root)["problems"] == []
+
+
 def test_snapshot_guards_are_reported_not_acted_on(tmp_path):
     root = str(tmp_path)
     big = {PATHS["state"]: 300 * T.KiB, PATHS["engine"]: 10 * T.KiB, PATHS["baselines"]: 2 * T.MiB + 1}
@@ -410,7 +460,8 @@ def test_alerts_log_two_phase(tmp_path, small_limits):
     assert after["alerts"][0]["ts"] == alerts[0]["ts"]
     kept = {a["ts"] + a["ticker"] for a in after["alerts"]}
     bak = {a["ts"] + a["ticker"] for a in backup_rows(data, "alerts_log")}
-    assert kept | bak == {a["ts"] + a["ticker"] for a in alerts} and not kept & bak
+    # SPEC 12.4: the rows left on main are backed up too (backup only), so the backups hold every row
+    assert bak == {a["ts"] + a["ticker"] for a in alerts} and kept <= bak
 
 
 def test_alerts_trim_retries_on_concurrent_write(tmp_path):
@@ -460,6 +511,76 @@ def test_unreadable_alerts_log_is_frozen(tmp_path):
     assert digest(main) == before and rep["main_trim"] == {}
 
 
+def routine_cap(main, new, cap=200):
+    """The alerts routine: prepend the new alerts (newest first) and keep the newest `cap`; returns the drops."""
+    with open(os.path.join(main, T.ALERTS_LOG_PATH), encoding="utf-8") as f:
+        merged = list(reversed(new)) + json.load(f)["alerts"]
+    write_alerts(main, merged[:cap])
+    return merged[cap:]
+
+
+def test_every_run_backs_up_the_alerts_log_so_the_routine_cap_drops_only_backed_up_rows(tmp_path):
+    """STO-2 / SPEC 12.4: a WARN log (170 rows, not DEGRADED) is copied to the backups in full while main stays
+    untouched. The routine then adds 40 alerts and cuts the log to 200 rows: every row it drops is backed up."""
+    data, main = str(tmp_path / "data"), str(tmp_path / "main")
+    rng = random.Random(7)
+    alerts = [alert_row(AS_OF - timedelta(hours=2 * (i + 1)), rng.choice(["NVDA", "TSLA", "AMD"]), rng)
+              for i in range(170)]
+    write_alerts(main, alerts)
+    before = digest(main)
+    rep = hk.run(data, hk.DirStore(main), now=AS_OF, trigger="schedule", repeats=1)
+    t = rep["tables"]["alerts_log"]
+    assert t["status"] == "WARN" and t["archive_rows"] == 0 and t["backup_only_rows"] == 170
+    assert digest(main) == before and rep["main_trim"] == {}        # backup only: main is not written
+    assert "Backed up and kept hot (backup only): alerts_log 170 rows" in hk.render_markdown(rep)
+
+    new = [alert_row(AS_OF + timedelta(hours=10, minutes=i), "NEW", rng) for i in range(40)]
+    dropped = routine_cap(main, new)
+    assert len(dropped) == 10
+    window = (AS_OF - timedelta(days=60), AS_OF + timedelta(days=2))
+    backed = {hk.canon(r) for r in hk.query(data, "alerts_log", *window)}         # backups only (no main store)
+    assert {hk.canon(r) for r in dropped} <= backed
+
+    rep = hk.run(data, hk.DirStore(main), now=AS_OF + timedelta(days=1), trigger="schedule", repeats=1)
+    assert rep["tables"]["alerts_log"]["status"] == "DEGRADED"
+    assert rep["main_trim"]["alerts_log"]["status"] == "trimmed"
+    assert {hk.canon(r) for r in hk.query(data, "alerts_log", *window)} == {hk.canon(r) for r in alerts + new}
+    assert hk.verify(data)["problems"] == []
+
+
+def test_backed_up_alerts_older_than_hot_days_leave_main_by_heal(tmp_path):
+    """The backup-only copy leaves main as it is; the next run heals the rows older than hot_days off main."""
+    data, main = str(tmp_path / "data"), str(tmp_path / "main")
+    rng = random.Random(9)
+    spec = T.BY_NAME["alerts_log"]
+    alerts = [alert_row(AS_OF - timedelta(days=i + 1), "AMD", rng) for i in range(60)]   # 60 rows: OK
+    write_alerts(main, alerts)
+    before = digest(main)
+    rep = hk.run(data, hk.DirStore(main), now=AS_OF, repeats=1)
+    assert rep["tables"]["alerts_log"]["status"] == "OK" and digest(main) == before
+    rep = hk.run(data, hk.DirStore(main), now=AS_OF + timedelta(hours=1), repeats=1)
+    t = rep["tables"]["alerts_log"]
+    old = [a for a in alerts if hk.parse_ts(a["ts"]) < AS_OF + timedelta(hours=1) - timedelta(days=spec.hot_days)]
+    assert t["heal_rows"] == len(old) > 0 and t["archive_rows"] == 0 and rep["partitions_written"] == []
+    assert rep["main_trim"]["alerts_log"] == {"status": "trimmed", "removed": len(old), "attempts": 1}
+    with open(os.path.join(main, T.ALERTS_LOG_PATH), encoding="utf-8") as f:
+        assert json.load(f)["alerts"] == alerts[:len(alerts) - len(old)]
+    assert sorted(map(hk.canon, backup_rows(data, "alerts_log"))) == sorted(map(hk.canon, alerts))
+
+
+def test_backup_only_skips_a_frozen_alerts_log(tmp_path):
+    data, main = str(tmp_path / "data"), str(tmp_path / "main")
+    write_alerts(main, [alert_row(AS_OF - timedelta(days=1), "AMD", random.Random(1))])
+    os.makedirs(os.path.join(data, "backups/alerts_log"))
+    with open(os.path.join(data, "backups/alerts_log/2026-09.jsonl.gz"), "wb") as f:
+        f.write(b"not a gzip file")
+    rep = hk.run(data, hk.DirStore(main), now=AS_OF, repeats=1)
+    t = rep["tables"]["alerts_log"]
+    assert t["status"] == "ERROR" and t["backup_only_rows"] == 0 and rep["planned"]["partitions_write"] == []
+    with open(os.path.join(data, "backups/alerts_log/2026-09.jsonl.gz"), "rb") as f:
+        assert f.read() == b"not a gzip file"
+
+
 # ------------------------------------------------------------------ dry-run, tooling, real volume
 
 def test_dry_run_writes_nothing(history_fixture):
@@ -482,6 +603,24 @@ def test_query_and_restore(history_fixture, tmp_path):
     out = str(tmp_path / "restored.jsonl")
     info = hk.restore_month(root, "member_ticks", "2026-07", out)
     assert info["rows"] == len(read_jsonl(out)) > 0
+
+
+def test_query_where_accepts_json_and_python_spellings(history_fixture, capsys):
+    """STO-4: late=false / held_min=null (JSON) used to match nothing, silently."""
+    root, _ = history_fixture
+    start, end = datetime(2026, 6, 1, tzinfo=UTC), datetime(2026, 10, 1, tzinfo=UTC)
+    q = lambda **where: hk.query(root, "events", start, end, where)   # noqa: E731
+    rows = q()
+    enters = [r for r in rows if r["held_min"] is None]
+    assert rows and enters and len(enters) < len(rows) and all(r["late"] is False for r in rows)
+    assert q(late="false") == q(late="False") == rows
+    assert q(held_min="null") == q(held_min="None") == enters
+    assert q(late="true") == q(late="0") == []
+    assert q(ticker="NVDA") == q(ticker='"NVDA"') == rows
+    with pytest.raises(SystemExit):
+        hk.main(["query", "--help"])
+    help_text = " ".join(capsys.readouterr().out.split())
+    assert "late=false and late=False, held_min=null and held_min=None" in help_text
 
 
 def test_cli_query_restore_verify(history_fixture, tmp_path, capsys):

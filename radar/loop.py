@@ -4,11 +4,14 @@
 
 Regular session only: a warmup tick at 09:10 ET builds the day's baselines, then one tick runs at
 every 5-minute boundary + 50 s from 09:35 through the close, the last one (close + 50 s) flagged
---final. Each tick is a subprocess with a hard timeout and a scrubbed environment; the loop owns
+--final. Each tick is a subprocess with a hard timeout and a scrubbed environment, polled every
+second so a SIGTERM/SIGINT to the loop (the workflow execs it) also ends the tick; the loop owns
 git and publishes every delta per the writer contract. Before each tick it records its own
 health and the previous push timings in the worktree's engine.json ("loop"), which the tick
-carries into state.json and scan_log. The loop retires after loop_retire_min; the successor run
-queued by the watchdog cron takes over.
+carries into state.json and scan_log. A tick that writes nothing still leaves the source health it
+reached (<pending>/source_health.json), and a timeout counts as one more failed call, so a blocked
+source opens the breaker. The loop retires after loop_retire_min; the successor run queued by the
+watchdog cron takes over.
 """
 from __future__ import annotations
 
@@ -29,12 +32,16 @@ from typing import Callable, Mapping
 from . import calendar_nyse as cal
 from . import delta, gate, gitsync
 from .config import PATHS, REPO, RUNTIME
-from .tick import HELD, MS_KEYS, NO_GIT, iso, parse_tick_id, read_json, run_id, scan_log_row
+from .tick import (HELD, MS_KEYS, NO_GIT, SOURCE_HEALTH_FILE, iso, parse_tick_id, read_json, run_id, scan_log_row,
+                   source_block)
 
 NAP_S = 5.0
+POLL_S = 1.0                 # a running tick is checked this often for a stop request
+KILL_AFTER_S = 3.0           # a terminated tick that is still alive after this is killed
 WRITE_MS_KEEP = 50
 SECRET_ENV = ("GITHUB_TOKEN", "GH_TOKEN")
 TICK_CMD = (sys.executable, "-m", "radar.tick")
+BREAKER_TRIP = 3             # = fetch.BREAKER_TRIP (fetch needs curl_cffi; the loop stays stdlib-only)
 
 
 @dataclass(frozen=True)
@@ -69,17 +76,38 @@ def scrubbed_env(env: Mapping[str, str]) -> dict[str, str]:
     return {k: v for k, v in env.items() if k not in SECRET_ENV and not k.startswith("ACTIONS_")}
 
 
-def run_tick_subprocess(cmd: list[str], timeout_s: float, env: dict[str, str]) -> dict:
-    """Run one tick; its stderr streams to the job log, its last stdout line is the JSON result."""
-    t0 = time.monotonic()
+def _halt(p: subprocess.Popen) -> None:
+    p.terminate()
     try:
-        p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=None, text=True, encoding="utf-8",
-                           errors="replace", env=env, timeout=timeout_s)
+        p.communicate(timeout=KILL_AFTER_S)
     except subprocess.TimeoutExpired:
-        return {"status": "timeout", "message": f"the scan took longer than {timeout_s:.0f} s and was stopped",
-                "duration_ms": int((time.monotonic() - t0) * 1000)}
+        p.kill()
+        p.communicate()
+
+
+def run_tick_subprocess(cmd: list[str], timeout_s: float, env: dict[str, str],
+                        stop: Callable[[], bool] = lambda: False) -> dict:
+    """Run one tick; its stderr streams to the job log, its last stdout line is the JSON result. It is
+    polled every POLL_S so a stop request (SIGTERM/SIGINT to the loop) terminates it at once."""
+    t0 = time.monotonic()
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=None, text=True, encoding="utf-8",
+                         errors="replace", env=env)
+    while True:
+        left = timeout_s - (time.monotonic() - t0)
+        try:
+            out, _ = p.communicate(timeout=max(0.01, min(POLL_S, left)))   # output read so far is kept
+            break
+        except subprocess.TimeoutExpired:
+            if stop():
+                _halt(p)
+                return {"status": "stopped", "message": "a stop was requested; the scan was terminated",
+                        "duration_ms": int((time.monotonic() - t0) * 1000)}
+            if time.monotonic() - t0 >= timeout_s:
+                _halt(p)
+                return {"status": "timeout", "message": f"the scan took longer than {timeout_s:.0f} s and was stopped",
+                        "duration_ms": int((time.monotonic() - t0) * 1000)}
     res: dict = {}
-    for line in reversed(p.stdout.strip().splitlines()):
+    for line in reversed(out.strip().splitlines()):
         try:
             res = json.loads(line)
             break
@@ -91,6 +119,54 @@ def run_tick_subprocess(cmd: list[str], timeout_s: float, env: dict[str, str]) -
     res.setdefault("message", "the scan printed no result")
     res["duration_ms"] = int((time.monotonic() - t0) * 1000)
     return res
+
+
+def _count(v: object) -> int:
+    try:
+        return max(0, int(v))  # type: ignore[call-overload]
+    except (TypeError, ValueError):
+        return 0
+
+
+def _breaker_open(rec: dict) -> bool:
+    return isinstance(rec.get("breaker"), dict) and rec["breaker"].get("open") is True
+
+
+def _fail_once(rec: dict, now: str) -> None:
+    """One more failed call on a health record (flat, or one endpoint family); the breaker opens at the trip."""
+    rec["consecutive_failures"] = _count(rec.get("consecutive_failures")) + 1
+    rec["status"] = "down"
+    breaker = dict(rec["breaker"]) if isinstance(rec.get("breaker"), dict) else {}
+    if breaker.get("open") is not True and rec["consecutive_failures"] >= BREAKER_TRIP:
+        breaker.update(open=True, opened_at=now, calls=0, good_probes=0)
+    rec["breaker"] = breaker
+
+
+def health_after_timeout(health: object, now: str) -> dict:
+    """A tick killed by the timeout counts as one more failed call (SPEC 12.3): the worst endpoint family
+    (most failures in a row, among those whose breaker is still closed) is raised by 1 and its breaker
+    opens at the trip count, so repeated timeouts reach the Nasdaq fallback even if a hang escapes the
+    tick's deadline. The flat (pre-family) record is handled the same way."""
+    h = dict(health) if isinstance(health, dict) else {}
+    families = h.get("families")
+    if isinstance(families, dict) and families:
+        fams = {k: dict(v) if isinstance(v, dict) else {} for k, v in families.items()}
+        closed = [k for k, f in fams.items() if not _breaker_open(f)] or list(fams)
+        worst = max(closed, key=lambda k: _count(fams[k].get("consecutive_failures")))
+        _fail_once(fams[worst], now)
+        # the flat top level is derived as in fetch.Fetcher.health_state(): the worst family's values
+        rank = ("ok", "degraded", "down")
+        top = max(fams.values(), key=lambda f: (_breaker_open(f), rank.index(f["status"]) if f.get("status") in rank
+                                                else 0, _count(f.get("consecutive_failures"))))
+        h.update(families=fams, status="down", breaker=top.get("breaker"),
+                 consecutive_failures=max(_count(f.get("consecutive_failures")) for f in fams.values()))
+        if any(_breaker_open(f) for f in fams.values()):
+            h["name"] = "nasdaq"
+    else:
+        _fail_once(h, now)
+        if _breaker_open(h):
+            h["name"] = "nasdaq"
+    return h
 
 
 def dispatch_housekeeping(repo: str, token: str, reason: str, *, timeout_s: float = 15.0) -> str:
@@ -119,7 +195,7 @@ class Loop:
     def __init__(self, data_dir: Path, pending_dir: Path, *, push: bool = True, once: bool = False,
                  retire_min: float = RUNTIME["loop_retire_min"], clock: Callable[[], float] = time.time,
                  sleep: Callable[[float], None] = time.sleep,
-                 run_tick: Callable[[list[str], float, dict[str, str]], dict] = run_tick_subprocess,
+                 run_tick: Callable[..., dict] = run_tick_subprocess,
                  publish: Callable[..., gitsync.PublishResult] = gitsync.publish,
                  dispatch: Callable[[str, str, str], str] = dispatch_housekeeping,
                  env: Mapping[str, str] = os.environ, tick_cmd: tuple[str, ...] = TICK_CMD):
@@ -206,10 +282,11 @@ class Loop:
             self.last_tick = slot.tick_epoch
         self._prepare(slot, following)
         before = {d.name for d in delta.list_pending(self.pending)}
+        (self.pending / SOURCE_HEALTH_FILE).unlink(missing_ok=True)   # only this tick's health may be merged
         cmd = [*self.tick_cmd, "--data-dir", str(self.data), "--pending-dir", str(self.pending),
                "--tick-id", iso(slot.tick_epoch)]
         cmd += ["--warmup"] * slot.warmup + ["--final"] * slot.final + ["--ignore-calendar"] * ignore_calendar
-        res = self.run_tick(cmd, RUNTIME["tick_timeout_s"], scrubbed_env(self.env))
+        res = self.run_tick(cmd, RUNTIME["tick_timeout_s"], scrubbed_env(self.env), stop=lambda: self.stop)
         if self.stop:
             return
         wrote = any(d.name not in before for d in delta.list_pending(self.pending))
@@ -230,7 +307,8 @@ class Loop:
         doc["loop"] = {"run_id": run_id(), "started_at": iso(self.started), "session": self.session_date,
                        "ticks_today": self.ticks_today, "ticks_skipped": self.ticks_skipped,
                        "last_tick": iso(self.last_tick) if self.last_tick else None,
-                       "push_backlog": len(delta.list_pending(self.pending)), "git_prev": self.git_prev,
+                       # deltas still pending had failed pushes; the commit carrying this tick delivers them
+                       "published_late": len(delta.list_pending(self.pending)), "git_prev": self.git_prev,
                        "write_ms": self.write_ms[-WRITE_MS_KEEP:],
                        "next_tick_at": iso(following) if following else None}
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -255,10 +333,19 @@ class Loop:
         return {**ops, "hk_dispatched_at": iso(self.clock()), "hk_dispatch_result": result}
 
     def _write_failure(self, slot: Slot, following: int | None, res: dict) -> None:
-        """The tick wrote nothing: log the run, keep this loop's engine.json bookkeeping and, during
-        the session, republish the previous snapshot flagged as an error."""
+        """The tick wrote nothing: log the run, keep this loop's engine.json bookkeeping and the source
+        health the tick reached (SPEC 12.3) and, during the session, republish the previous snapshot
+        flagged as an error."""
         now = self.clock()
-        replaces: dict = {PATHS["engine"]: read_json(self.data / PATHS["engine"]) or {"schema": 1}}
+        engine = read_json(self.data / PATHS["engine"]) or {"schema": 1}
+        side = self.pending / SOURCE_HEALTH_FILE
+        reached = read_json(side)                       # written by the fetcher after its last finished call
+        if reached is not None:
+            stored = engine.get("source_health")
+            engine["source_health"] = {**(stored if isinstance(stored, dict) else {}), **reached}
+        if res["status"] == "timeout":
+            engine["source_health"] = health_after_timeout(engine.get("source_health"), iso(now))
+        replaces: dict = {PATHS["engine"]: engine}
         state = read_json(self.data / PATHS["state"])
         if state is not None and not slot.warmup:
             what = "timed out" if res["status"] == "timeout" else "failed"
@@ -267,7 +354,9 @@ class Loop:
                          health={"ticks_today": self.ticks_today, "ticks_skipped": self.ticks_skipped,
                                  "last_tick_ms": int(res.get("duration_ms", 0)), "loop_run_id": run_id(),
                                  "loop_started_at": iso(self.started),
-                                 "push_backlog": len(delta.list_pending(self.pending))})
+                                 "published_late": len(delta.list_pending(self.pending))})
+            if "source_health" in engine:
+                state["source"] = source_block(engine["source_health"])
             replaces[PATHS["state"]] = state
         phase, session = cal.phase_at(datetime.fromtimestamp(slot.tick_epoch, cal.UTC))
         row = scan_log_row(
@@ -280,6 +369,7 @@ class Loop:
         delta.write_delta(self.pending, iso(slot.tick_epoch), {PATHS["scan_log"]: [row]}, replaces,
                           kind="warmup" if slot.warmup else "tick",
                           summary={"status": "error", "members": row["members"], "entered": [], "exited": []})
+        side.unlink(missing_ok=True)                    # merged into the delta's engine.json
 
     def _hot_bytes(self) -> dict:
         def size(key: str) -> int:

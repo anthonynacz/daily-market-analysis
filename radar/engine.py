@@ -1,4 +1,4 @@
-"""Momentum Radar state machine (signal-model.md sections 1-10 with radar/SPEC.md sections 4.5, 5 and 6).
+"""Momentum Radar state machine (signal-model.md sections 1-10 with radar/SPEC.md sections 4.5, 5, 6 and 12.2).
 
 The engine runs on bar time: every call processes each final, not yet processed regular-session slot in
 order, so live ticks, catch-up after an outage and the replay all go through the same per-slot step.
@@ -88,6 +88,8 @@ class _Ctx:
     halts: object
     spy: int
     spy_last: int
+    prov: np.ndarray                 # slot of a newest bar that may still be revised (Bars.provisional_last), else -1
+    degraded: bool = False           # bars came from the fallback source: volume is not on the baseline's basis
 
 
 class Engine:
@@ -107,6 +109,10 @@ class Engine:
         self._index_pack()
         same = bool(state) and state.get("schema") == STATE_SCHEMA and state.get("session") == self.day
         self.st = copy.deepcopy(state) if same else self._fresh_state()
+        # A pack rebuilt mid-session (new params_version, lost extra pack) can miss names the state holds:
+        # their heating is dropped; members stay frozen on their last view until SESSION_END.
+        for sym in [s for s in self.st["heating"] if s not in self.idx]:
+            del self.st["heating"][sym]
 
     # ------------------------------------------------------------------ setup
     def _index_pack(self) -> None:
@@ -138,18 +144,30 @@ class Engine:
     def state_dict(self) -> dict:
         return copy.deepcopy(self.st)
 
+    def _label(self, sym: str, x: dict) -> tuple[str | None, str]:
+        """Name and sector of a member or heating entry: stored at entry, so they never need the pack.
+
+        State written before they were stored falls back to the pack, then to (None, "Unknown")."""
+        if "sector" in x:
+            return x.get("name"), x["sector"]
+        i = self.idx.get(sym)
+        return (self.names[i], self.sectors[i]) if i is not None else (None, "Unknown")
+
     def _final_slot(self, now_epoch: int) -> int:
         """Last slot whose bar is final at now (bar close + grace), capped at the session's last slot."""
         k = (now_epoch - self.session.open_epoch - 300 - self.grace) // 300
         return int(min(max(k, -1), self.n - 1))
 
     # ------------------------------------------------------------------ stage A
-    def stage_a(self, quotes: dict[str, Quote], now_epoch: int) -> list[str]:
-        """Symbols needing 5-minute bars this tick (signal-model.md 1.4)."""
+    def stage_a(self, quotes: dict[str, Quote], now_epoch: int, *, quotes_ok: bool = True) -> list[str]:
+        """Symbols needing 5-minute bars this tick (signal-model.md 1.4).
+
+        `quotes_ok=False` (the quote call is down): members, heating names and the references only. The scan
+        never widens to the whole universe during an outage, and missing data never evicts a member."""
         st = self.st
         must = set(st["members"]) | set(st["heating"]) | set(REFERENCE_SYMBOLS)
         k = self._final_slot(now_epoch)
-        if k < 0:
+        if k < 0 or not quotes_ok:
             return sorted(must)
         px = np.full(len(self.syms), np.nan)
         vol = np.full(len(self.syms), np.nan)
@@ -198,9 +216,12 @@ class Engine:
         self.st["ring"]["px"] = {s: v for s, v in self.st["ring"]["px"].items() if int(s) >= keep}
 
     # ------------------------------------------------------------------ step
-    def step(self, bars: dict[str, Bars], now_epoch: int, *, halted: set[str] | frozenset[str] = frozenset()
-             ) -> TickOutput:
-        """`halted`: symbols an external feed reports halted now; applied to the slots this call processes."""
+    def step(self, bars: dict[str, Bars], now_epoch: int, *, halted: set[str] | frozenset[str] = frozenset(),
+             degraded_volume: bool = False) -> TickOutput:
+        """`halted`: symbols an external feed reports halted now; applied to the slots this call processes.
+
+        `degraded_volume`: the bars come from the fallback source, whose volume is not on the baseline's basis.
+        No new heating or entries then, and no DRY soft-fails; members are refreshed and exit on price rules."""
         st = self.st
         k_now = self._final_slot(now_epoch)
         due = list(range(st["last_slot"] + 1, k_now + 1))
@@ -209,7 +230,7 @@ class Engine:
             for sym in sorted(halted):
                 slots = st["ext_halts"].setdefault(sym, [])
                 slots.extend(k for k in due if k not in slots)
-            ctx = self.context(bars)
+            ctx = self.context(bars, degraded_volume=degraded_volume)
             st["counts"]["stage_b"] = len(ctx.symbols) if ctx else 0
             end_due = k_now >= self.session_end
             for k in due:
@@ -223,7 +244,7 @@ class Engine:
         out.snapshot = self.snapshot()
         return out
 
-    def context(self, bars: dict[str, Bars]) -> _Ctx | None:
+    def context(self, bars: dict[str, Bars], *, degraded_volume: bool = False) -> _Ctx | None:
         """Grid, features, halt flags and eligibility of the pack symbols in `bars` (None without SPY bars)."""
         symbols = sorted(s for s in bars if s in self.idx)
         if "SPY" not in symbols:
@@ -247,7 +268,14 @@ class Engine:
                            external=ext)
         eligible = self.elig[pix] & ~split_flags(grid, self.pc[pix], self.sigd[pix])
         spy_last = int(np.flatnonzero(grid.present[spy])[-1])
-        return _Ctx(symbols, row, pix, grid, feats, eligible, halts, spy, spy_last)
+        prov = np.full(len(symbols), -1)
+        for i, sym in enumerate(symbols):
+            b = bars[sym]
+            if getattr(b, "provisional_last", False) and len(b):
+                off = int(b.ts[-1]) - self.session.open_epoch
+                if off >= 0 and off % 300 == 0:
+                    prov[i] = off // 300
+        return _Ctx(symbols, row, pix, grid, feats, eligible, halts, spy, spy_last, prov, degraded_volume)
 
     # ------------------------------------------------------------------ one slot
     def _process(self, k: int, ctx: _Ctx | None, k_now: int, out: TickOutput) -> None:
@@ -258,8 +286,9 @@ class Engine:
         f = ctx.feats.at(k)
         has = ctx.grid.first <= k
         halted, reopen = ctx.halts.halted[:, k], ctx.halts.reopen[:, k]
+        # New heating, confirmation and entry need settled bars on the baseline's volume basis.
         ok = (ctx.eligible & has & f["fresh"] & (f["dollar3"] >= p["universe"]["tick_dollar3_min"])
-              & ~halted & ~reopen)
+              & ~halted & ~reopen & (ctx.prov != k) & (not ctx.degraded))
         self._update_market(k, ctx, f)
         sc = {1: score(f, 1, p["entry"], p["score_weights"]), -1: score(f, -1, p["entry"], p["score_weights"])}
 
@@ -347,6 +376,7 @@ class Engine:
                 cands.append((s, sym, d, i))
             else:
                 st["heating"][sym] = {"dir": d, "heat_px": float(f["C"][i]), "heat_slot": k,
+                                      "name": self.names[ctx.pix[i]], "sector": self.sectors[ctx.pix[i]],
                                       "view": self._view(i, d, f, sc)}
 
     def _reentry_blocked(self, sym: str, d: int, k: int, px: float) -> bool:
@@ -386,22 +416,30 @@ class Engine:
                 self._exit(sym, k, k_now, px, "HALT_LONG", {"mins": run * 5}, out)
             return
         reopen = bool(ctx.halts.reopen[i, k])
+        prov = bool(ctx.prov[i] == k)
         m["dwell"] += 1
         m["peak"] = max(m["peak"], float(f["H"][i])) if d > 0 else min(m["peak"], float(f["L"][i]))
         if not reopen:
-            m["stale"] = 0 if f["fresh"][i] else m["stale"] + 1
+            # DATA_STALE counts consecutive bars without a fresh print, so one missing or zero-volume bar is never
+            # three stale scans. Any fresh print ends the run; a bad bar counts only while the source is healthy.
+            bar_ok = bool(ctx.grid.present[i, k] and ctx.grid.v[i, k] > 0)
+            m["stale"] = 0 if bar_ok else m["stale"] + (0 if ctx.degraded else 1)
         if extreme(f, d)[i]:
             m["last_ext"] = k
         m["view"] = self._view(i, d, f, sc)
         m["last_bar_slot"] = self._last_bar(ctx, i, k)
-        reason, info = self._exit_reason(m, i, k, px, f, reopen)
+        reason, info = self._exit_reason(m, i, k, px, f, reopen, no_dry=ctx.degraded or prov, no_stall=prov)
         if reason:
             self._exit(sym, k, k_now, px, reason, info, out)
         else:
             m["state"] = "cooling" if m["soft"] else "racing"
 
-    def _exit_reason(self, m: dict, i: int, k: int, px: float, f: dict, reopen: bool) -> tuple[str | None, dict]:
-        """Section 6: the first matching rule wins. On reopen bars only REVERSAL and GIVEBACK apply."""
+    def _exit_reason(self, m: dict, i: int, k: int, px: float, f: dict, reopen: bool, *, no_dry: bool = False,
+                     no_stall: bool = False) -> tuple[str | None, dict]:
+        """Section 6: the first matching rule wins. On reopen bars only REVERSAL and GIVEBACK apply.
+
+        `no_dry` / `no_stall`: that soft rule reads data that cannot be trusted at this slot (fallback volume,
+        a bar still being revised). It neither counts a soft-fail nor clears the ones already counted."""
         hx, hold, d = self.p["hard_exit"], self.p["hold"], m["dir"]
         z3, z6 = d * float(f["z3"][i]), d * float(f["z6"][i])
         if k >= self.session_end:
@@ -419,10 +457,13 @@ class Engine:
         if d * f["dvwap"][i] < -hx["vwap_cross"]:
             return "VWAP_CROSS", {}
         fade = z6 < hold["fade_z6"] and z3 < hold["fade_z3"]
-        dry = f["rvol3"][i] < hold["dry_rvol3"]
+        dry = bool(f["rvol3"][i] < hold["dry_rvol3"])
         stall = (k - m["last_ext"]) >= hold["stall_bars"] and z6 < hold["stall_z6"]
+        unsure = (dry and no_dry) or (stall and no_stall)
+        dry, stall = dry and not no_dry, stall and not no_stall
         if not (fade or dry or stall):
-            m["soft"] = 0
+            if not unsure:
+                m["soft"] = 0
             return None, {}
         m["soft"] += 1
         if m["dwell"] >= hold["min_dwell"] and m["soft"] >= hold["soft_fails"]:
@@ -461,7 +502,7 @@ class Engine:
         held = 5 * (k - m["entry_slot"])
         out.events.append(self._event(sym, k, k_now, "EXIT", m, px, v["intensity"], reason, detail,
                                       held, move, v["signals"]))
-        st["exits"].insert(0, {"ticker": sym, "name": self.names[self.idx[sym]], "direction": _dir_word(m["dir"]),
+        st["exits"].insert(0, {"ticker": sym, "name": self._label(sym, m)[0], "direction": _dir_word(m["dir"]),
                                "entered_at": iso(self.session.slot_start(m["entry_slot"]) + 300),
                                "exited_at": iso(self.session.slot_start(k) + 300), "minutes_on_radar": held,
                                "move_since_entry_pct": move, "exit_reason": reason, "exit_detail": detail})
@@ -478,9 +519,9 @@ class Engine:
                 continue
             if with_market and admitted_mkt >= p["market"]["max_new_mkt_dir"]:
                 continue
-            sector = self.sectors[self.idx[sym]]
+            sector = self.sectors[ctx.pix[i]]
             if sector != "Unknown" and sum(1 for x, m in st["members"].items() if m["dir"] == d
-                                           and self.sectors[self.idx[x]] == sector) >= caps["max_per_sector_dir"]:
+                                           and self._label(x, m)[1] == sector) >= caps["max_per_sector_dir"]:
                 ban = st["banners"].setdefault(f"{sector}|{d}", {"sector": sector, "dir": d, "tickers": {}})
                 ban["tickers"][sym] = k
                 continue
@@ -499,9 +540,10 @@ class Engine:
             self._enter(sym, i, d, s, k, k_now, f, sc, ctx, out)
             admitted += 1
             admitted_mkt += with_market
-        for key in list(st["banners"]):
+        for key in list(st["banners"]):                 # names held back beyond the cap, never current members
             ban = st["banners"][key]
-            ban["tickers"] = {t: j for t, j in ban["tickers"].items() if j > k - BANNER_TTL_SLOTS}
+            ban["tickers"] = {t: j for t, j in ban["tickers"].items()
+                              if j > k - BANNER_TTL_SLOTS and t not in st["members"]}
             if not ban["tickers"]:
                 del st["banners"][key]
 
@@ -515,7 +557,8 @@ class Engine:
                                             "last_peak": None})
         mem["episodes"] += 1
         px = float(c[k])
-        m = {"dir": d, "entry_slot": k, "entry_px": px,
+        m = {"dir": d, "entry_slot": k, "entry_px": px, "name": self.names[ctx.pix[i]],
+             "sector": self.sectors[ctx.pix[i]],
              "base": float(window.min() if d > 0 else window.max()), "peak": px, "last_ext": k,
              "dwell": 0, "soft": 0, "stale": 0, "episode": mem["episodes"], "late": k_now - k > 2,
              "state": "racing", "view": self._view(i, d, f, sc), "last_bar_slot": self._last_bar(ctx, i, k),
@@ -580,8 +623,9 @@ class Engine:
         members = []
         for sym, m in st["members"].items():
             v, sp = m["view"], m["spark"]
+            name, sector = self._label(sym, m)
             members.append({
-                "ticker": sym, "name": self.names[self.idx[sym]], "sector": self.sectors[self.idx[sym]],
+                "ticker": sym, "name": name, "sector": sector,
                 "direction": _dir_word(m["dir"]), "state": m["state"], "late": m["late"],
                 "entered_at": iso(ss.slot_start(m["entry_slot"]) + 300), "entry_price": round(m["entry_px"], 4),
                 "last_price": round(v["price"], 4), "last_bar_at": iso(ss.slot_start(m["last_bar_slot"]) + 300),
@@ -596,7 +640,7 @@ class Engine:
                 "spark": {"t0": iso(ss.slot_start(sp["t0_slot"]) + 300), "step_s": 300, "entry_i": sp["entry_i"],
                           "p": [round(x, 4) for x in sp["p"]]}})
         members.sort(key=lambda x: (-x["intensity"], x["ticker"]))
-        heating = [{"ticker": sym, "name": self.names[self.idx[sym]], "direction": _dir_word(h["dir"]),
+        heating = [{"ticker": sym, "name": self._label(sym, h)[0], "direction": _dir_word(h["dir"]),
                     "since": iso(ss.slot_start(h["heat_slot"]) + 300), "price": round(h["view"]["price"], 4),
                     "chg_day_pct": h["view"]["chg_day"], "intensity": round(h["view"]["intensity"]),
                     "reasons": h["view"]["reasons"]} for sym, h in sorted(st["heating"].items())]

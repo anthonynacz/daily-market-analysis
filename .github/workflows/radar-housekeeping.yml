@@ -4,6 +4,9 @@ name: Momentum Radar housekeeping
 # 3-calendar-month retention and squashes the data branch (radar/SPEC.md 8, radar/docs/storage.md).
 # The scanner never waits on this workflow: both write the data branch with compare-and-swap pushes
 # (SPEC 7), so the concurrency group below only keeps two housekeeping runs apart.
+# Every apply run backs up the whole alerts log (main:alerts/log.json) on the data branch, but only the
+# scheduled run, or a run outside weekdays 13:00-21:30 UTC, writes main: a daytime manual or scanner-requested
+# run reports the main trim as deferred and the next nightly run does it (SPEC 12.4).
 on:
   schedule:
     - cron: '30 3 * * *'        # 03:30 UTC = 23:30 EDT / 22:30 EST: scanner idle, inside the squash window

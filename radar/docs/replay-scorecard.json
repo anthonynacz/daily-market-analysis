@@ -54,12 +54,11 @@
   "late_entries": 0,
   "exit_reasons": {
    "REVERSAL": 0.505,
-   "FADE": 0.442,
+   "FADE": 0.447,
    "VWAP_CROSS": 0.019,
    "GIVEBACK": 0.015,
    "STALL": 0.01,
-   "SESSION_END": 0.005,
-   "DATA_STALE": 0.005
+   "SESSION_END": 0.005
   }
  },
  "splits": {
@@ -84,8 +83,8 @@
  },
  "baseline_naive": {
   "sessions": 40,
-  "entries": 3785,
-  "entries_per_day": 94.625,
+  "entries": 3784,
+  "entries_per_day": 94.6,
   "entries_per_day_dist": {
    "median": 91.5,
    "p90": 125.4,
@@ -96,50 +95,49 @@
    "median": 7.0,
    "p95": 12.0,
    "max": 12,
-   "cap_reached_share": 0.2287
+   "cap_reached_share": 0.2264
   },
   "market_mode_tick_share": 0.0443,
   "stage_b_share_mean": 1.0262,
-  "prec15": 0.4824,
-  "prec30": 0.4634,
-  "prec30_n": 3785,
+  "prec15": 0.482,
+  "prec30": 0.4633,
+  "prec30_n": 3784,
   "prec30_wilson95": [
-   0.4476,
-   0.4793
+   0.4474,
+   0.4792
   ],
-  "mean_f30_bp": 0.13,
-  "prec60": 0.4727,
+  "mean_f30_bp": 0.12,
+  "prec60": 0.4728,
   "latency_1bar": {
-   "prec15": 0.4946,
-   "prec30": 0.4793,
-   "prec60": 0.4803
+   "prec15": 0.4945,
+   "prec30": 0.4791,
+   "prec60": 0.4802
   },
   "hold30": 0.8708,
-  "mfe_gt_mae": 0.489,
-  "post_exit_continuation": 0.489,
+  "mfe_gt_mae": 0.4892,
+  "post_exit_continuation": 0.4886,
   "dwell_bars": {
    "median": 5.0,
    "p25": 3.0,
    "p75": 7.0
   },
-  "flaps": 799,
-  "flap_rate": 0.2111,
-  "flaps_per_day": 19.975,
-  "short_episode_share": 0.1604,
-  "reentries_within_30min": 192,
-  "up_share": 0.4999,
+  "flaps": 800,
+  "flap_rate": 0.2114,
+  "flaps_per_day": 20.0,
+  "short_episode_share": 0.1609,
+  "reentries_within_30min": 191,
+  "up_share": 0.4997,
   "distinct_symbol_days": 3160,
   "late_entries": 0,
   "exit_reasons": {
-   "FADE": 0.575,
-   "DISPLACED": 0.248,
+   "FADE": 0.576,
+   "DISPLACED": 0.249,
    "REVERSAL": 0.12,
-   "DRY": 0.021,
+   "DRY": 0.02,
    "GIVEBACK": 0.016,
    "VWAP_CROSS": 0.01,
    "SESSION_END": 0.005,
-   "STALL": 0.004,
-   "DATA_STALE": 0.001
+   "STALL": 0.004
   }
  },
  "targets": {
@@ -156,7 +154,7 @@
   "flap_rate": true
  },
  "symbols": 521,
- "runtime_s": 372.9,
+ "runtime_s": 332.5,
  "dataset": {
   "bars_5m": "scratchpad/radar_design/replay/bars_5m_prepost.csv.gz (Yahoo 5m incl. extended hours; engine uses regular session only)",
   "daily": "scratchpad/radar_design/replay/bars_1d_1y.csv.gz",
@@ -166,8 +164,10 @@
  },
  "notes": [
   "Educational analysis, not financial advice. prec@h is a historical continuation share, not a probability of anything.",
-  "Parity with the fp_lens reference (same 39 sessions 2026-08-03..09-25, the 332 symbols both datasets share): the reference REC listed 142 entries on those names; radar.engine lists 134, 133 of them identical (symbol, session, entry bar) and 132 of those with the same exit bar. Of the 9 reference entries not reproduced, 7 are blocked by the sector cap (max 3 per sector and direction, e.g. 2026-09-22 Financials falling) and 2 sit on a threshold edge (the pooled time-of-day profile depends on the universe). On those names: 3.4 entries/day, prec@30 57.5%, flap 3.7%.",
+  "Parity with the fp_lens reference (same 39 sessions 2026-08-03..09-25, the 332 symbols both datasets share): the reference REC listed 142 entries on those names; radar.engine lists 134, 133 of them identical (symbol, session, entry bar) and 131 of those with the same exit bar (132 before the 2026-10-06 DATA_STALE fix, see below). Of the 9 reference entries not reproduced, 7 are blocked by the sector cap (max 3 per sector and direction, e.g. 2026-09-22 Financials falling) and 2 sit on a threshold edge (the pooled time-of-day profile depends on the universe). On those names: 3.4 entries/day, prec@30 57.5%, flap 3.7%.",
   "The reference's 58.3% prec@30 on 491 names included 81 entries on 159 high-beta mid caps (GME, SNAP, DKNG, ...) that are not in the 542-name S&P 500 + Nasdaq-100 universe; that composition difference, not a logic difference, explains the lower prec@30 and volume here.",
-  "Determinism: rebuilding the Engine from its JSON state_dict on every tick reproduces the same REC scorecard; the largest engine state was 37 KB and the largest snapshot 7 KB over the 40 sessions."
+  "Determinism: rebuilding the Engine from its JSON state_dict on every tick reproduces the same REC scorecard; the largest engine state was 37 KB and the largest snapshot 7 KB over the 40 sessions.",
+  "Re-run 2026-10-06 after the SPEC 12.2 engine amendments. On recorded bars only the DATA_STALE rule changes the result: it now counts consecutive bars without a fresh print instead of 3-bar windows. REC entries, prec@15/30/60, hold30, dwell and flap rate are unchanged; the one REC exit that was DATA_STALE (EXPE 2026-09-23, down, entered slot 21) came from a single zero-volume Yahoo bar at slot 22 and read 'No fresh 5-minute bars for 3 scans' at slot 24; it now exits on FADE at slot 26. The naive baseline loses its DATA_STALE exits as well (3785 -> 3784 entries). The other amendments (quotes_ok, degraded_volume, provisional bars, stored names and sectors, banner pruning, SPY prior-close check) do not act on a replay of complete Yahoo bars.",
+  "Re-run 2026-10-07 after the second DATA_STALE fix (any fresh print now ends a stale run, also on fallback bars, which only never add to it): the scorecard is identical to the 2026-10-06 run apart from runtime, as a replay never feeds fallback bars."
  ]
 }

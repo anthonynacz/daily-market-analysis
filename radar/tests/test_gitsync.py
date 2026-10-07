@@ -1,9 +1,11 @@
 """The data-branch writer contract against a local bare remote (radar/SPEC.md section 7)."""
 from __future__ import annotations
 
+import contextlib
 import json
 import shutil
 import subprocess
+import threading
 from pathlib import Path
 
 import pytest
@@ -180,3 +182,49 @@ def test_commit_message_sums_entries_over_deltas():
              {"tick_id": "2026-09-28T13:40:00Z", "kind": "tick", "summary": {"status": "degraded", "members": 2, "entered": ["B"], "exited": ["A"]}}]
     msg = gitsync.commit_message(metas, ["d1", "d2"])
     assert msg == f"radar 13:40Z degraded · 2 on radar (+2/-1)\n\n{gitsync.TRAILER} d1 d2\n"
+
+
+# ---------------------------------------------------------------- one publisher at a time (RT-2)
+
+def test_publish_runs_inside_the_pending_dir_lock(remote, tmp_path, monkeypatch):
+    """The loop and the workflow's flush step both publish through this lock."""
+    work, pending = clone(remote, tmp_path / "work"), tmp_path / "pending"
+    tick_delta(pending, "2026-09-28T13:35:00Z")
+    held = []
+    real_publish, real_lock = gitsync._publish, gitsync.publish_lock
+
+    @contextlib.contextmanager
+    def recording_lock(root):
+        with real_lock(root):
+            held.append(Path(root))
+            yield
+            held.append("released")
+
+    def inner(*a, **kw):
+        assert held == [pending]                                # the body runs while the lock is held
+        return real_publish(*a, **kw)
+
+    monkeypatch.setattr(gitsync, "publish_lock", recording_lock)
+    monkeypatch.setattr(gitsync, "_publish", inner)
+    assert gitsync.publish(work, pending, budget_s=60, sleep=NOSLEEP).status == "ok"
+    assert held == [pending, "released"]
+
+
+@pytest.mark.skipif(gitsync.fcntl is None, reason="flock is POSIX only; the workflow runs on Linux")
+def test_a_second_publisher_waits_for_the_lock(tmp_path):
+    pending = tmp_path / "pending"
+    order = []
+
+    def second():
+        with gitsync.publish_lock(pending):
+            order.append("second")
+
+    with gitsync.publish_lock(pending):
+        worker = threading.Thread(target=second)
+        worker.start()
+        worker.join(0.5)
+        assert worker.is_alive()                                # blocked while the first one publishes
+        order.append("first")
+    worker.join(5)
+    assert order == ["first", "second"] and (pending / gitsync.LOCK_FILE).is_file()
+    assert delta.list_pending(pending) == []                    # the lock file is never taken for a delta

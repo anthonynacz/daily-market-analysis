@@ -195,10 +195,52 @@ def test_scanner_workflow_settings():
     assert "push:" not in text.split("workflow_dispatch:")[0]                        # never runs on a push
 
 
+def step_run(text: str, name: str) -> str:
+    """The run script of one workflow step (text checks: no YAML parser in the lock)."""
+    block = text.split(f"- name: {name}\n", 1)[1].split("\n      - name:", 1)[0]
+    return block.split("run: |\n", 1)[1] if "run: |\n" in block else block.split("run: ", 1)[1]
+
+
+def test_the_scan_loop_is_the_steps_own_process():
+    """RT-2: with exec, a cancel's SIGINT/SIGTERM reaches the loop instead of orphaning it behind bash."""
+    script = step_run(SCAN_YML.read_text(encoding="utf-8"), "Scan loop")
+    lines = [ln.strip() for ln in script.splitlines() if ln.strip() and not ln.strip().startswith("#")]
+    assert lines[-1] == 'exec python -m radar.loop "${args[@]}"'
+    assert "radar.loop" not in "\n".join(lines[:-1])
+
+
+def test_the_probe_reads_the_stored_pack_without_credentials():
+    text = SCAN_YML.read_text(encoding="utf-8")
+    assert step_run(text, "Probe the data sources (writes nothing)").strip() == \
+        'python -m radar.tick --probe --data-dir "$DATA_DIR"'
+    checkout = text.split("- name: Check out data branch (read only, for the probe)\n", 1)[1].split("\n      - name:")[0]
+    assert "env.MODE == 'probe'" in checkout and "persist-credentials: false" in checkout
+    assert "continue-on-error: true" in checkout and "path: _data" in checkout
+
+
 def test_ci_never_runs_on_the_data_branch():
     text = CI_YML.read_text(encoding="utf-8")
-    assert "branches-ignore: [data]" in text and "python -m pytest radar/tests -q" in text
+    assert "branches-ignore: [data]" in text
     assert text.count("paths: ['radar/**', '.github/workflows/**']") == 2
+
+
+def test_ci_runs_the_soak_tests_in_their_own_weekly_job():
+    """SPEC 12.3: pushes and PRs skip the soak tests; a separate job runs them on dispatch and on Sundays."""
+    text = CI_YML.read_text(encoding="utf-8")
+    test_job, soak_job = text.split("\n  test:\n", 1)[1].split("\n  soak:\n", 1)
+    assert "if: github.event_name == 'push' || github.event_name == 'pull_request'" in test_job
+    assert 'run: python -m pytest radar/tests -q -m "not soak"' in test_job
+    assert "if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'" in soak_job
+    assert "run: python -m pytest radar/tests -q -m soak" in soak_job
+    triggers = text.split("\npermissions:", 1)[0]
+    assert "workflow_dispatch:" in triggers
+    (cron,) = re.findall(r"^\s*-\s*cron:\s*'([^']+)'", triggers, re.M)
+    assert cron.split()[2:] == ["*", "*", "0"]                   # weekly, on Sunday
+    assert "'soak' || 'test'" in text                          # a push never cancels a running soak
+
+
+def test_the_soak_marker_is_registered(pytestconfig):
+    assert any(m.startswith("soak:") for m in pytestconfig.getini("markers"))
 
 
 def test_the_lock_has_hashes_for_every_pin():

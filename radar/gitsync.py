@@ -5,6 +5,8 @@ tick order, commits on the fetched head and pushes. It never merges, rebases or 
 attempt, successful or not, the worktree holds the remote head plus all pending deltas, which is
 exactly what the next tick reads. Commits carry a `Radar-Delta:` trailer so a delta that landed
 just before a crash (push done, delta dir not yet removed) is recognised and not applied twice.
+A publish holds an exclusive lock on <pending>/.publish.lock, so the loop and the workflow's flush
+step never reset and re-apply the same worktree at the same time.
 
     python -m radar.gitsync --data-dir _data --pending-dir "$RUNNER_TEMP/radar-pending" --final
 
@@ -17,12 +19,18 @@ import random
 import subprocess
 import sys
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Iterator
 
 from . import delta
 from .config import DATA_BRANCH, RUNTIME
+
+try:
+    import fcntl
+except ImportError:          # Windows (local runs only): no flock, publishing is not locked
+    fcntl = None  # type: ignore[assignment]
 
 REMOTE_REF = f"refs/remotes/origin/{DATA_BRANCH}"
 BOT_NAME = "github-actions[bot]"
@@ -31,6 +39,7 @@ TRAILER = "Radar-Delta:"
 MAX_ATTEMPTS = 5
 LANDED_SCAN_COMMITS = 50
 LOCAL_TIMEOUT_S = 120
+LOCK_FILE = ".publish.lock"  # in the pending dir; dot-files are never taken for deltas
 
 
 class GitError(RuntimeError):
@@ -106,9 +115,31 @@ def _sync(repo: str | Path, fetch_timeout: float) -> tuple[bool, str]:
     return fetch.returncode == 0, "" if fetch.returncode == 0 else f"fetch failed: {_last_line(fetch)}"
 
 
+@contextmanager
+def publish_lock(pending_root: str | Path) -> Iterator[None]:
+    """Exclusive flock on <pending_root>/.publish.lock for the whole publish; a no-op without fcntl."""
+    if fcntl is None:
+        yield
+        return
+    root = Path(pending_root)
+    root.mkdir(parents=True, exist_ok=True)
+    with open(root / LOCK_FILE, "ab") as f:
+        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+
+
 def publish(repo: str | Path, pending_root: str | Path, *, budget_s: float,
             sleep: Callable[[float], None] = time.sleep, clock: Callable[[], float] = time.monotonic,
             rand: Callable[[], float] = random.random) -> PublishResult:
+    with publish_lock(pending_root):
+        return _publish(repo, pending_root, budget_s=budget_s, sleep=sleep, clock=clock, rand=rand)
+
+
+def _publish(repo: str | Path, pending_root: str | Path, *, budget_s: float, sleep: Callable[[float], None],
+             clock: Callable[[], float], rand: Callable[[], float]) -> PublishResult:
     res = PublishResult()
     deadline = clock() + budget_s
     for attempt in range(1, MAX_ATTEMPTS + 1):

@@ -218,3 +218,19 @@ def test_build_pack_needs_spy(market):
     days, bars, daily = market
     with pytest.raises(ValueError):
         build_pack(days[20], {s: b for s, b in concat_bars(bars).items() if s != "SPY"}, daily, {}, PARAMS)
+
+
+def test_build_pack_needs_spy_prior_close(market):
+    """ENG-1: without SPY's prior-session close every zday is NaN and nothing could enter all session, so the
+    pack is refused (the tick retries) instead of being cached for the day."""
+    days, bars, daily = market
+    target = days[20]
+    with pytest.raises(ValueError, match="prior-session close"):
+        pack_for(bars, {s: d for s, d in daily.items() if s != "SPY"}, target)
+    d = daily["SPY"]
+    keep = d.day < np.datetime64(days[19].day)                   # SPY's previous-session daily bar is missing
+    stale = {**daily, "SPY": DailyBars("SPY", *(getattr(d, a)[keep] for a in ("day", "o", "h", "l", "c", "v")))}
+    with pytest.raises(ValueError, match="prior-session close"):
+        pack_for(bars, stale, target)
+    no_aaa = {s: x for s, x in daily.items() if s != "AAA"}       # any other name only becomes ineligible
+    assert pack_for(bars, no_aaa, target).symbols["AAA"].ineligible_reason == "no prior close"

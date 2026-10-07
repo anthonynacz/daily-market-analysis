@@ -6,7 +6,9 @@ Crash-safety contract (storage.md section 3):
   * partitions are canonical (sorted, de-duplicated by primary key, canonical JSON per line), so archiving
     the same rows again produces the same content: idempotent, no duplicates;
   * the manifest is an index that can always be rebuilt from the partition files;
-  * main-branch tables (alerts/log.json) are trimmed only after the data-branch commit is published.
+  * main-branch tables (alerts/log.json) are trimmed only after the data-branch commit is published, and
+    every apply run also copies all their current rows into the backups (backup only, SPEC 12.4);
+  * JSONL is split on "\\n" only (jsonl_lines), never str.splitlines().
 
 CLI: python -m radar.storage.housekeeping run|query|restore|verify ...
 """
@@ -138,6 +140,16 @@ def read_file(path: str) -> bytes | None:
         return f.read()
 
 
+def jsonl_lines(text: str) -> list[str]:
+    """JSONL lines split on "\\n" only (never str.splitlines(): rows are written with ensure_ascii=False, so
+    U+2028, U+2029 and U+0085 occur literally inside rows; json.dumps escapes only \\n and \\r).
+    The empty element after the final newline is dropped; any other blank line is kept for the caller."""
+    lines = text.split("\n")
+    if lines and lines[-1] == "":
+        lines.pop()
+    return lines
+
+
 # ---------------------------------------------------------------- stores (branch adapters)
 
 class Store(Protocol):
@@ -204,7 +216,7 @@ def read_hot_bytes(spec: TableSpec, data: bytes | None) -> HotTable:
         raise HotTableUnreadable(f"{spec.path}: not UTF-8 ({e})") from e
     rows: list[HotRow] = []
     if spec.fmt == "jsonl":
-        for i, line in enumerate(text.splitlines()):
+        for i, line in enumerate(jsonl_lines(text)):
             if not line.strip():
                 continue
             try:
@@ -244,7 +256,7 @@ def chronological(spec: TableSpec, rows: list[HotRow]) -> list[HotRow]:
 def _parse_for_lookup(spec: TableSpec, data: bytes) -> list[dict]:
     if spec.fmt == "jsonl":
         out = []
-        for line in data.decode("utf-8").splitlines():
+        for line in jsonl_lines(data.decode("utf-8")):
             if line.strip():
                 try:
                     out.append(json.loads(line))
@@ -314,7 +326,7 @@ def read_partition(path: str, spec: TableSpec) -> list[dict]:
     except (OSError, EOFError, zlib.error, UnicodeDecodeError) as e:  # BadGzipFile is an OSError
         raise PartitionCorrupt(f"{path}: {e}") from e
     rows, prev = [], None
-    for n, line in enumerate(text.splitlines(), 1):
+    for n, line in enumerate(jsonl_lines(text), 1):   # a blank line in the middle is still "bad JSON"
         try:
             r = json.loads(line)
         except json.JSONDecodeError as e:
@@ -451,6 +463,7 @@ class TablePlan:
     archive: list[HotRow] = field(default_factory=list)
     heal: list[HotRow] = field(default_factory=list)
     keep: list[HotRow] = field(default_factory=list)
+    backup_only: list[HotRow] = field(default_factory=list)   # kept rows also merged into the backups (main)
     error: str | None = None
 
     @property
@@ -461,6 +474,7 @@ class TablePlan:
         """Never archive, trim or purge a table whose backups (or hot file) are unsafe."""
         self.error, self.status = error, "ERROR"
         self.archive, self.purge, self.heal, self.keep = [], [], [], list(self.ht.rows)
+        self.backup_only = []
 
 
 def classify(spec: TableSpec, m: dict, io_p95: float | None) -> tuple[str, list[str], list[str]]:
@@ -621,17 +635,23 @@ def _read_and_plan(stores: dict[str, Store], now: datetime, cutoff: datetime, fo
             tp.freeze(unreadable or part_errors[name])
         else:
             plan_heal(tp, data_root, manifest, now)
+            if tp.spec.branch == "main":
+                # SPEC 12.4: back up every current row (backup only), so the routine's 200-row cap can only drop
+                # rows a backup already holds. Rows still leave main only by archive (DEGRADED), heal or retention.
+                tp.backup_only = [r for r in tp.keep if r.row is not None and r.ts and r.pk]
         plans[name] = tp
     return plans
 
 
 def run(data_root: str, main_store: Store | None = None, *, now: datetime, mode: str = "apply",
         force_tables: Iterable[str] = (), run_id: str | None = None, trigger: str = "manual",
-        publish_data: Callable[[dict], bool] | None = None, repeats: int = 3) -> dict:
+        publish_data: Callable[[dict], bool] | None = None, repeats: int = 3, main_writes: bool = True) -> dict:
     """One housekeeping pass over the data checkout at `data_root` (and main through `main_store`).
 
     Phase A edits the data checkout; `publish_data(report)` must push it and return True only once the
-    push is confirmed. Phase B (main-branch trims) runs only after that. dry-run writes nothing anywhere.
+    push is confirmed. Phase B (main-branch trims) runs only after that, and only when `main_writes` is True;
+    otherwise main is only read and its trim is reported as "deferred" (the next nightly run trims the rows,
+    which the backups already hold). dry-run writes nothing anywhere.
     """
     if mode not in ("apply", "dry-run"):
         raise ValueError(f"mode must be apply or dry-run, not {mode!r}")
@@ -651,22 +671,25 @@ def run(data_root: str, main_store: Store | None = None, *, now: datetime, mode:
         stores["main"] = main_store
     plans = _read_and_plan(stores, now, cutoff, set(force_tables), part_errors, repeats, data_root, manifest)
 
-    # backup partitions: merge the archive rows per (table, month)
+    # backup partitions: merge the archive (and backup-only) rows per (table, month)
     part_actions = []  # (spec, month, merged_rows, must_contain, prev_entry)
     for tp in plans.values():
-        if not tp.archive:
+        if not tp.archive and not tp.backup_only:
             continue
-        by_month: dict[str, list[dict]] = {}
-        for r in chronological(tp.spec, tp.archive):
-            by_month.setdefault(month_of(r.ts), []).append(r.row)
+        archived = {r.idx for r in tp.archive}
+        by_month: dict[str, list[HotRow]] = {}
+        for r in chronological(tp.spec, sorted(tp.archive + tp.backup_only, key=lambda r: r.idx)):
+            by_month.setdefault(month_of(r.ts), []).append(r)
         for month, new_rows in sorted(by_month.items()):
             prev = manifest["partitions"].get(f"{tp.spec.name}/{month}")
             existing = read_partition(os.path.join(data_root, part_rel(tp.spec.name, month)), tp.spec) if prev else []
             merged: dict[str, dict] = {pk_of(tp.spec, r): r for r in existing}
             winners: dict[str, dict] = {}
             for r in new_rows:                       # last write wins (chronological order)
-                merged[pk_of(tp.spec, r)] = winners[pk_of(tp.spec, r)] = r
+                merged[r.pk] = winners[r.pk] = r.row
             rows = sorted(merged.values(), key=lambda r: sort_key(tp.spec, r))
+            if archived.isdisjoint(r.idx for r in new_rows) and list(map(canon, rows)) == list(map(canon, existing)):
+                continue                             # backup-only rows the partition already holds, identical
             part_actions.append((tp.spec, month, rows, list(winners.values()), prev))
 
     # backup retention: months ending at or before the cutoff are deleted, the cutoff month filtered row by row
@@ -750,7 +773,12 @@ def run(data_root: str, main_store: Store | None = None, *, now: datetime, mode:
     report["main_trim"] = {}
     if ok and main_store is not None:
         for tp in plans.values():
-            if tp.spec.branch == "main" and tp.changed:
+            if tp.spec.branch == "main" and tp.changed and not main_writes:
+                report["main_trim"][tp.spec.name] = {
+                    "status": "deferred", "removed": 0,
+                    "detail": "main is not written by this run (daytime); the rows are backed up and the next "
+                              "nightly run trims them"}
+            elif tp.spec.branch == "main" and tp.changed:
                 remove: dict[str, set[str]] = {}
                 for r in tp.archive + tp.purge + tp.heal:
                     remove.setdefault(r.pk, set()).add(canon(r.row))
@@ -787,7 +815,7 @@ def _report_skeleton(run_id: str, trigger: str, mode: str, now: datetime, cutoff
             "status": tp.status, "reasons": tp.reasons, "warnings": tp.warnings, "error": tp.error,
             "location": f"{tp.spec.branch}:{tp.spec.path}", **tp.metrics,
             "archive_rows": len(tp.archive), "purge_rows": len(tp.purge), "heal_rows": len(tp.heal),
-            "rows_after": len(tp.keep),
+            "backup_only_rows": len(tp.backup_only), "rows_after": len(tp.keep),
             "bytes_after": len(render_hot(tp.ht, tp.keep)) if tp.changed else tp.ht.nbytes,
             "min_ts_after": iso(min(kept_ts)) if kept_ts else None,
         }
@@ -854,8 +882,13 @@ def query(data_root: str, table: str, start: datetime, end: datetime, where: dic
             if hr.row is not None and hr.pk:
                 out[hr.pk] = hr.row
     rows = [r for r in out.values() if (t := parse_ts(r.get(spec.ts))) and start <= t < end
-            and all(str(r.get(k)) == v for k, v in (where or {}).items())]
+            and all(where_matches(r.get(k), v) for k, v in (where or {}).items())]
     return sorted(rows, key=lambda r: sort_key(spec, r))
+
+
+def where_matches(value: object, want: str) -> bool:
+    """`--where k=v`: v may be the Python or the JSON spelling of the value (False/false, None/null, NVDA/"NVDA")."""
+    return want == str(value) or want == json.dumps(value, ensure_ascii=False, sort_keys=True)
 
 
 def restore_month(data_root: str, table: str, month: str, out_path: str) -> dict:
@@ -921,6 +954,9 @@ def render_markdown(report: dict) -> str:
     lines += [f"Partitions to write: {', '.join(planned.get('partitions_write', [])) or 'none'}",
               f"Partitions to delete: {', '.join(planned.get('partitions_delete', [])) or 'none'}",
               f"Partitions to filter: {', '.join(planned.get('partitions_filter', [])) or 'none'}"]
+    copies = [f"{n} {t['backup_only_rows']} rows" for n, t in report["tables"].items() if t.get("backup_only_rows")]
+    if copies:
+        lines.append(f"Backed up and kept hot (backup only): {'; '.join(copies)}")
     if report["manifest_repairs"]:
         lines.append(f"Manifest repairs: {'; '.join(report['manifest_repairs'])}")
     if report["partition_errors"]:
@@ -947,7 +983,10 @@ def main(argv: list[str] | None = None) -> int:
     q.add_argument("--table", required=True, choices=sorted(BY_NAME))
     q.add_argument("--from", dest="start", required=True)
     q.add_argument("--to", dest="end", required=True)
-    q.add_argument("--where", nargs="*", default=[], help="field=value")
+    q.add_argument("--where", nargs="*", default=[], metavar="FIELD=VALUE",
+                   help="keep rows whose FIELD equals VALUE (all must match). VALUE is compared with the JSON "
+                        "spelling of the field and with the Python one, so late=false and late=False, "
+                        "held_min=null and held_min=None, ticker=NVDA all work. A missing field matches null")
     s = sub.add_parser("restore", help="one month partition to a JSONL file, verified")
     s.add_argument("--data-root", required=True)
     s.add_argument("--table", required=True, choices=sorted(BY_NAME))

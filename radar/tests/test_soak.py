@@ -5,12 +5,14 @@ member_ticks and scan_log have their limits and their volume divided by the same
 DEGRADED, same squeeze, same hot window), so the simulation runs in seconds. events, the ops tables and the
 alerts log run at real volume and real limits.
 
-The alerts routine keeps only the newest 200 rows. At the storage.md high end (35 alerts a day) that cap drops
-rows before a nightly run with max_rows 180 can back them up (storage.md RISKS; fix: raise the routine cap to
-500). The soak counts those drops separately: they must be zero at the low and typical profiles, and
-housekeeping itself must never lose a row it saw.
+The alerts routine keeps only the newest 200 rows, so at the storage.md high end (35 alerts a day) it drops rows
+between two nightly runs. Every apply run copies all current alerts_log rows into the backups (backup only,
+SPEC 12.4), so each row the routine drops must already be backed up: the soak counts the drops and asserts that
+none of them is unbacked, at every profile (and that the high profile really does drop rows). Housekeeping
+itself must never lose a row it saw.
 
 The git soak checks the history invariant on a local bare remote: 14 days by default, 120 with RADAR_SOAK=1.
+Both tests carry the `soak` marker: CI runs them in their own job (SPEC 12.3).
 """
 from __future__ import annotations
 
@@ -39,7 +41,7 @@ START = date(2026, 10, 1)            # covers Thanksgiving, both half days, Chri
 DAYS = 120
 PARTITION_MAX_BYTES = 50 * 1024 * 1024
 ROUTINE_CAP = 200                     # the alerts routine keeps the newest 200 rows
-ROUTINE_DROPS_EXPECTED = {"low": False, "typical": False, "high": True}
+ROUTINE_DROPS_HAPPEN = {"low": False, "typical": False, "high": True}   # all of them backed up beforehand
 SCANNER_TABLES = ("member_ticks", "events", "scan_log")
 
 
@@ -93,7 +95,7 @@ class Backups:
                 spec = self.specs[table]
                 # partition lines are canonical, so the line itself is the row's canonical JSON
                 self._parsed[key] = [(hk.pk_of(spec, r), hk.parse_ts(r[spec.ts]), line)
-                                     for line in gzip.decompress(blob).decode("utf-8").splitlines()
+                                     for line in hk.jsonl_lines(gzip.decompress(blob).decode("utf-8"))
                                      for r in (json.loads(line),)]
             out.setdefault(table, []).extend(self._parsed[key])
         return out, state.hexdigest()
@@ -122,9 +124,15 @@ def check_invariants(specs: dict, data: str, main: str, now: datetime, cache: Ba
         # hot tables within their limits
         size = os.path.getsize(os.path.join(root, spec.path))
         assert len(hot) <= spec.max_rows and size <= spec.byte_limit, (name, now, len(hot), size)
-        # backups and hot are disjoint and together hold every generated row not older than the cutoff
-        keys = [k for k, _, _ in stored]
-        assert len(keys) == len(set(keys)), (name, now)
+        # backups and hot together hold every generated row not older than the cutoff; on the data branch they
+        # are disjoint, while every alerts_log row left on main is also in the backups, identical (SPEC 12.4)
+        if spec.branch == "main":
+            bak = {k: line for k, _, line in backups.get(name, [])}
+            assert len(bak) == len(backups.get(name, [])) and len({k for k, _, _ in hot}) == len(hot), (name, now)
+            assert all(bak.get(k) == line for k, _, line in hot), (name, now)
+        else:
+            keys = [k for k, _, _ in stored]
+            assert len(keys) == len(set(keys)), (name, now)
         if name in generated:
             want = {k: c for k, (ts, c) in generated[name].items() if ts >= cutoff}
             assert {k: line for k, _, line in stored} == want, (name, now)
@@ -135,6 +143,7 @@ def check_invariants(specs: dict, data: str, main: str, now: datetime, cache: Ba
     assert not report["partition_errors"] and report["outcome"] == "ok"
 
 
+@pytest.mark.soak
 @pytest.mark.parametrize("profile", ["low", "typical", "high"])
 def test_soak_120_days(profile, scaled, tmp_path):
     data, main = str(tmp_path / "data"), str(tmp_path / "main")
@@ -149,7 +158,7 @@ def test_soak_120_days(profile, scaled, tmp_path):
         spec = scaled[name]
         generated[name].update({hk.pk_of(spec, r): (hk.parse_ts(r[spec.ts]), hk.canon(r)) for r in rows})
 
-    archived_runs, routine_drops = 0, 0
+    archived_runs, routine_drops, unbacked_drops = 0, 0, []
     for d, session in trading_days(START, DAYS):
         if session is not None:
             day = session_day_rows(session, PROFILES[profile], rng, mt_scale=SCALE["member_ticks"],
@@ -160,16 +169,18 @@ def test_soak_120_days(profile, scaled, tmp_path):
                 record(name, rows)
             record("alerts_log", day.alerts)
             backed_up = {k: line for k, _, line in cache.scan(data)[0].get("alerts_log", [])}
-            for r in routine_append(main, day.alerts):     # dropped by the routine before any backup saw them
+            for r in routine_append(main, day.alerts):     # dropped by the routine's 200-row cap
+                routine_drops += 1
                 key = hk.pk_of(alerts_spec, r)
-                if backed_up.get(key) != hk.canon(r):
+                if backed_up.get(key) != hk.canon(r):      # ... before any backup held it
                     generated["alerts_log"].pop(key)
-                    routine_drops += 1
+                    unbacked_drops.append((d.isoformat(), key))
         now = morning_after(d)
         rep = hk.run(data, hk.DirStore(main), now=now, run_id=f"hk-{d:%Y%m%d}", trigger="schedule", repeats=1)
         archived_runs += any(t["archive_rows"] for t in rep["tables"].values())
         check_invariants(scaled, data, main, now, cache, generated, rep)
-    assert bool(routine_drops) == ROUTINE_DROPS_EXPECTED[profile], routine_drops
+    assert unbacked_drops == [], unbacked_drops[:5]       # SPEC 12.4: the nightly backup-only copy closes the gap
+    assert bool(routine_drops) == ROUTINE_DROPS_HAPPEN[profile], routine_drops
     if profile != "low":
         assert archived_runs >= 3        # the archive path, not only retention, was exercised
 
@@ -214,6 +225,7 @@ def clone(bare: str, path: str, *extra: str) -> str:
     return path
 
 
+@pytest.mark.soak
 def test_git_soak_history_stays_short(scaled, remote, tmp_path):
     days = DAYS if os.environ.get("RADAR_SOAK") == "1" else 14
     start = date(2026, 11, 20)                   # Thanksgiving + half day inside the default 14 days

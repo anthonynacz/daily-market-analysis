@@ -219,7 +219,8 @@ def build_pack(session: Session, bars5: dict[str, Bars], daily: dict[str, DailyB
     """Bars may span any range: only the base sessions before `session` are read.
 
     Sessions without any SPY bar (outside the fetched range) are left out, so missing_share and n_base
-    count only sessions the source covers."""
+    count only sessions the source covers. A pack without SPY's prior-session close is refused (ValueError):
+    every day move is measured against SPY's, so such a pack would block every entry all session."""
     if "SPY" not in bars5:
         raise ValueError("baseline pack needs SPY 5-minute bars")
     symbols = sorted(bars5)
@@ -236,6 +237,8 @@ def build_pack(session: Session, bars5: dict[str, Bars], daily: dict[str, DailyB
         warnings.simplefilter("ignore", RuntimeWarning)
         m = _tod_multiplier(lr, params["baseline"]["tod_clamp"])
     syms = _symbol_baselines(symbols, grid, lr, daily, meta, session, lr[spy], m, params)
+    if syms["SPY"].prev_close is None:
+        raise ValueError("baseline pack needs SPY's prior-session close (daily bars missing or stale)")
     return BaselinePack(session.day.isoformat(), params["params_version"], m, syms["SPY"].sigma5, syms,
                         {s.day.isoformat(): [float(x) for x in row] for s, row in zip(sessions, lr[spy])})
 

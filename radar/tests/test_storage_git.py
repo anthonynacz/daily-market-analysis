@@ -65,7 +65,7 @@ def scanner_append(repo: str, ticker: str, minute: int) -> dict:
 
 def count_rows(repo: str, ticker: str) -> int:
     with open(os.path.join(repo, PATHS["member_ticks"]), "rb") as f:
-        return sum(1 for line in f.read().decode().splitlines() if json.loads(line)["ticker"] == ticker)
+        return sum(1 for line in hk.jsonl_lines(f.read().decode()) if json.loads(line)["ticker"] == ticker)
 
 
 def run_hk(repo: str, now: datetime = NIGHT, **kw) -> job.JobResult:
@@ -265,6 +265,20 @@ def test_decide_squash(policy, now, busy, squash, why):
     assert d.squash == squash and why in d.reason
 
 
+@pytest.mark.parametrize("trigger,now,allowed", [
+    ("schedule", datetime(2026, 10, 6, 15, 10, tzinfo=UTC), True),          # the scheduled run always may
+    ("scanner_request", datetime(2026, 10, 6, 15, 10, tzinfo=UTC), False),  # Tuesday, routines active
+    ("manual", datetime(2026, 10, 6, 12, 59, 59, tzinfo=UTC), True),
+    ("manual", datetime(2026, 10, 6, 13, 0, tzinfo=UTC), False),
+    ("manual", datetime(2026, 10, 6, 21, 29, 59, tzinfo=UTC), False),
+    ("scanner_request", datetime(2026, 10, 6, 21, 30, tzinfo=UTC), True),
+    ("manual", datetime(2026, 10, 10, 15, 0, tzinfo=UTC), True),            # Saturday
+    ("scanner_request", datetime(2026, 10, 5, 13, 30, tzinfo=UTC), False),  # Monday
+])
+def test_main_writes_allowed(trigger, now, allowed):
+    assert job.main_writes_allowed(trigger, now) == allowed
+
+
 class FakeActions:
     def __init__(self, *responses):
         self.responses, self.urls = list(responses), []
@@ -320,7 +334,7 @@ def test_cli_apply_publishes_and_writes_the_job_summary(remote, gha_env):
     assert rep["publish"]["status"] == "pushed" and rep["report"]["run_id"] == "hk-777-1"
     check = clone(bare, str(tmp / "check"))
     with open(os.path.join(check, "ops/housekeeping_runs.jsonl"), encoding="utf-8") as f:
-        run_row = json.loads(f.read().splitlines()[-1])
+        run_row = json.loads(hk.jsonl_lines(f.read())[-1])
     assert run_row["trigger"] == "schedule" and run_row["run_id"] == "hk-777-1"
 
 
@@ -359,6 +373,43 @@ def test_cli_exits_2_on_partition_errors_but_publishes_the_other_tables(remote, 
     check = clone(bare, str(tmp / "check"))
     assert os.path.exists(os.path.join(check, T.HEALTH_PATH))            # the other tables were still processed
     assert count_rows(check, "SEED") == SEED_COMMITS - 1 and hk.verify(check)["problems"]
+
+
+def test_cli_daytime_scanner_request_defers_the_main_trim_to_the_nightly_run(remote, gha_env):
+    """STO-3 / SPEC 12.4: a scanner-requested run inside weekdays 13:00-21:30 UTC backs the alerts log up on the
+    data branch but leaves main byte-identical; the next scheduled run trims main from rows already backed up."""
+    bare, tmp = remote
+    summary, main = gha_env
+    rng = random.Random(12)
+    t0 = datetime(2026, 10, 6, 15, 10, tzinfo=UTC)
+    alerts = [{"ts": hk.iso(t0 - timedelta(hours=8 * (i + 1))), "ticker": rng.choice(["NVDA", "AMD"]),
+               "headline": f"alert {i}"} for i in range(185)]                       # newest first, DEGRADED
+    log = Path(main) / T.ALERTS_LOG_PATH
+    log.write_text(json.dumps({"alerts": alerts}, indent=2) + "\n", encoding="utf-8")
+    before = log.read_bytes()
+    data, report = clone(bare, str(tmp / "data")), tmp / "report.json"
+    rc = job.main(["--data-dir", data, "--main-root", main, "--squash", "skip", "--trigger", "scanner_request",
+                   "--now", "2026-10-06T15:10:00Z", "--report", str(report)])
+    assert rc == 0 and log.read_bytes() == before
+    rep = json.loads(report.read_text(encoding="utf-8"))["report"]
+    assert rep["tables"]["alerts_log"]["archive_rows"] > 0
+    assert rep["main_trim"]["alerts_log"]["status"] == "deferred"
+    assert "**Main (alerts/log.json):** deferred, 0 rows removed" in summary.read_text(encoding="utf-8")
+    spec = T.BY_NAME["alerts_log"]
+    window = (datetime(2026, 7, 1, tzinfo=UTC), datetime(2026, 11, 1, tzinfo=UTC))
+    check = clone(bare, str(tmp / "check"))
+    assert {hk.canon(r) for r in hk.query(check, "alerts_log", *window)} == {hk.canon(a) for a in alerts}
+
+    rc = job.main(["--data-dir", data, "--main-root", main, "--squash", "skip", "--trigger", "schedule",
+                   "--now", "2026-10-07T03:30:00Z", "--report", str(report)])
+    assert rc == 0
+    rep = json.loads(report.read_text(encoding="utf-8"))["report"]
+    assert rep["main_trim"]["alerts_log"]["status"] == "trimmed"
+    assert not [p for p in rep["partitions_written"] if p.startswith("alerts_log/")]   # all backed up by day
+    left = json.loads(log.read_text(encoding="utf-8"))["alerts"]
+    assert len(left) <= spec.target_ratio * spec.max_rows and left == alerts[:len(left)]
+    check = clone(bare, str(tmp / "check2"))
+    assert {hk.canon(r) for r in hk.query(check, "alerts_log", *window)} == {hk.canon(a) for a in alerts}
 
 
 def test_exit_code_warns_before_the_calendar_runs_out():

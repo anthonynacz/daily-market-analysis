@@ -496,7 +496,7 @@
    "minutes_on_radar": 40,
    "move_since_entry_pct": 2.1,
    "exit_reason": "FADE",
-   "exit_detail": "15- and 30-minute pace back in line with the market"
+   "exit_detail": "Momentum faded: +0.6σ vs market over 30 min, -0.3σ over 15 min"
   },
   {
    "ticker": "HLTX",
@@ -507,7 +507,7 @@
    "minutes_on_radar": 45,
    "move_since_entry_pct": -1.2,
    "exit_reason": "REVERSAL",
-   "exit_detail": "rose 2.7σ vs market in 15 min, against the move"
+   "exit_detail": "Sharp move the other way: +2.7σ vs market in 15 min"
   },
   {
    "ticker": "DYNA",
@@ -518,7 +518,7 @@
    "minutes_on_radar": 25,
    "move_since_entry_pct": 0.8,
    "exit_reason": "DISPLACED",
-   "exit_detail": "list was full; NOVX had higher intensity (74 vs 55)"
+   "exit_detail": "Replaced by NOVX, a stronger mover, while the radar was full"
   },
   {
    "ticker": "KSTR",
@@ -529,7 +529,7 @@
    "minutes_on_radar": 45,
    "move_since_entry_pct": 0.9,
    "exit_reason": "GIVEBACK",
-   "exit_detail": "gave back 72% of the move from the 10:40 ET high"
+   "exit_detail": "Gave back 72% of the move that put it on the radar"
   },
   {
    "ticker": "TRNQ",
@@ -540,7 +540,7 @@
    "minutes_on_radar": 45,
    "move_since_entry_pct": -2.4,
    "exit_reason": "DRY",
-   "exit_detail": "volume fell to 0.5× normal"
+   "exit_detail": "Volume dried up to 0.5× normal for this time"
   },
   {
    "ticker": "OPLN",
@@ -551,7 +551,7 @@
    "minutes_on_radar": 50,
    "move_since_entry_pct": 3.0,
    "exit_reason": "STALL",
-   "exit_detail": "no new high for 30 min"
+   "exit_detail": "No new high for 30 min and the 30-min thrust is down to +1.2σ"
   },
   {
    "ticker": "NOVX",
@@ -562,7 +562,7 @@
    "minutes_on_radar": 35,
    "move_since_entry_pct": 1.7,
    "exit_reason": "FADE",
-   "exit_detail": "15- and 30-minute pace back in line with the market"
+   "exit_detail": "Momentum faded: +0.8σ vs market over 30 min, -0.4σ over 15 min"
   },
   {
    "ticker": "VRDX",
@@ -573,7 +573,7 @@
    "minutes_on_radar": 25,
    "move_since_entry_pct": -0.6,
    "exit_reason": "VWAP_CROSS",
-   "exit_detail": "price back above VWAP"
+   "exit_detail": "Crossed back above session VWAP"
   },
   {
    "ticker": "ZEPH",
@@ -584,7 +584,7 @@
    "minutes_on_radar": 25,
    "move_since_entry_pct": 11.4,
    "exit_reason": "HALT_LONG",
-   "exit_detail": "no trades for 30 min (likely trading halt)"
+   "exit_detail": "Trading halted for 30 min"
   },
   {
    "ticker": "QUIL",
@@ -595,21 +595,18 @@
    "minutes_on_radar": 20,
    "move_since_entry_pct": -1.8,
    "exit_reason": "DATA_STALE",
-   "exit_detail": "no fresh bars for 3 scans while other data arrived"
+   "exit_detail": "No fresh 5-minute bars for 3 scans"
   }
  ],
  "sector_banners": [
   {
    "sector": "Financial Services",
    "direction": "down",
-   "count": 6,
+   "count": 3,
    "tickers": [
-    "VNTG",
-    "FNBK",
-    "CAPX",
+    "HBNK",
     "MRGN",
-    "TRST",
-    "HBNK"
+    "TRST"
    ]
   }
  ],
@@ -619,7 +616,7 @@
   "last_tick_ms": 31840,
   "loop_run_id": "gha-18230411-1",
   "loop_started_at": "2026-09-28T12:33:41Z",
-  "push_backlog": 0
+  "published_late": 2
  },
  "disclaimer": "Educational analysis of what is moving now, not a forecast and not financial advice."
 }

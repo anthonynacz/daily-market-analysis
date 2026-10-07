@@ -394,7 +394,7 @@ These come from the adversarial review (findings in brackets). Where they change
   - Restoring the old flat format must work.
 - **on_health:** called with `health_state()` after every public call. The tick uses it to write `<pending_dir>/source_health.json` atomically.
 - **Nasdaq replies:** an HTTP 200 with `data: null` and a `bCodeMessage` is retryable (treat as 503). `BRK-B` has no Nasdaq chart and is skipped in fallback.
-- **Provisional bars (DATA-4):** `Bars.provisional_last` is True when the newest grid row starts at t, `last_trade_ts >= t + 300`, and no row t+300 exists.
+- **Provisional bars (DATA-4):** `Bars.provisional_last` is True when the newest grid row starts at t and the last trade is still inside it (`last_trade_ts < t + 300`). Yahoo closes a row only when the first trade after its end arrives (it folds that trade into the row, and later trades open the next row), so until then the row can still change. This was measured live on thin names; the earlier wording (`>= t + 300`) was backwards. Without a last-trade row the flag is False.
 
 ### 12.2 Engine (ENG-1, ENG-2, ENG-3, E2E-1, E2E-2, DATA-4, DATA-6)
 - `baselines.build_pack` raises `ValueError` when SPY has no prev_close.
@@ -435,3 +435,17 @@ These come from the adversarial review (findings in brackets). Where they change
 - **Status banners** show `message` as is for degraded, no_data and error.
 - **Sector banners** read "+N more held back (tickers)" with a singular form for N = 1.
 - **`next_tick_at`** is the expected scan start (5-minute boundary + 50 s).
+
+### 12.6 Integration-rehearsal amendments (binding, 2026-10-07)
+- **No cross-session carry (INT-1):**
+  - An in-session state (any status other than `closed`) may carry `recent_exits`, `counts.entered_today` / `exited_today` and `last_bar` from the previous `state.json` only when that state was a scan of the same session: same `session.date`, `session.phase == "regular"` and status not `closed`.
+  - Otherwise these start empty, zero and null.
+  - This applies to `tick._carry` / `_prev_same` and to `loop._write_failure`.
+- **Alerts heal on main (INT-2):**
+  - Backup-only copies of alerts_log rows never cause a heal.
+  - A row is removed from main only when the table is DEGRADED, by retention, or when it is recorded as a pending main trim, i.e. rows archived by a run whose Phase B was deferred or failed.
+  - Housekeeping keeps that pending list in `ops/pending_main_trim.json` and clears it once the trim lands.
+  - Main therefore keeps alerts until 180 rows or 3 months, as SPEC 8 intended.
+- **Timeout bump without evidence (INT-4):** when a killed tick left no `source_health.json`, `Loop._write_failure` bumps every family whose breaker is still closed (one count each).
+- **No baseline downloads while the chart breaker is open (INT-5):** dynamic-add extensions and pack-gap retries are skipped, so the 1mo/3mo calls never act as unscheduled probes. They resume once the chart family is ok again.
+- **Probe (INT-3):** the probe's "fold in progress" column uses the same rule as `fetch._parse_bars` (section 12.1). It reports, per sampled name, whether bar k was provisional at the probe offset and whether it changed later.

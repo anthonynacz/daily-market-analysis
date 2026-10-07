@@ -5,6 +5,9 @@ Transport rules come from measurements (radar/docs/data-sources.md):
 - The v7 quote endpoint and the predefined movers screens need a cookie and crumb, which yfinance's
   YfData manages. Nothing else from yfinance is used (yf.download takes 45-53 s for the universe).
 - Nasdaq is the fallback. Its 1-minute chart stamps the ET wall clock as if it were UTC.
+
+The breaker is kept per endpoint family (SPEC 12.1): "chart" (v8 chart: bars_5m, daily) and "crumb"
+(v7 quote and screener: quotes, movers) fail independently, e.g. a 429 on the chart while quotes work.
 """
 from __future__ import annotations
 
@@ -18,7 +21,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from datetime import time as dtime
-from functools import cached_property, partial
+from functools import cached_property, partial, wraps
 from typing import Any, Protocol
 
 import numpy as np
@@ -54,10 +57,16 @@ JITTER_S = 0.5
 MIN_WORKERS = 4
 NASDAQ_WORKERS = 8
 DEGRADED_FAIL_SHARE = 0.2   # a call with more failed items than this (or any 429) is degraded
-BREAKER_TRIP = 3            # degraded Yahoo calls in a row that open the breaker
-PROBE_EVERY = 3             # while open, every 3rd fallback-capable call tries Yahoo
+BREAKER_TRIP = 3            # degraded Yahoo calls of one family in a row that open its breaker
+PROBE_EVERY = 3             # while open, every 3rd fallback-capable call of the family tries Yahoo
 PROBES_TO_CLOSE = 2         # good Yahoo results in a row that close it
-NETWORK_ERROR = 0           # status recorded when a request raised
+FAMILIES = ("chart", "crumb")   # Yahoo endpoint families, each with its own breaker
+FAIL_FAST = 20              # Yahoo replies in a row that are 429, 5xx or network errors (no 200 between) that
+                            # end a call, graded down: a blocked runner learns it in seconds, not minutes
+NETWORK_ERROR = 0           # status recorded when a request raised (or was never sent)
+STATUSES = ("ok", "degraded", "down")   # best to worst
+# Nasdaq's chart answers BRK.B with "Something went wrong" every time (measured), so the fallback skips it.
+NASDAQ_NO_CHART = frozenset({"BRK-B"})
 # Nasdaq screener filters that mirror Yahoo's predefined movers screens.
 NQ_MOVER_CAP_MIN = 2e9
 NQ_MOVER_PRICE_MIN = 5.0
@@ -84,7 +93,8 @@ def from_nasdaq(symbol: str) -> str:
 
 
 class Transport(Protocol):
-    """HTTP behind the Fetcher. Each method returns (status, JSON body or None) and may raise on network errors."""
+    """HTTP behind the Fetcher. Each method returns (status, JSON body or None) within `timeout` seconds and
+    may raise on network errors (a hung request raises once `timeout` has passed)."""
 
     def yahoo_chart(self, symbol: str, params: dict, timeout: float) -> Reply: ...
 
@@ -126,8 +136,17 @@ class HttpTransport:
 
     @staticmethod
     def _crumbed(url: str, params: dict, timeout: float) -> Reply:
-        try:   # YfData fetches the cookie and crumb, and on a 4xx retries once with its other crumb strategy
-            r = YfData().get(url, params=params, timeout=timeout)
+        """YfData fetches the cookie and crumb, and on a 4xx retries once with its other crumb strategy.
+        Its cookie and crumb requests ignore the caller's timeout (they use 30 s), so the crumb is fetched
+        first with `timeout`, and the crumb plus the request run under one hard cap of `timeout` (SPEC 12.1):
+        like every Transport call, a crumbed one returns within `timeout`, which the tick's deadline relies on."""
+        yd = YfData()
+
+        def crumb_then_get() -> Any:
+            yd._get_cookie_and_crumb(timeout)     # get() then reuses the crumb
+            return yd.get(url, params=params, timeout=timeout)
+        try:
+            r = _bounded(crumb_then_get, timeout)
         except YFRateLimitError:
             return 429, None
         return r.status_code, (r.json() if r.status_code == 200 else None)
@@ -137,8 +156,13 @@ class HttpTransport:
         if r.status_code != 200:
             return r.status_code, None
         body = r.json()
-        code = (body.get("status") or {}).get("rCode") or 200   # unknown symbols: HTTP 200, rCode 400
-        return (200, body) if code == 200 else (code, None)
+        status = body.get("status") or {}
+        code = status.get("rCode") or 200   # unknown symbols: HTTP 200, rCode 400
+        if code != 200:
+            return code, None
+        if body.get("data") is None and status.get("bCodeMessage"):
+            return 503, None    # HTTP 200 with "Something went wrong. Please try again later.": retry it
+        return 200, body
 
 
 @dataclass
@@ -150,7 +174,7 @@ class _Reply:
 
 @dataclass
 class _Health:
-    workers: int
+    """Breaker state of one Yahoo endpoint family."""
     status: str = "ok"
     consecutive_failures: int = 0
     last_ok_at: str | None = None
@@ -160,13 +184,66 @@ class _Health:
     good_probes: int = 0
 
 
+class _Budget:
+    """What one call may still send: `tries` per request, nothing new past the fetcher's deadline and,
+    for Yahoo, nothing more after FAIL_FAST failed replies in a row. Shared by the call's worker threads."""
+
+    def __init__(self, tries: int, deadline: float | None, clock: Callable[[], float], fail_fast: int) -> None:
+        self.tries = tries
+        self._deadline, self._clock, self._fail_fast = deadline, clock, fail_fast
+        self._lock = threading.Lock()
+        self._streak = 0
+        self.failed_fast = False    # FAIL_FAST failed replies in a row ended the call
+        self.timed_out = False      # the deadline refused a request or a retry
+        self.skipped = 0            # requests never sent
+
+    def may_send(self, wait: float = 0.0, *, first: bool = False) -> bool:
+        """Whether a request may start after `wait` seconds of backoff."""
+        with self._lock:
+            refused = self.failed_fast
+            if not refused and self._deadline is not None and self._clock() + wait >= self._deadline:
+                refused = self.timed_out = True
+            if refused and first:
+                self.skipped += 1
+            return not refused
+
+    def replied(self, status: int) -> None:
+        with self._lock:
+            if status == 200:
+                self._streak = 0
+            elif _retryable(status):
+                self._streak += 1
+                if self._fail_fast and self._streak >= self._fail_fast:
+                    self.failed_fast = True
+
+
+def _reports_health(method: Callable[..., tuple[Any, FetchReport]]) -> Callable[..., tuple[Any, FetchReport]]:
+    """After every public call, hand the health to `on_health` (SPEC 12.1): the tick keeps it in a side
+    file, so the breaker still advances when the tick is killed later. A failing callback costs a note,
+    never the data just fetched."""
+    @wraps(method)
+    def call(self: Fetcher, *args: Any, **kwargs: Any) -> tuple[Any, FetchReport]:
+        result, report = method(self, *args, **kwargs)
+        if self._on_health is not None:
+            try:
+                self._on_health(self.health_state())
+            except Exception as e:  # noqa: BLE001 - the side file is best effort
+                report.notes.append(f"on_health failed: {type(e).__name__}")
+        return result, report
+    return call
+
+
 class Fetcher:
     """One tick's data access. Pass `health_state()` back as `health=` on the next tick.
 
+    `deadline` is an absolute time on `clock` (time.time by default), e.g. tick start + tick_timeout_s - 40:
+    past it no request starts and no retry is made, so a hung or blocked source cannot outlive the tick.
+    `on_health` receives `health_state()` after every public call.
     `transport`, `sleep`, `clock` and `rng` exist for tests.
     """
 
     def __init__(self, *, health: dict | None = None, workers: int = 16, timeout_s: float = 12.0,
+                 deadline: float | None = None, on_health: Callable[[dict], None] | None = None,
                  transport: Transport | None = None, sleep: Callable[[float], None] = time.sleep,
                  clock: Callable[[], float] = time.time, rng: random.Random | None = None) -> None:
         self._max_workers = max(1, workers)
@@ -176,15 +253,22 @@ class Fetcher:
         self._sleep = sleep
         self._clock = clock
         self._rng = rng or random.Random()
-        self._h = self._restore(health or {})
+        if deadline is not None and deadline < clock() - 86_400:
+            raise ValueError(f"deadline {deadline} is not on the fetcher's clock ({clock()}): pass e.g. "
+                             "tick start (time.time) + budget, not a time.monotonic() value")
+        self._deadline = deadline
+        self._on_health = on_health
+        self._workers, self._fam = self._restore(health or {})
 
     # ------------------------------------------------------------------ public API (SPEC 4.2)
+    @_reports_health
     def quotes(self, symbols: list[str]) -> tuple[dict[str, Quote], FetchReport]:
         symbols = _unique(symbols)
         if not symbols:
             return {}, FetchReport(source="none", status="ok")
-        return self._serve(partial(self._yahoo_quotes, symbols), partial(self._nasdaq_quotes, symbols))
+        return self._serve("crumb", partial(self._yahoo_quotes, symbols), partial(self._nasdaq_quotes, symbols))
 
+    @_reports_health
     def bars_5m(self, symbols: list[str], *, range_: str = "1d",
                 include_prepost: bool = False) -> tuple[dict[str, Bars], FetchReport]:
         symbols = _unique(symbols)
@@ -194,83 +278,103 @@ class Fetcher:
         yahoo = partial(self._yahoo_charts, symbols, params, _parse_bars)
         # Nasdaq's chart covers one session only, so baseline ranges have no fallback.
         nasdaq = partial(self._nasdaq_bars, symbols, include_prepost) if range_ == "1d" else None
-        return self._serve(yahoo, nasdaq)
+        return self._serve("chart", yahoo, nasdaq)
 
+    @_reports_health
     def daily(self, symbols: list[str], *, range_: str = "3mo") -> tuple[dict[str, DailyBars], FetchReport]:
         symbols = _unique(symbols)
         if not symbols:
             return {}, FetchReport(source="none", status="ok")
         params = {"range": range_, "interval": "1d"}
-        return self._serve(partial(self._yahoo_charts, symbols, params, _parse_daily), None)
+        return self._serve("chart", partial(self._yahoo_charts, symbols, params, _parse_daily), None)
 
+    @_reports_health
     def movers(self) -> tuple[list[Quote], FetchReport]:
-        return self._serve(self._yahoo_movers, self._nasdaq_movers)
+        return self._serve("crumb", self._yahoo_movers, self._nasdaq_movers)
 
     def health_state(self) -> dict:
-        h = self._h
-        return {"schema": 1, "name": "nasdaq" if h.breaker_open else "yahoo", "status": h.status,
-                "consecutive_failures": h.consecutive_failures, "last_ok_at": h.last_ok_at,
-                "workers": h.workers,
-                "breaker": {"open": h.breaker_open, "opened_at": h.opened_at, "calls": h.calls_open,
-                            "good_probes": h.good_probes}}
+        """Per-family breakers under `families`; the top level keeps the flat fields state.json shows,
+        each the worst of the two families (last_ok_at: the older one)."""
+        fams = {name: _family_json(h) for name, h in self._fam.items()}
+        worst = max(FAMILIES, key=lambda name: _badness(self._fam[name]))
+        last_ok = [h.last_ok_at for h in self._fam.values() if h.last_ok_at]
+        return {"schema": 1, "name": "nasdaq" if any(h.breaker_open for h in self._fam.values()) else "yahoo",
+                "status": max((h.status for h in self._fam.values()), key=STATUSES.index),
+                "consecutive_failures": max(h.consecutive_failures for h in self._fam.values()),
+                "last_ok_at": min(last_ok) if last_ok else None,
+                "workers": self._workers, "breaker": fams[worst]["breaker"], "families": fams}
 
     # ------------------------------------------------------------------ breaker and degraded mode
-    def _restore(self, d: dict) -> _Health:
-        """Health read back from engine.json; anything malformed falls back to a fresh, closed breaker."""
+    def _restore(self, d: dict) -> tuple[int, dict[str, _Health]]:
+        """Health read back from engine.json; anything malformed falls back to a fresh, closed breaker.
+        A flat record from before the per-family breakers applies to both families."""
         d = d if isinstance(d, dict) else {}
-        breaker = d.get("breaker") if isinstance(d.get("breaker"), dict) else {}
         workers = _int(d.get("workers")) or self._max_workers
-        return _Health(
-            workers=min(self._max_workers, max(self._min_workers, workers)),
-            status=d.get("status") if d.get("status") in ("ok", "degraded", "down") else "ok",
-            consecutive_failures=_int(d.get("consecutive_failures")) or 0,
-            last_ok_at=_text(d.get("last_ok_at")),
-            breaker_open=breaker.get("open") is True,
-            opened_at=_text(breaker.get("opened_at")),
-            calls_open=_int(breaker.get("calls")) or 0,
-            good_probes=_int(breaker.get("good_probes")) or 0)
+        families = d.get("families")
+        return (min(self._max_workers, max(self._min_workers, workers)),
+                {name: _family_from(families.get(name) if isinstance(families, dict) else d) for name in FAMILIES})
 
-    def _serve[T](self, yahoo: Callable[[int], tuple[T, FetchReport]],
-               nasdaq: Callable[[], tuple[T, FetchReport]] | None) -> tuple[T, FetchReport]:
-        """Route one call: Yahoo while the breaker is closed; Nasdaq while open, probing Yahoo every 3rd call."""
+    def _serve[T](self, family: str, yahoo: Callable[[_Budget], tuple[T, FetchReport]],
+               nasdaq: Callable[[_Budget], tuple[T, FetchReport]] | None) -> tuple[T, FetchReport]:
+        """Route one call of an endpoint family: Yahoo while its breaker is closed; Nasdaq while open,
+        probing Yahoo every 3rd call. Past the deadline nothing is sent and the breaker is left alone."""
         start = time.perf_counter()
-        h = self._h
-        if h.breaker_open and nasdaq is not None:
+        h = self._fam[family]
+        expired = self._deadline is not None and self._clock() >= self._deadline
+        if expired:     # every request is refused: an empty, down report
+            result, report = self._run(nasdaq if h.breaker_open and nasdaq is not None else yahoo, TRIES)
+        elif h.breaker_open and nasdaq is not None:
             h.calls_open += 1
             if h.calls_open % PROBE_EVERY:
-                result, report = nasdaq()
+                result, report = self._run(nasdaq, TRIES)
             else:
-                result, report = yahoo(1)          # the probe: the call itself, one try per request
-                self._record_yahoo(report)
+                result, report = self._run(yahoo, 1, fail_fast=True)   # the probe: one try per request
+                self._record_yahoo(family, report)
                 if report.status == "ok":
                     report.notes.append("yahoo probe ok")
                 else:
                     result, report = self._fall_back(nasdaq, report, "yahoo probe")
         else:
-            result, report = yahoo(TRIES)
-            self._record_yahoo(report)
+            result, report = self._run(yahoo, TRIES, fail_fast=True)
+            self._record_yahoo(family, report)
             if h.breaker_open and nasdaq is not None and report.status == "down":
                 result, report = self._fall_back(nasdaq, report, "yahoo")   # this call opened the breaker
         report.ms = int((time.perf_counter() - start) * 1000)
-        h.status = report.status
+        if not expired:
+            h.status = report.status
         return result, report
 
-    def _fall_back[T](self, nasdaq: Callable[[], tuple[T, FetchReport]], yahoo_report: FetchReport,
+    def _run[T](self, fn: Callable[[_Budget], tuple[T, FetchReport]], tries: int, *,
+                fail_fast: bool = False) -> tuple[T, FetchReport]:
+        """One source attempt under a fresh budget. A Yahoo call cut by fail-fast is down (SPEC 12.1);
+        one cut by the deadline is at best degraded."""
+        budget = _Budget(tries, self._deadline, self._clock, FAIL_FAST if fail_fast else 0)
+        result, report = fn(budget)
+        if budget.failed_fast:
+            report.status = "down"
+            report.notes.append(f"stopped after {FAIL_FAST} failed replies in a row, {budget.skipped} not requested")
+        elif budget.timed_out:
+            report.status = "degraded" if report.status == "ok" else report.status
+            report.notes.append(f"deadline reached, {budget.skipped} not requested")
+        return result, report
+
+    def _fall_back[T](self, nasdaq: Callable[[_Budget], tuple[T, FetchReport]], yahoo_report: FetchReport,
                    label: str) -> tuple[T, FetchReport]:
-        result, report = nasdaq()
+        result, report = self._run(nasdaq, TRIES)
         report.http_429 += yahoo_report.http_429
         report.notes.insert(0, f"{label} {yahoo_report.status}: {yahoo_report.ok}/{yahoo_report.requested} ok")
         return result, report
 
-    def _record_yahoo(self, report: FetchReport) -> None:
-        h = self._h
+    def _record_yahoo(self, family: str, report: FetchReport) -> None:
+        h = self._fam[family]
         ok = report.status == "ok"
+        if family == "chart":   # the chart is the only Yahoo endpoint fetched by the worker pool
+            self._workers = (min(self._max_workers, self._workers * 2) if ok
+                             else max(self._min_workers, self._workers // 2))
         if ok:
-            h.workers = min(self._max_workers, h.workers * 2)
             h.consecutive_failures = 0
             h.last_ok_at = self._stamp()
         else:
-            h.workers = max(self._min_workers, h.workers // 2)
             h.consecutive_failures += 1
         if h.breaker_open:
             h.good_probes = h.good_probes + 1 if ok else 0
@@ -283,16 +387,23 @@ class Fetcher:
         return datetime.fromtimestamp(self._clock(), UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # ------------------------------------------------------------------ requests
-    def _request(self, call: Callable[[], Reply], tries: int) -> _Reply:
-        """Retry 429, 5xx and network errors with exponential backoff and jitter; other statuses are final."""
+    def _request(self, call: Callable[[], Reply], budget: _Budget) -> _Reply:
+        """Retry 429, 5xx and network errors with exponential backoff and jitter; other statuses are final.
+        The budget refuses requests past the deadline or after fail-fast (the reply is then NETWORK_ERROR)."""
         status, body, http_429 = NETWORK_ERROR, None, 0
-        for attempt in range(tries):
+        for attempt in range(budget.tries):
             if attempt:
-                self._sleep(BACKOFF_S * 2 ** (attempt - 1) + self._rng.uniform(0, JITTER_S))
+                wait = BACKOFF_S * 2 ** (attempt - 1) + self._rng.uniform(0, JITTER_S)
+                if not budget.may_send(wait):
+                    break
+                self._sleep(wait)
+            if not budget.may_send(first=not attempt):
+                break
             try:
                 status, body = call()
             except Exception:   # curl_cffi and yfinance raise many types for resets, timeouts and bad bodies
                 status, body = NETWORK_ERROR, None
+            budget.replied(status)
             http_429 += status == 429
             if status == 200 or not _retryable(status):
                 break
@@ -306,12 +417,12 @@ class Fetcher:
         return "etf" if symbol in self._etfs else "stocks"
 
     # ------------------------------------------------------------------ Yahoo
-    def _yahoo_quotes(self, symbols: list[str], tries: int) -> tuple[dict[str, Quote], FetchReport]:
+    def _yahoo_quotes(self, symbols: list[str], budget: _Budget) -> tuple[dict[str, Quote], FetchReport]:
         wanted, out, http_429 = set(symbols), {}, 0
         for batch in _chunks(symbols, QUOTE_BATCH):
             params = {"symbols": ",".join(batch), "formatted": "false", "fields": QUOTE_FIELDS,
                       "lang": "en-US", "region": "US"}
-            reply = self._request(partial(self._tx.yahoo_quote, params, self._timeout), tries)
+            reply = self._request(partial(self._tx.yahoo_quote, params, self._timeout), budget)
             http_429 += reply.http_429
             for row in ((reply.body or {}).get("quoteResponse") or {}).get("result") or []:
                 q = _yahoo_quote(row)
@@ -320,11 +431,11 @@ class Fetcher:
         return out, _report("yahoo", symbols, out, http_429)
 
     def _yahoo_charts[T](self, symbols: list[str], params: dict, parse: Callable[[str, Any], T | None],
-                      tries: int) -> tuple[dict[str, T], FetchReport]:
+                      budget: _Budget) -> tuple[dict[str, T], FetchReport]:
         def fetch(symbol: str) -> _Reply:
-            return self._request(partial(self._tx.yahoo_chart, symbol, params, self._timeout), tries)
+            return self._request(partial(self._tx.yahoo_chart, symbol, params, self._timeout), budget)
 
-        replies = _pool_map(fetch, symbols, self._h.workers)
+        replies = _pool_map(fetch, symbols, self._workers)
         out = {}
         for symbol, reply in zip(symbols, replies, strict=True):
             parsed = _parse_or_none(parse, symbol, reply.body) if reply.status == 200 else None
@@ -332,13 +443,13 @@ class Fetcher:
                 out[symbol] = parsed
         return out, _report("yahoo", symbols, out, sum(r.http_429 for r in replies))
 
-    def _yahoo_movers(self, tries: int) -> tuple[list[Quote], FetchReport]:
+    def _yahoo_movers(self, budget: _Budget) -> tuple[list[Quote], FetchReport]:
         seen: set[str] = set()
         movers: list[Quote] = []
         answered: set[str] = set()
         http_429 = 0
         for name in MOVER_SCREENS:
-            reply = self._request(partial(self._tx.yahoo_screen, name, SCREEN_COUNT, self._timeout), tries)
+            reply = self._request(partial(self._tx.yahoo_screen, name, SCREEN_COUNT, self._timeout), budget)
             http_429 += reply.http_429
             if reply.status != 200:
                 continue
@@ -351,12 +462,12 @@ class Fetcher:
         return movers, _report("yahoo", list(MOVER_SCREENS), answered, http_429)
 
     # ------------------------------------------------------------------ Nasdaq fallback
-    def _nasdaq_quotes(self, symbols: list[str]) -> tuple[dict[str, Quote], FetchReport]:
+    def _nasdaq_quotes(self, symbols: list[str], budget: _Budget) -> tuple[dict[str, Quote], FetchReport]:
         """Watchlist quotes, 20 symbols per request. The screener would be one request, but it lagged a full
         session when measured (Thursday's closes on Sunday) and has no ETFs, so Stage A would lose SPY."""
         replies = self._nasdaq_gets([
             (NASDAQ_WATCHLIST, [("symbol", f"{to_nasdaq(s, '/').lower()}|{self._asset_class(s)}") for s in batch])
-            for batch in _chunks(symbols, WATCHLIST_BATCH)])
+            for batch in _chunks(symbols, WATCHLIST_BATCH)], budget)
         wanted, out = set(symbols), {}
         for reply in replies:
             for row in (reply.body or {}).get("data") or []:
@@ -365,27 +476,33 @@ class Fetcher:
                     out[q.symbol] = q
         return out, _report("nasdaq", symbols, out, sum(r.http_429 for r in replies), fallback=True)
 
-    def _nasdaq_bars(self, symbols: list[str], include_prepost: bool) -> tuple[dict[str, Bars], FetchReport]:
+    def _nasdaq_bars(self, symbols: list[str], include_prepost: bool,
+                     budget: _Budget) -> tuple[dict[str, Bars], FetchReport]:
+        """Symbols in NASDAQ_NO_CHART are not requested: they stay missing (failed) while the breaker is open."""
+        charted = [s for s in symbols if s not in NASDAQ_NO_CHART]
         replies = self._nasdaq_gets([
             (NASDAQ_CHART.format(to_nasdaq(s)), {"assetclass": self._asset_class(s), "charttype": "rs"})
-            for s in symbols])
+            for s in charted], budget)
         out = {}
-        for symbol, reply in zip(symbols, replies, strict=True):
+        for symbol, reply in zip(charted, replies, strict=True):
             bars = (_parse_or_none(_parse_nasdaq_bars, symbol, reply.body, include_prepost)
                     if reply.status == 200 else None)
             if bars is not None:
                 out[symbol] = bars
-        return out, _report("nasdaq", symbols, out, sum(r.http_429 for r in replies), fallback=True)
+        report = _report("nasdaq", symbols, out, sum(r.http_429 for r in replies), fallback=True)
+        if len(charted) < len(symbols):
+            report.notes.append("no Nasdaq chart: " + ", ".join(s for s in symbols if s in NASDAQ_NO_CHART))
+        return out, report
 
-    def _nasdaq_movers(self) -> tuple[list[Quote], FetchReport]:
-        [reply] = self._nasdaq_gets([(NASDAQ_SCREENER, {"tableonly": "true", "download": "true"})])
+    def _nasdaq_movers(self, budget: _Budget) -> tuple[list[Quote], FetchReport]:
+        [reply] = self._nasdaq_gets([(NASDAQ_SCREENER, {"tableonly": "true", "download": "true"})], budget)
         movers = _nasdaq_movers(_screener_rows(reply.body))
         answered = {"screener"} if reply.status == 200 else set()
         return movers, _report("nasdaq", ["screener"], answered, reply.http_429, fallback=True)
 
-    def _nasdaq_gets(self, requests: list[tuple[str, dict | list]]) -> list[_Reply]:
+    def _nasdaq_gets(self, requests: list[tuple[str, dict | list]], budget: _Budget) -> list[_Reply]:
         def fetch(request: tuple[str, dict | list]) -> _Reply:
-            return self._request(partial(self._tx.nasdaq, *request, self._timeout), TRIES)
+            return self._request(partial(self._tx.nasdaq, *request, self._timeout), budget)
         return _pool_map(fetch, requests, NASDAQ_WORKERS)
 
 
@@ -411,6 +528,51 @@ def _report(source: str, requested: list[str], got: dict | set, http_429: int, *
 
 def _retryable(status: int) -> bool:
     return status in (NETWORK_ERROR, 429) or status >= 500
+
+
+# ---------------------------------------------------------------------- health records
+def _family_from(d: Any) -> _Health:
+    """One family's breaker from engine.json (or a whole flat pre-family record); junk gives a fresh one."""
+    d = d if isinstance(d, dict) else {}
+    breaker = d.get("breaker") if isinstance(d.get("breaker"), dict) else {}
+    return _Health(
+        status=d.get("status") if d.get("status") in STATUSES else "ok",
+        consecutive_failures=_int(d.get("consecutive_failures")) or 0,
+        last_ok_at=_text(d.get("last_ok_at")),
+        breaker_open=breaker.get("open") is True,
+        opened_at=_text(breaker.get("opened_at")),
+        calls_open=_int(breaker.get("calls")) or 0,
+        good_probes=_int(breaker.get("good_probes")) or 0)
+
+
+def _family_json(h: _Health) -> dict:
+    return {"status": h.status, "consecutive_failures": h.consecutive_failures, "last_ok_at": h.last_ok_at,
+            "breaker": {"open": h.breaker_open, "opened_at": h.opened_at, "calls": h.calls_open,
+                        "good_probes": h.good_probes}}
+
+
+def _badness(h: _Health) -> tuple[bool, int, int]:
+    return h.breaker_open, STATUSES.index(h.status), h.consecutive_failures
+
+
+def _bounded[T](fn: Callable[[], T], cap_s: float) -> T:
+    """fn() on a daemon thread, given up after cap_s with TimeoutError. A thread stuck on a hung socket is
+    left behind; as a daemon it never blocks the tick's exit."""
+    box: dict[str, Any] = {}
+
+    def run() -> None:
+        try:
+            box["value"] = fn()
+        except BaseException as e:  # noqa: BLE001 - re-raised in the caller below
+            box["error"] = e
+    worker = threading.Thread(target=run, name="radar-yahoo-crumbed", daemon=True)
+    worker.start()
+    worker.join(cap_s)
+    if worker.is_alive():
+        raise TimeoutError(f"no answer within {cap_s:g} s")
+    if "error" in box:
+        raise box["error"]
+    return box["value"]
 
 
 def _parse_or_none[T](parse: Callable[..., T | None], *args: Any) -> T | None:
@@ -465,8 +627,14 @@ def _parse_bars(symbol: str, body: Any) -> Bars | None:
         last_ts, last_px = int(ts[i]), float(a["c"][i])
     ts, a = ts[on_grid], {k: x[on_grid] for k, x in a.items()}
     keep = _last_of_runs(ts)
-    return Bars(symbol, ts[keep], a["o"][keep], a["h"][keep], a["l"][keep], a["c"][keep], a["v"][keep],
-                last_trade_ts=last_ts, last_trade_px=last_px)
+    ts = ts[keep]
+    # DATA-4. Yahoo closes the newest row when the first trade after its end arrives: it folds that trade
+    # into the row, and later trades go to the next row. Until then the row can still change (thin names,
+    # measured live). A last trade already past the row's end means the row is closed, so it is not
+    # provisional (the SPEC 12.1 wording has this backwards). Without a last-trade row nothing is known.
+    provisional = last_ts is not None and len(ts) > 0 and last_ts < int(ts[-1]) + 300
+    return Bars(symbol, ts, a["o"][keep], a["h"][keep], a["l"][keep], a["c"][keep], a["v"][keep],
+                last_trade_ts=last_ts, last_trade_px=last_px, provisional_last=provisional)
 
 
 def _parse_daily(symbol: str, body: Any) -> DailyBars | None:

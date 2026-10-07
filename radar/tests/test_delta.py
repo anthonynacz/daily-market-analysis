@@ -75,6 +75,8 @@ def test_list_pending_orders_by_tick_then_creation_and_skips_partials(tmp_path):
     second = _write(root, "2026-09-28T13:35:00Z")
     (root / ".20260928T134500Z-1.tmp").mkdir()                              # a tick killed mid-write
     (root / "no-meta").mkdir()
+    (root / ".publish.lock").write_bytes(b"")                              # gitsync's lock (SPEC 12.3)
+    (root / "source_health.json").write_bytes(b'{"meta.json": 1}\n')     # the tick's health side file
     assert delta.list_pending(root) == [first, second, later]
     assert delta.list_pending(tmp_path / "missing") == []
 
