@@ -174,12 +174,13 @@ def session_json(s: cal.Session, phase: str) -> dict:
 
 
 def same_session_scan(state: Any, session_date: str | None) -> bool:
-    """Whether a previous state.json is a scan of session `session_date`: same session.date, phase regular and
-    status not closed. Only then may an in-session state carry its recent_exits, day counts and last_bar
-    (SPEC 12.6). The pre-open heartbeat is dated today but still shows the previous session's exits."""
+    """Whether a previous state.json is a scan of session `session_date`: same session.date, phase regular or
+    post (the final tick runs after the close) and status not closed. Only then may an in-session state carry
+    its recent_exits, day counts and last_bar (SPEC 12.6). The pre-open heartbeat is dated today but still
+    shows the previous session's exits."""
     state = state if isinstance(state, dict) else {}
     s = state.get("session") if isinstance(state.get("session"), dict) else {}
-    return (session_date is not None and s.get("date") == session_date and s.get("phase") == "regular"
+    return (session_date is not None and s.get("date") == session_date and s.get("phase") in ("regular", "post")
             and state.get("status") != "closed")
 
 
@@ -627,7 +628,10 @@ class Tick:
         upcoming = cal.next_sessions(day + timedelta(days=1), 1)[0]
         show = today if today is not None and dt < today.post_close else upcoming
         latest = today if today is not None and dt >= today.open else cal.previous_sessions(day, 1)[0]
-        keep = (self.prev_state.get("session") or {}).get("date") == latest.day.isoformat()
+        prev_session = self.prev_state.get("session") or {}
+        # A heartbeat already labelled with the session it waits for carries `latest`'s exits (SPEC 6).
+        keep = prev_session.get("date") == latest.day.isoformat() or (
+            self.prev_state.get("status") == "closed" and prev_session.get("date") == show.day.isoformat())
         prev_counts = self.prev_state.get("counts") or {}
         counts = {**EMPTY_COUNTS, **({k: prev_counts.get(k, 0) for k in ("entered_today", "exited_today")} if keep else {})}
         if pre:

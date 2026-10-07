@@ -824,6 +824,8 @@ def test_the_first_scan_carries_nothing_from_the_previous_session(tmp_path, hist
     ({"status": "closed", "session": {"date": DAY, "phase": "pre"}}, False),       # the warmup heartbeat
     ({"status": "error", "session": {"date": DAY, "phase": "pre"}}, False),        # what the loop used to make of it
     ({"status": "closed", "session": {"date": DAY, "phase": "regular"}}, False),
+    ({"status": "ok", "session": {"date": DAY, "phase": "post"}}, True),          # the final tick, after the close
+    ({"status": "closed", "session": {"date": DAY, "phase": "post"}}, False),
     ({"status": "ok", "session": {"date": "2026-09-25", "phase": "regular"}}, False),
     ({"status": "ok", "session": {"date": DAY}}, False),
     ({"status": "ok", "session": None}, False), ({}, False), (None, False),
@@ -987,6 +989,20 @@ def test_closed_heartbeat(tmp_path, tick_id, prev_date, kept, shown, phase, mess
     assert {k: saved[k] for k in ("session", "engine", "source_health", "dynamic_adds")} == \
         {k: engine[k] for k in ("session", "engine", "source_health", "dynamic_adds")}
     assert jsonl(data, "scan_log")[0]["session"] is None
+
+
+def test_a_second_pre_open_heartbeat_keeps_the_previous_sessions_exits(tmp_path):
+    """INT: a re-run warmup before the open must not drop what the first pre-open heartbeat carried (SPEC 6)."""
+    data = tmp_path / "data"
+    first = {"schema": 1, "status": "closed", "session": {"date": DAY, "phase": "pre"}, "members": [],
+             "recent_exits": [EXIT], "last_bar": "2026-09-25T20:00:00Z", "counts": {"entered_today": 2, "exited_today": 3}}
+    seed(data, state=first)
+    tick_id = "2026-09-28T13:20:00Z"
+    res, _ = run(tmp_path, World(), tick_id, tick.parse_tick_id(tick_id) + 50)
+    state = read(data, "state")
+    assert res["status"] == "closed" and state["session"]["date"] == DAY and state["session"]["phase"] == "pre"
+    assert state["recent_exits"] == [EXIT] and state["counts"]["exited_today"] == 3
+    assert state["last_bar"] == "2026-09-25T20:00:00Z"
 
 
 def test_half_day_session_in_the_heartbeat(tmp_path):

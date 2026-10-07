@@ -438,7 +438,7 @@ These come from the adversarial review (findings in brackets). Where they change
 
 ### 12.6 Integration-rehearsal amendments (binding, 2026-10-07)
 - **No cross-session carry (INT-1):**
-  - An in-session state (any status other than `closed`) may carry `recent_exits`, `counts.entered_today` / `exited_today` and `last_bar` from the previous `state.json` only when that state was a scan of the same session: same `session.date`, `session.phase == "regular"` and status not `closed`.
+  - An in-session state (any status other than `closed`) may carry `recent_exits`, `counts.entered_today` / `exited_today` and `last_bar` from the previous `state.json` only when that state was a scan of the same session: same `session.date`, `session.phase` of `regular` or `post` (the final tick runs after the close) and status not `closed`. A closed heartbeat that is already labelled with the session it waits for keeps carrying the previous session's exits, counts and last_bar.
   - Otherwise these start empty, zero and null.
   - This applies to `tick._carry` / `_prev_same` and to `loop._write_failure`.
 - **Alerts heal on main (INT-2):**
