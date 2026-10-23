@@ -1,6 +1,28 @@
 {
   "alerts": [
     {
+      "ts": "2026-10-23T18:50:00Z",
+      "ticker": "VG",
+      "move_pct": 8.55,
+      "price": 13.91,
+      "session": "regular",
+      "trigger": "Big move + news: reported QatarEnergy LNG supply talks",
+      "headline": "Venture Global Soars 6% on Reported QatarEnergy Talks for Long-Term LNG Supply Deal",
+      "url": "https://finance.yahoo.com/energy/articles/venture-global-soars-6-reported-170336222.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-23T18:50:00Z",
+      "ticker": "RBRK",
+      "move_pct": 7.8,
+      "price": 130.18,
+      "session": "regular",
+      "trigger": "Big move: no clear news, likely cybersecurity sector flow",
+      "headline": "Stock Market Midday, Oct. 23: Energy Surges on Oil Price Spike",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/stock-market-midday-oct-23-163938103.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-10-23T17:50:00Z",
       "ticker": "XOM",
       "move_pct": 2.26,
