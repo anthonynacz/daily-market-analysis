@@ -100,7 +100,7 @@ const EVENTS = [
     headline: "EIA weekly petroleum status report (crude inventories)", tickers: "USO · XOM · CVX",
     rec: "A bigger-than-expected draw adds to the supply squeeze; geopolitics is dominating fundamentals." },
   { id: "e4", ind: "energy", dayIdx: 10, future: true, impact: 2, dir: "BULLISH",
-    headline: "ExxonMobil Q3 before open — EPS est ~$4.10 on ~$105B rev; stock $178.23 vs 52-wk high $180.31", tickers: "XOM",
+    headline: "ExxonMobil & Chevron Q3 before open — XOM EPS est ~$4.10 on ~$105B rev (stock $178.23 vs 52-wk high $180.31); CVX est ~$4.73–4.89", tickers: "XOM · CVX",
     rec: "Lean bullish — $100 oil + buybacks; a breakout above $180 on the print is the trigger, but some is priced in." },
   { id: "e5", ind: "energy", dayIdx: 14, future: true, impact: 2, dir: "MIXED",
     headline: "Post-midterm Iran risk: reports of US/Israeli strike plans after the Nov 3 election keep a war premium in crude", tickers: "XOM · CVX · USO",
