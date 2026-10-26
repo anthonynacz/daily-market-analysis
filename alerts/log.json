@@ -1,6 +1,17 @@
 {
   "alerts": [
     {
+      "ts": "2026-10-26T18:47:00Z",
+      "ticker": "NFLX",
+      "move_pct": -4.21,
+      "price": 63.08,
+      "session": "regular",
+      "trigger": "Big move, no clear news today (post-earnings pressure)",
+      "headline": "Netflix Sinks 7% as Soft Q4 Outlook Sparks Wave of Price Target Cuts",
+      "url": "https://247wallst.com/investing/2026/10/21/netflix-sinks-7-as-soft-q4-outlook-sparks-wave-of-price-target-cuts-spotify-slips-disney-holds-steady/",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-10-26T15:47:00Z",
       "ticker": "SBS",
       "move_pct": -25.16,
