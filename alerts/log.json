@@ -1,6 +1,72 @@
 {
   "alerts": [
     {
+      "ts": "2026-10-26T13:56:00Z",
+      "ticker": "NU",
+      "move_pct": -20.36,
+      "price": 12.08,
+      "session": "regular",
+      "trigger": "Big move + news: Lula re-election, Brazil ADR selloff",
+      "headline": "Nu Holdings Sinks 22% on Lula's Win",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/nu-holdings-sinks-22-lula-094530412.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-26T13:56:00Z",
+      "ticker": "BBD",
+      "move_pct": -26.9,
+      "price": 2.975,
+      "session": "regular",
+      "trigger": "Big move + news: Lula re-election, Brazil ADR selloff",
+      "headline": "Nu Holdings Sinks 22% on Lula's Win",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/nu-holdings-sinks-22-lula-094530412.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-26T13:56:00Z",
+      "ticker": "ITUB",
+      "move_pct": -20.06,
+      "price": 7.73,
+      "session": "regular",
+      "trigger": "Big move + news: Lula re-election, Brazil ADR selloff",
+      "headline": "Nu Holdings Sinks 22% on Lula's Win",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/nu-holdings-sinks-22-lula-094530412.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-26T13:56:00Z",
+      "ticker": "PBR",
+      "move_pct": -14.89,
+      "price": 22.27,
+      "session": "regular",
+      "trigger": "Big move + news: Lula re-election, policy risk",
+      "headline": "Nu Holdings Sinks 22% on Lula's Win",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/nu-holdings-sinks-22-lula-094530412.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-26T13:56:00Z",
+      "ticker": "TSLA",
+      "move_pct": 6.04,
+      "price": 394.7,
+      "session": "regular",
+      "trigger": "Big move: analyst upgrade, falling oil",
+      "headline": "Tesla upgraded (The Fly via Yahoo)",
+      "url": "https://finance.yahoo.com/quote/TSLA/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-26T13:56:00Z",
+      "ticker": "VZ",
+      "move_pct": -3.23,
+      "price": 43.19,
+      "session": "regular",
+      "trigger": "News reaction: Q3 revenue miss despite raised guidance",
+      "headline": "Why VZ stock is falling premarket (Stocktwits via Yahoo)",
+      "url": "https://finance.yahoo.com/quote/VZ/",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-10-23T18:50:00Z",
       "ticker": "VG",
       "move_pct": 8.55,
