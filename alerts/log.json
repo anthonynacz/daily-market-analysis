@@ -1,6 +1,72 @@
 {
   "alerts": [
     {
+      "ts": "2026-10-26T19:48:00Z",
+      "ticker": "RRC",
+      "move_pct": 17.14,
+      "price": 53.32,
+      "session": "regular",
+      "trigger": "Material news: EQT all-stock takeover",
+      "headline": "EQT to Acquire Range Resources in All-Stock Deal to Create Largest US Natural Gas Producer",
+      "url": "https://finance.yahoo.com/energy/articles/eqt-acquire-range-resources-stock-145944067.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-26T19:48:00Z",
+      "ticker": "LITE",
+      "move_pct": 8.77,
+      "price": 822.45,
+      "session": "regular",
+      "trigger": "Big move: StoneX initiates at Buy, $1,200 PT",
+      "headline": "Lumentum Jumps 8% as StoneX Starts Coverage With $1,200 Target",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/lumentum-jumps-8-stonex-starts-164618475.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-26T19:48:00Z",
+      "ticker": "TSEM",
+      "move_pct": 8.07,
+      "price": 181.08,
+      "session": "regular",
+      "trigger": "Big move, no clear same-day news (AI optics sector flow)",
+      "headline": "no clear news",
+      "url": "https://finance.yahoo.com/quote/TSEM/news/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-26T19:48:00Z",
+      "ticker": "DOCN",
+      "move_pct": 7.44,
+      "price": 100.16,
+      "session": "regular",
+      "trigger": "Big move, no clear news (sector flow)",
+      "headline": "no clear news",
+      "url": "https://finance.yahoo.com/quote/DOCN/news/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-26T19:48:00Z",
+      "ticker": "CART",
+      "move_pct": 6.76,
+      "price": 60.26,
+      "session": "regular",
+      "trigger": "News reaction: report of sale talks with Uber/DoorDash",
+      "headline": "CART Stock Draws Wall Street's Attention After Report Of Potential Sale Discussions",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/cart-stock-draws-wall-street-172538788.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-26T19:48:00Z",
+      "ticker": "P",
+      "move_pct": 7.27,
+      "price": 132.29,
+      "session": "regular",
+      "trigger": "Big move, no clear news (sector flow)",
+      "headline": "no clear news",
+      "url": "https://finance.yahoo.com/quote/P/news/",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-10-26T18:47:00Z",
       "ticker": "NFLX",
       "move_pct": -4.21,
