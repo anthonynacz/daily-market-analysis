@@ -1,6 +1,61 @@
 {
   "alerts": [
     {
+      "ts": "2026-10-26T14:50:00Z",
+      "ticker": "TSLA",
+      "move_pct": 6.1,
+      "price": 395.06,
+      "session": "regular",
+      "trigger": "Barclays upgrade to Overweight on SpaceX tie-up potential",
+      "headline": "Tesla Rises 6% as Barclays Upgrade Cites SpaceX Merger Potential",
+      "url": "https://finance.yahoo.com/quote/TSLA/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-26T14:50:00Z",
+      "ticker": "NU",
+      "move_pct": -20.7,
+      "price": 12.03,
+      "session": "regular",
+      "trigger": "Brazil election shock (Lula win)",
+      "headline": "Brazilian Stocks Tumble as Lula Wins Surprise Fourth Term",
+      "url": "https://247wallst.com/investing/2026/10/26/brazilian-stocks-tumble-as-lula-wins-surprise-fourth-term-nu-holdings-sinks-25-petrobras-tumbles-21-mercadolibre-drops-15/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-26T14:50:00Z",
+      "ticker": "ITUB",
+      "move_pct": -23.9,
+      "price": 7.36,
+      "session": "regular",
+      "trigger": "Brazil election shock (Lula win)",
+      "headline": "Brazilian Stocks Tumble as Lula Wins Surprise Fourth Term",
+      "url": "https://247wallst.com/investing/2026/10/26/brazilian-stocks-tumble-as-lula-wins-surprise-fourth-term-nu-holdings-sinks-25-petrobras-tumbles-21-mercadolibre-drops-15/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-26T14:50:00Z",
+      "ticker": "PBR",
+      "move_pct": -18.1,
+      "price": 21.43,
+      "session": "regular",
+      "trigger": "Brazil election shock (Lula win)",
+      "headline": "Brazilian Stocks Tumble as Lula Wins Surprise Fourth Term",
+      "url": "https://247wallst.com/investing/2026/10/26/brazilian-stocks-tumble-as-lula-wins-surprise-fourth-term-nu-holdings-sinks-25-petrobras-tumbles-21-mercadolibre-drops-15/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-26T14:50:00Z",
+      "ticker": "MELI",
+      "move_pct": -10.6,
+      "price": 1618.04,
+      "session": "regular",
+      "trigger": "Brazil election shock (Lula win)",
+      "headline": "Brazilian Stocks Tumble as Lula Wins Surprise Fourth Term",
+      "url": "https://247wallst.com/investing/2026/10/26/brazilian-stocks-tumble-as-lula-wins-surprise-fourth-term-nu-holdings-sinks-25-petrobras-tumbles-21-mercadolibre-drops-15/",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-10-26T13:56:00Z",
       "ticker": "NU",
       "move_pct": -20.36,
