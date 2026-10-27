@@ -1,6 +1,72 @@
 {
   "alerts": [
     {
+      "ts": "2026-10-27T13:47:00Z",
+      "ticker": "MRNA",
+      "move_pct": -7.48,
+      "price": 183.97,
+      "session": "regular",
+      "trigger": "News reaction + big move",
+      "headline": "William Blair downgrades Moderna to Market Perform on valuation",
+      "url": "https://finance.yahoo.com/healthcare/articles/moderna-shares-slip-william-blair-131938697.html",
+      "action": "In report: Bearish"
+    },
+    {
+      "ts": "2026-10-27T13:47:00Z",
+      "ticker": "SOFI",
+      "move_pct": 11.72,
+      "price": 16.16,
+      "session": "regular",
+      "trigger": "News reaction",
+      "headline": "SoFi beats Q3 estimates, raises outlook",
+      "url": "https://finance.yahoo.com/markets/stocks/article/sofi-stock-jumps-as-consumer-lending-boom-kicks-into-higher-gear-123255774.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-27T13:47:00Z",
+      "ticker": "NBIS",
+      "move_pct": 9.69,
+      "price": 168.12,
+      "session": "regular",
+      "trigger": "Big move",
+      "headline": "Nebius rises on reported EUR250M France data center financing; neocloud rebound",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/nbis-stock-rises-overnight-neocloud-034429425.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-27T13:47:00Z",
+      "ticker": "CRWV",
+      "move_pct": 5.36,
+      "price": 58.15,
+      "session": "regular",
+      "trigger": "Big move",
+      "headline": "Oppenheimer holds $150 CoreWeave target, sees bond selloff as overdone",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/oppenheimer-holds-150-coreweave-target-130617737.html",
+      "action": "In report: Avoid"
+    },
+    {
+      "ts": "2026-10-27T13:47:00Z",
+      "ticker": "WDC",
+      "move_pct": 6.17,
+      "price": 378.11,
+      "session": "regular",
+      "trigger": "Big move",
+      "headline": "WDC fiscal Q2 forecast improves; storage/memory strength",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/wdcs-fiscal-q2-forecast-improves-122700484.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-27T13:47:00Z",
+      "ticker": "VLO",
+      "move_pct": -5.25,
+      "price": 404.34,
+      "session": "regular",
+      "trigger": "Big move (no clear news)",
+      "headline": "No clear news - possibly sector/market flow",
+      "url": "",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-10-26T19:48:00Z",
       "ticker": "RRC",
       "move_pct": 17.14,
