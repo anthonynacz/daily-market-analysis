@@ -1,6 +1,61 @@
 {
   "alerts": [
     {
+      "ts": "2026-10-27T14:50:00Z",
+      "ticker": "CLS",
+      "move_pct": 9.93,
+      "price": 271.15,
+      "session": "regular",
+      "trigger": "News reaction + big move",
+      "headline": "Celestica Announces Third Quarter 2026 Financial Results",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/celestica-announces-third-quarter-2026-201700139.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-27T14:50:00Z",
+      "ticker": "BE",
+      "move_pct": 9.26,
+      "price": 222.81,
+      "session": "regular",
+      "trigger": "Big move",
+      "headline": "Bloom Energy Soars 7% on Barclays Price Target Hike After Post-Earnings Rout",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/bloom-energy-soars-7-barclays-164201861.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-27T14:50:00Z",
+      "ticker": "IREN",
+      "move_pct": 7.7,
+      "price": 27.39,
+      "session": "regular",
+      "trigger": "Big move (no clear news - sector flow)",
+      "headline": "Why Did CRWV, IREN, NIO Stocks Slump To 52-Week Lows Today?",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/why-did-crwv-iren-nio-033017865.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-27T14:50:00Z",
+      "ticker": "BA",
+      "move_pct": -7.2,
+      "price": 174.74,
+      "session": "regular",
+      "trigger": "News reaction + big move",
+      "headline": "Update: Boeing Shares Fall Pre-Bell After Wider-Than-Expected Q3 Core Loss",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/boeing-shares-fall-pre-bell-130444536.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-27T14:50:00Z",
+      "ticker": "HSBC",
+      "move_pct": -6.1,
+      "price": 85.65,
+      "session": "regular",
+      "trigger": "News reaction + big move",
+      "headline": "HSBC shares slide 7% despite profit jump and $1 billion buyback",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/hsbc-profit-jumps-32-bank-073700333.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-10-27T13:47:00Z",
       "ticker": "MRNA",
       "move_pct": -7.48,
