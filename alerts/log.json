@@ -1,6 +1,17 @@
 {
   "alerts": [
     {
+      "ts": "2026-10-27T20:50:00Z",
+      "ticker": "TSLA",
+      "move_pct": 4.04,
+      "price": 407.46,
+      "session": "regular",
+      "trigger": "Big move + news: Barclays upgrade to Overweight on possible SpaceX merger",
+      "headline": "Tesla Stock Surges After Barclays Upgrade on Hopes of a SpaceX Merger",
+      "url": "https://stockanalysis.com/stocks/tsla/",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-10-27T19:50:00Z",
       "ticker": "SMCI",
       "move_pct": 7.51,
