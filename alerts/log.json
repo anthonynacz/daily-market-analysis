@@ -1,6 +1,17 @@
 {
   "alerts": [
     {
+      "ts": "2026-10-28T14:48:48Z",
+      "ticker": "GMAB",
+      "move_pct": 23.4,
+      "price": 55.1,
+      "session": "regular",
+      "trigger": "Rina-S ovarian cancer trial results + JPMorgan upgrade; move grew from +15%",
+      "headline": "Genmab Shares Jump 16% as Rally Builds on Cancer Drug Wins, JPMorgan Upgrade and Head and Neck Trial Hopes",
+      "url": "https://www.ibtimes.com.au/genmab-shares-rise-cancer-trial-results-1877526",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-10-28T13:55:00Z",
       "ticker": "GMAB",
       "move_pct": 14.98,
