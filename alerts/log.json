@@ -1,6 +1,50 @@
 {
   "alerts": [
     {
+      "ts": "2026-10-28T16:49:00Z",
+      "ticker": "SW",
+      "move_pct": -7.23,
+      "price": 39.47,
+      "session": "regular",
+      "trigger": "Big move; no clear news found",
+      "headline": "No clear news — possibly sector/market flow",
+      "url": "https://finance.yahoo.com/markets/stocks/losers/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-28T16:49:00Z",
+      "ticker": "SAN",
+      "move_pct": -5.57,
+      "price": 11.77,
+      "session": "regular",
+      "trigger": "Big move; no clear news found",
+      "headline": "No clear news — possibly sector/market flow",
+      "url": "https://finance.yahoo.com/markets/stocks/losers/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-28T16:49:00Z",
+      "ticker": "BKR",
+      "move_pct": -5.32,
+      "price": 55.86,
+      "session": "regular",
+      "trigger": "Big move; no clear news found",
+      "headline": "No clear news — possibly sector/market flow",
+      "url": "https://finance.yahoo.com/markets/stocks/losers/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-28T16:49:00Z",
+      "ticker": "HOOD",
+      "move_pct": -4.19,
+      "price": 90.6,
+      "session": "regular",
+      "trigger": "Big move; no clear news found",
+      "headline": "No clear news — possibly sector/market flow",
+      "url": "https://finance.yahoo.com/markets/stocks/losers/",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-10-28T15:48:00Z",
       "ticker": "GMAB",
       "move_pct": 28.0,
