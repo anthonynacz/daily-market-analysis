@@ -1,6 +1,72 @@
 {
   "alerts": [
     {
+      "ts": "2026-10-28T19:47:00Z",
+      "ticker": "ORCL",
+      "move_pct": 11.5,
+      "price": 145.58,
+      "session": "regular",
+      "trigger": "Big move + news: Investor Day long-term targets",
+      "headline": "Oracle shares jump as long-term outlook targets $225 billion in revenue",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/oracle-shares-jump-long-term-190338261.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-28T19:47:00Z",
+      "ticker": "CLS",
+      "move_pct": 9.0,
+      "price": 301.45,
+      "session": "regular",
+      "trigger": "Big move + news: Q3 beat, 2027 sales target ~$40B",
+      "headline": "Celestica sees 2027 sales nearly doubling to $40 billion",
+      "url": "https://finance.yahoo.com/technology/ai/articles/celestica-sees-2027-sales-nearly-171700575.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-28T19:47:00Z",
+      "ticker": "SNDK",
+      "move_pct": 7.2,
+      "price": 1398.56,
+      "session": "regular",
+      "trigger": "Big move: memory/AI rally",
+      "headline": "MU, SNDK, Neocloud Stocks Extend Gains On Anthropic Boost, SK Hynix Q3 Stunner",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/mu-sndk-neocloud-stocks-extend-064605497.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-28T19:47:00Z",
+      "ticker": "CRWV",
+      "move_pct": 6.9,
+      "price": 63.68,
+      "session": "regular",
+      "trigger": "Big move: neocloud rebound, no single catalyst",
+      "headline": "CoreWeave Is Steadying After Debt Scare. The Case for Buying the Dip.",
+      "url": "https://finance.yahoo.com/m/bd4f990c-7105-3233-afd3-4c5c6b889642/coreweave-is-steadying-after.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-28T19:47:00Z",
+      "ticker": "ODFL",
+      "move_pct": -6.6,
+      "price": 174.68,
+      "session": "regular",
+      "trigger": "Big move: Q3 earnings day, no clear reason for drop",
+      "headline": "Old Dominion's tonnage turns positive; recovery needs demand inflection",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/old-dominion-tonnage-turns-positive-172204570.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-28T19:47:00Z",
+      "ticker": "MU",
+      "move_pct": 6.2,
+      "price": 986.5,
+      "session": "regular",
+      "trigger": "Big move: memory/AI rally",
+      "headline": "MU, SNDK, Neocloud Stocks Extend Gains On Anthropic Boost, SK Hynix Q3 Stunner",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/mu-sndk-neocloud-stocks-extend-064605497.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-10-28T17:48:00Z",
       "ticker": "SKHY",
       "move_pct": 13.09,
@@ -18,7 +84,7 @@
       "price": 2.755,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/BBD/",
       "action": "WATCH"
     },
@@ -29,7 +95,7 @@
       "price": 39.47,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -40,7 +106,7 @@
       "price": 11.77,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -51,7 +117,7 @@
       "price": 55.86,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -62,7 +128,7 @@
       "price": 90.6,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
