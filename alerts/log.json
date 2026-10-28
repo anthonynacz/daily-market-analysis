@@ -1,6 +1,61 @@
 {
   "alerts": [
     {
+      "ts": "2026-10-28T13:55:00Z",
+      "ticker": "GMAB",
+      "move_pct": 14.98,
+      "price": 51.36,
+      "session": "regular",
+      "trigger": "Big move + news: Phase 3 LiGeR-HN1 met both primary endpoints",
+      "headline": "Genmab petosemtamab Phase 3 LiGeR-HN1 topline",
+      "url": "https://stockanalysis.com/stocks/gmab/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-28T13:55:00Z",
+      "ticker": "STLA",
+      "move_pct": 11.84,
+      "price": 4.63,
+      "session": "regular",
+      "trigger": "Big move + news: Q3 results, guidance reaffirmed",
+      "headline": "Stellantis reports $4.5 billion cash drain as turnaround continues",
+      "url": "https://www.cnbc.com/2026/10/28/stellantis-45-billion-cash-drain-turnaround.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-28T13:55:00Z",
+      "ticker": "SKHY",
+      "move_pct": 9.04,
+      "price": 158.5,
+      "session": "regular",
+      "trigger": "Big move + news: record Q3, shareholder return plan",
+      "headline": "SK Hynix stock surges as Q3 beat unlocks shareholder payout",
+      "url": "https://www.tipranks.com/news/sk-hynix-stock-surges-11-as-q3-beat-unlocks-75b-shareholder-payout",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-28T13:55:00Z",
+      "ticker": "BSX",
+      "move_pct": -7.08,
+      "price": 41.87,
+      "session": "regular",
+      "trigger": "Big move + news: FY26 guidance cut after cyberattack",
+      "headline": "Boston Scientific Cuts View Again After Cyberattack",
+      "url": "https://www.wsj.com/business/earnings/boston-scientific-cuts-view-again-after-cyberattack-other-challenges-79d8945a",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-28T13:55:00Z",
+      "ticker": "SOFI",
+      "move_pct": 3.9,
+      "price": 17.04,
+      "session": "regular",
+      "trigger": "News reaction: Q3 beat and raised outlook",
+      "headline": "SoFi's shares jump after fintech beats estimates, raises revenue forecast",
+      "url": "https://www.reuters.com/technology/sofis-shares-jump-after-fintech-beats-estimates-raises-revenue-forecast-2026-10-27/",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-10-27T20:50:00Z",
       "ticker": "TSLA",
       "move_pct": 4.04,
