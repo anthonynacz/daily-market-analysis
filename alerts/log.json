@@ -1,6 +1,28 @@
 {
   "alerts": [
     {
+      "ts": "2026-10-28T20:50:00Z",
+      "ticker": "GOOGL",
+      "move_pct": -9.17,
+      "price": 295.1,
+      "session": "after",
+      "trigger": "Big move + Q3 earnings reaction",
+      "headline": "Google stock plunges as Q3 sales fall short of expectations",
+      "url": "https://finance.yahoo.com/technology/article/google-stock-plunges-as-q3-sales-fall-short-of-expectations-202657047.html",
+      "action": "In report: Bullish"
+    },
+    {
+      "ts": "2026-10-28T20:50:00Z",
+      "ticker": "MSFT",
+      "move_pct": 2.1,
+      "price": 542.18,
+      "session": "after",
+      "trigger": "News reaction: FQ1 earnings beat, Azure +48%",
+      "headline": "Microsoft beats Wall Street estimates as Azure growth hits 48%",
+      "url": "https://finance.yahoo.com/technology/articles/microsoft-beats-wall-street-estimates-202200438.html",
+      "action": "In report: Neutral-to-Bullish"
+    },
+    {
       "ts": "2026-10-28T19:47:00Z",
       "ticker": "ORCL",
       "move_pct": 11.5,
@@ -84,7 +106,7 @@
       "price": 2.755,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/BBD/",
       "action": "WATCH"
     },
@@ -95,7 +117,7 @@
       "price": 39.47,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -106,7 +128,7 @@
       "price": 11.77,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -117,7 +139,7 @@
       "price": 55.86,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -128,7 +150,7 @@
       "price": 90.6,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
