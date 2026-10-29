@@ -1,6 +1,50 @@
 {
   "alerts": [
     {
+      "ts": "2026-10-29T18:48:00Z",
+      "ticker": "ALNY",
+      "move_pct": -22.36,
+      "price": 180.45,
+      "session": "regular",
+      "trigger": "News reaction: Q3 results, 52-week low on Medicare access worries and pipeline delays",
+      "headline": "Alnylam Sinks 19% as It Expands Nucresiran Heart Trial Again",
+      "url": "https://finance.yahoo.com/healthcare/articles/alnylam-sinks-19-expands-nucresiran-160402333.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-29T18:48:00Z",
+      "ticker": "GEN",
+      "move_pct": 15.13,
+      "price": 28.04,
+      "session": "regular",
+      "trigger": "News reaction: Q2 FY27 beat, raised outlook",
+      "headline": "Gen Digital surges 11% on raised outlook and strong Q2 beat",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/gen-digital-surges-11-raised-150322697.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-29T18:48:00Z",
+      "ticker": "FTAI",
+      "move_pct": 14.89,
+      "price": 192.02,
+      "session": "regular",
+      "trigger": "News reaction: Q3 sales miss but $500M accelerated buyback",
+      "headline": "Aerospace Stock FTAI Aviation Surges On Buybacks, Despite Miss",
+      "url": "https://finance.yahoo.com/m/f9500815-ded0-3807-8a9f-2b8dcbe1a2dc/aerospace-stock-ftai-aviation.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-29T18:48:00Z",
+      "ticker": "INSM",
+      "move_pct": 12.21,
+      "price": 108.82,
+      "session": "regular",
+      "trigger": "News reaction: Q3 revenue beat",
+      "headline": "Insmed Reports Q3 Loss, Tops Revenue Estimates",
+      "url": "https://finance.yahoo.com/healthcare/articles/insmed-insm-reports-q3-loss-113507941.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-10-29T17:47:00Z",
       "ticker": "AMZN",
       "move_pct": -3.49,
