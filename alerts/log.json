@@ -1,6 +1,50 @@
 {
   "alerts": [
     {
+      "ts": "2026-10-29T15:05:00Z",
+      "ticker": "FTNT",
+      "move_pct": -22.68,
+      "price": 134.6,
+      "session": "regular",
+      "trigger": "Big move + Q3 guidance cut",
+      "headline": "Software stocks tumble as Fortinet, ServiceNow plunge on disappointing outlooks",
+      "url": "https://finance.yahoo.com/markets/stocks/article/fortinet-drags-down-cybersecurity-stocks-as-the-companys-service-revenue-forecast-misses-estimates-124146969.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-29T15:05:00Z",
+      "ticker": "CVNA",
+      "move_pct": 14.9,
+      "price": 67.85,
+      "session": "regular",
+      "trigger": "Big move + Q3 revenue beat, EBITDA guidance up",
+      "headline": "Carvana stock jumps on strong Q3 revenue as profits climb",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/carvana-stock-jumps-strong-q3-142100020.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-29T15:05:00Z",
+      "ticker": "CMG",
+      "move_pct": 7.5,
+      "price": 30.89,
+      "session": "regular",
+      "trigger": "Big move + Q3 sales momentum",
+      "headline": "Chipotle stock pops on sustained sales momentum in Q3",
+      "url": "https://finance.yahoo.com/markets/stocks/article/chipotle-stock-pops-on-sustained-sales-momentum-in-q3-203209272.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-29T15:05:00Z",
+      "ticker": "CAT",
+      "move_pct": -6.99,
+      "price": 663.53,
+      "session": "regular",
+      "trigger": "Big move + Q3 revenue miss, soft Q4 outlook",
+      "headline": "Caterpillar, the Dow's best stock of 2026, is unraveling",
+      "url": "https://finance.yahoo.com/markets/article/caterpillar-the-dows-best-stock-of-2026-is-unraveling--and-an-earnings-beat-couldnt-stop-it-143227286.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-10-29T14:06:00Z",
       "ticker": "GOOGL",
       "move_pct": -12.01,
