@@ -1,6 +1,39 @@
 {
   "alerts": [
     {
+      "ts": "2026-10-29T20:47:00Z",
+      "ticker": "GOOGL",
+      "move_pct": -12.64,
+      "price": 283.82,
+      "session": "regular",
+      "trigger": "Big move + news reaction: Q3 Search slowdown, $51.4B capex, negative FCF",
+      "headline": "Stock Market Today: Alphabet Sinks 11.8%, Small Caps Rally",
+      "url": "https://www.benzinga.com/markets/equities/26/10/62706774/stock-market-today-alphabet-sinks-small-caps-rally-gdp-rotation",
+      "action": "In report: Neutral-to-Bullish"
+    },
+    {
+      "ts": "2026-10-29T20:47:00Z",
+      "ticker": "NOW",
+      "move_pct": -26.95,
+      "price": 109.67,
+      "session": "regular",
+      "trigger": "Big move + news reaction: Q3 EPS miss, slower cRPO outlook",
+      "headline": "ServiceNow Stock Is Worst in S&P 500 After a Key Revenue Measure Fell Short",
+      "url": "https://finance.yahoo.com/quote/NOW/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-29T20:47:00Z",
+      "ticker": "NCLH",
+      "move_pct": 13.45,
+      "price": 18.22,
+      "session": "regular",
+      "trigger": "Big move + news reaction: Q3 beat, raised 2026 EBITDA outlook",
+      "headline": "Norwegian Cruise Line Soars After Beat-And-Raise Quarter",
+      "url": "https://finance.yahoo.com/quote/NCLH/",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-10-29T19:47:00Z",
       "ticker": "HONA",
       "move_pct": -10.88,
