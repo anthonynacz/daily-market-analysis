@@ -1,6 +1,39 @@
 {
   "alerts": [
     {
+      "ts": "2026-10-29T14:06:00Z",
+      "ticker": "GOOGL",
+      "move_pct": -12.01,
+      "price": 285.87,
+      "session": "regular",
+      "trigger": "Big move + Q3 earnings miss",
+      "headline": "Alphabet heads for a $500 billion drop in market value, the biggest in its history",
+      "url": "https://finance.yahoo.com/markets/article/alphabet-heads-for-a-500-billion-drop-in-market-value-the-biggest-in-its-history-134824763.html",
+      "action": "In report: Bullish"
+    },
+    {
+      "ts": "2026-10-29T14:06:00Z",
+      "ticker": "NOW",
+      "move_pct": -23.42,
+      "price": 114.97,
+      "session": "regular",
+      "trigger": "Big move + earnings miss",
+      "headline": "ServiceNow Tumbles 19% as Slower Contract Growth Overshadows Raised AI Target",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/servicenow-tumbles-19-slower-contract-130905770.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-29T14:06:00Z",
+      "ticker": "MRVL",
+      "move_pct": -12.14,
+      "price": 221.1,
+      "session": "regular",
+      "trigger": "News reaction: reported Lumentum acquisition talks",
+      "headline": "Marvell Is in Talks to Buy an $83 Billion AI Laser Maker",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/marvell-talks-buy-83-billion-130754067.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-10-28T20:50:00Z",
       "ticker": "GOOGL",
       "move_pct": -9.17,
@@ -106,7 +139,7 @@
       "price": 2.755,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/BBD/",
       "action": "WATCH"
     },
@@ -117,7 +150,7 @@
       "price": 39.47,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -128,7 +161,7 @@
       "price": 11.77,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -139,7 +172,7 @@
       "price": 55.86,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -150,7 +183,7 @@
       "price": 90.6,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
