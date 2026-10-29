@@ -1,6 +1,17 @@
 {
   "alerts": [
     {
+      "ts": "2026-10-29T16:47:00Z",
+      "ticker": "HLN",
+      "move_pct": -14.69,
+      "price": 8.53,
+      "session": "regular",
+      "trigger": "Big move + Q3 growth outlook trimmed",
+      "headline": "Haleon shares plunge 14% after £500 million buyback launch",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/haleon-launches-500-million-share-072500287.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-10-29T15:05:00Z",
       "ticker": "FTNT",
       "move_pct": -22.68,
