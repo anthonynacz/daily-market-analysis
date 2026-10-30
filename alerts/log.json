@@ -1,6 +1,17 @@
 {
   "alerts": [
     {
+      "ts": "2026-10-30T14:48:00Z",
+      "ticker": "AMD",
+      "move_pct": -8.8,
+      "price": 516.5,
+      "session": "regular",
+      "trigger": "Big move: sector contagion from Intel's weak outlook",
+      "headline": "Intel Sinks 29% as Weak Outlook Shows It's \"Still PC Dependent\"",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/intel-sinks-29-weak-outlook-133944045.html",
+      "action": "In report: Bullish"
+    },
+    {
       "ts": "2026-10-30T13:49:19Z",
       "ticker": "INTC",
       "move_pct": -29.09,
