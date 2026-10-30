@@ -1,6 +1,61 @@
 {
   "alerts": [
     {
+      "ts": "2026-10-30T16:50:00Z",
+      "ticker": "NVDA",
+      "move_pct": -4.12,
+      "price": 204.85,
+      "session": "regular",
+      "trigger": "Big move; AI/tech rout on Amazon/Intel capex worries",
+      "headline": "Nasdaq hits near three-month low as Amazon, Intel deepen AI capex concerns",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/nasdaq-futures-sink-amazon-intel-114737736.html",
+      "action": "In report: Bullish"
+    },
+    {
+      "ts": "2026-10-30T16:50:00Z",
+      "ticker": "SNDK",
+      "move_pct": -12.19,
+      "price": 1167.91,
+      "session": "regular",
+      "trigger": "Q1 beat but NAND pricing-peak worries",
+      "headline": "SanDisk stock tumbles as Kioxia warns on NAND price surge",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/sandisk-stock-tumbles-kioxia-warns-161834544.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-30T16:50:00Z",
+      "ticker": "DDOG",
+      "move_pct": -13.94,
+      "price": 228.77,
+      "session": "regular",
+      "trigger": "Big move; no clear news, cyber/software selloff",
+      "headline": "Datadog Sinks 12%, CrowdStrike Falls 4%",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/datadog-sinks-12-crowdstrike-falls-161738027.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-30T16:50:00Z",
+      "ticker": "COHR",
+      "move_pct": -12.94,
+      "price": 206.52,
+      "session": "regular",
+      "trigger": "Big move; B. Riley PT cut, AI-hardware selloff",
+      "headline": "Marvell Sinks 13%, Lumentum Jumps 6% on Reported Acquisition Talks; Coherent Holds Flat",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/marvell-sinks-13-lumentum-jumps-131135000.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-30T16:50:00Z",
+      "ticker": "GPN",
+      "move_pct": 8.92,
+      "price": 93.37,
+      "session": "regular",
+      "trigger": "Big move; no clear news",
+      "headline": "Global Payments (GPN) Reports Next Week: Wall Street Expects Earnings Growth",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/global-payments-gpn-reports-next-130016811.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-10-30T15:50:00Z",
       "ticker": "RBLX",
       "move_pct": -19.47,
