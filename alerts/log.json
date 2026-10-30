@@ -1,6 +1,50 @@
 {
   "alerts": [
     {
+      "ts": "2026-10-30T15:50:00Z",
+      "ticker": "RBLX",
+      "move_pct": -19.47,
+      "price": 42.25,
+      "session": "regular",
+      "trigger": "Q3 beat but DAU -9% YoY to 138M",
+      "headline": "Reddit, Pinterest, and Roblox stocks tank after Q3 earnings",
+      "url": "https://finance.yahoo.com/markets/article/reddit-pinterest-and-roblox-stocks-tank-after-q3-earnings-134009780.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-30T15:50:00Z",
+      "ticker": "ILMN",
+      "move_pct": -17.89,
+      "price": 238.18,
+      "session": "regular",
+      "trigger": "Big move: no clear news - possibly sector/market flow",
+      "headline": "",
+      "url": "https://finance.yahoo.com/markets/stocks/losers/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-30T15:50:00Z",
+      "ticker": "TWLO",
+      "move_pct": -16.7,
+      "price": 201.51,
+      "session": "regular",
+      "trigger": "Q4 organic growth guide ~11-12% vs 16%; messaging slowing",
+      "headline": "Twilio's biggest business is slowing",
+      "url": "https://www.benzinga.com/trading-ideas/movers/26/10/62735517/twilios-biggest-business-is-slowing-and-thats-a-problem-for-its-growth-story",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-30T15:50:00Z",
+      "ticker": "COIN",
+      "move_pct": -13.06,
+      "price": 139.62,
+      "session": "regular",
+      "trigger": "Revenue -35% YoY, crypto selloff on Binance hack",
+      "headline": "Why Is Coinbase Stock Falling Today?",
+      "url": "https://finance.yahoo.com/markets/crypto/articles/why-coinbase-stock-falling-4-104024090.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-10-30T14:48:00Z",
       "ticker": "AMD",
       "move_pct": -8.8,
