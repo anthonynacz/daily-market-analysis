@@ -1,6 +1,50 @@
 {
   "alerts": [
     {
+      "ts": "2026-10-30T17:48:00Z",
+      "ticker": "ALAB",
+      "move_pct": -13.0,
+      "price": 252.68,
+      "session": "regular",
+      "trigger": "Big move; no clear news - sector/AI semis flow",
+      "headline": "Astera Labs: Q3 earnings Nov 3 preview",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/buy-sell-hold-alab-stock-162300895.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-30T17:48:00Z",
+      "ticker": "DELL",
+      "move_pct": -12.28,
+      "price": 417.13,
+      "session": "regular",
+      "trigger": "Big move; Intel PC-weakness warning",
+      "headline": "Dell sinks 11% on Intel warning",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/dell-sinks-11-intel-warning-170231441.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-30T17:48:00Z",
+      "ticker": "AZN",
+      "move_pct": 7.38,
+      "price": 187.27,
+      "session": "regular",
+      "trigger": "News reaction; Q3 beat and savings plan",
+      "headline": "Drugs giant AstraZeneca reveals higher profits, savings plan",
+      "url": "https://finance.yahoo.com/healthcare/articles/drugs-giant-astrazeneca-reveals-higher-145536551.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-30T17:48:00Z",
+      "ticker": "TMUS",
+      "move_pct": 7.01,
+      "price": 157.61,
+      "session": "regular",
+      "trigger": "News reaction; raised 2026 outlook",
+      "headline": "T-Mobile Raises 2026 Outlook as Service Growth Boosts Free Cash Flow",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/t-mobile-raises-2026-outlook-160500709.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-10-30T16:50:00Z",
       "ticker": "NVDA",
       "move_pct": -4.12,
@@ -326,7 +370,7 @@
       "price": 8.53,
       "session": "regular",
       "trigger": "Big move + Q3 growth outlook trimmed",
-      "headline": "Haleon shares plunge 14% after £500 million buyback launch",
+      "headline": "Haleon shares plunge 14% after \u00a3500 million buyback launch",
       "url": "https://finance.yahoo.com/markets/stocks/articles/haleon-launches-500-million-share-072500287.html",
       "action": "WATCH"
     },
@@ -513,7 +557,7 @@
       "price": 2.755,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/BBD/",
       "action": "WATCH"
     },
@@ -524,7 +568,7 @@
       "price": 39.47,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -535,7 +579,7 @@
       "price": 11.77,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -546,7 +590,7 @@
       "price": 55.86,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -557,7 +601,7 @@
       "price": 90.6,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
