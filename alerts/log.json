@@ -1,6 +1,72 @@
 {
   "alerts": [
     {
+      "ts": "2026-10-30T13:49:19Z",
+      "ticker": "INTC",
+      "move_pct": -29.09,
+      "price": 65.29,
+      "session": "regular",
+      "trigger": "Weak Q4 guide despite Q3 beat; PC weakness",
+      "headline": "Intel Sinks 29% as Weak Outlook Shows It's \"Still PC Dependent\"",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/intel-sinks-29-weak-outlook-133944045.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-30T13:49:19Z",
+      "ticker": "RDDT",
+      "move_pct": -26.58,
+      "price": 95.35,
+      "session": "regular",
+      "trigger": "Weak Q4 guide, slowing US users, Google referral decline",
+      "headline": "Reddit, Pinterest, and Roblox stocks tank after Q3 earnings",
+      "url": "https://finance.yahoo.com/markets/article/reddit-pinterest-and-roblox-stocks-tank-after-q3-earnings-134009780.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-10-30T13:49:19Z",
+      "ticker": "CRWV",
+      "move_pct": -8.86,
+      "price": 55.36,
+      "session": "regular",
+      "trigger": "Neocloud sell-off, capex/debt worries",
+      "headline": "Neocloud Stocks Have Sunk by More Than 30% This Month",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/neocloud-stocks-sunk-more-30-164000043.html",
+      "action": "In report: AI chain event"
+    },
+    {
+      "ts": "2026-10-30T13:49:19Z",
+      "ticker": "MRVL",
+      "move_pct": -7.06,
+      "price": 202.92,
+      "session": "regular",
+      "trigger": "Reported advanced talks to buy Lumentum",
+      "headline": "Marvell in advanced talks to buy Nvidia-backed Lumentum",
+      "url": "https://finance.yahoo.com/news/marvell-advanced-talks-buy-nvidia-111202630.html",
+      "action": "In report: Avoid until deal terms known"
+    },
+    {
+      "ts": "2026-10-30T13:49:19Z",
+      "ticker": "MU",
+      "move_pct": -4.43,
+      "price": 892.9,
+      "session": "regular",
+      "trigger": "Memory sell-off after Sandisk drop",
+      "headline": "Sandisk sinks 9% despite earnings beat",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/sandisk-sinks-9-despite-earnings-131724006.html",
+      "action": "In report: HOLD/add on pullbacks"
+    },
+    {
+      "ts": "2026-10-30T13:49:19Z",
+      "ticker": "AMZN",
+      "move_pct": -2.01,
+      "price": 238.88,
+      "session": "regular",
+      "trigger": "Q3 earnings miss, negative FCF on AI spend",
+      "headline": "Amazon Slides 7% as Earnings Miss and AI Spending Turn Free Cash Flow Negative",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/amazon-slides-7-earnings-miss-131202716.html",
+      "action": "In report: Bullish"
+    },
+    {
       "ts": "2026-10-29T20:47:00Z",
       "ticker": "GOOGL",
       "move_pct": -12.64,
