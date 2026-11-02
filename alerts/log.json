@@ -1,6 +1,28 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-02T18:47:00Z",
+      "ticker": "MRVL",
+      "move_pct": -10.86,
+      "price": 175.07,
+      "session": "regular",
+      "trigger": "News reaction + big move; Marvell/Lumentum $115B all-stock deal",
+      "headline": "Marvell Slides, Lumentum Drops on $115 Billion All-Stock Merger Deal",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/marvell-slides-3-lumentum-drops-135326041.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-02T18:47:00Z",
+      "ticker": "GRAB",
+      "move_pct": 7.93,
+      "price": 2.925,
+      "session": "regular",
+      "trigger": "Big move; no clear news",
+      "headline": "No clear news - possibly sector/market flow",
+      "url": "https://finance.yahoo.com/quote/GRAB/",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-02T18:05:00Z",
       "ticker": "LITE",
       "move_pct": -15.07,
@@ -73,7 +95,7 @@
       "price": 92.38,
       "session": "regular",
       "trigger": "Big move; no clear news",
-      "headline": "no clear news — possibly sector/market flow",
+      "headline": "no clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/NXT/",
       "action": "WATCH"
     },
@@ -106,7 +128,7 @@
       "price": 13.82,
       "session": "regular",
       "trigger": "Big move; no clear news",
-      "headline": "no clear news — possibly rate/sector flow",
+      "headline": "no clear news \u2014 possibly rate/sector flow",
       "url": "https://finance.yahoo.com/quote/RKT/",
       "action": "WATCH"
     },
@@ -249,7 +271,7 @@
       "price": 166.48,
       "session": "regular",
       "trigger": "Big move; no clear news",
-      "headline": "no clear news — possibly sector/market flow",
+      "headline": "no clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/TSEM/",
       "action": "WATCH"
     },
@@ -711,7 +733,7 @@
       "price": 8.53,
       "session": "regular",
       "trigger": "Big move + Q3 growth outlook trimmed",
-      "headline": "Haleon shares plunge 14% after £500 million buyback launch",
+      "headline": "Haleon shares plunge 14% after \u00a3500 million buyback launch",
       "url": "https://finance.yahoo.com/markets/stocks/articles/haleon-launches-500-million-share-072500287.html",
       "action": "WATCH"
     },
@@ -898,7 +920,7 @@
       "price": 2.755,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/BBD/",
       "action": "WATCH"
     },
@@ -909,7 +931,7 @@
       "price": 39.47,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -920,7 +942,7 @@
       "price": 11.77,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -931,7 +953,7 @@
       "price": 55.86,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -942,7 +964,7 @@
       "price": 90.6,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
