@@ -1,6 +1,17 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-03T16:48:00Z",
+      "ticker": "ALAB",
+      "move_pct": 4.74,
+      "price": 240.55,
+      "session": "regular",
+      "trigger": "Big move; no clear news - possibly sector flow ahead of earnings tonight",
+      "headline": "No clear news",
+      "url": "https://anthonynacz.github.io/daily-market-analysis/",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-03T15:43:00Z",
       "ticker": "GRAB",
       "move_pct": 12.06,
@@ -238,7 +249,7 @@
       "price": 92.38,
       "session": "regular",
       "trigger": "Big move; no clear news",
-      "headline": "no clear news — possibly sector/market flow",
+      "headline": "no clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/NXT/",
       "action": "WATCH"
     },
@@ -271,7 +282,7 @@
       "price": 13.82,
       "session": "regular",
       "trigger": "Big move; no clear news",
-      "headline": "no clear news — possibly rate/sector flow",
+      "headline": "no clear news \u2014 possibly rate/sector flow",
       "url": "https://finance.yahoo.com/quote/RKT/",
       "action": "WATCH"
     },
@@ -414,7 +425,7 @@
       "price": 166.48,
       "session": "regular",
       "trigger": "Big move; no clear news",
-      "headline": "no clear news — possibly sector/market flow",
+      "headline": "no clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/TSEM/",
       "action": "WATCH"
     },
@@ -876,7 +887,7 @@
       "price": 8.53,
       "session": "regular",
       "trigger": "Big move + Q3 growth outlook trimmed",
-      "headline": "Haleon shares plunge 14% after £500 million buyback launch",
+      "headline": "Haleon shares plunge 14% after \u00a3500 million buyback launch",
       "url": "https://finance.yahoo.com/markets/stocks/articles/haleon-launches-500-million-share-072500287.html",
       "action": "WATCH"
     },
@@ -1063,7 +1074,7 @@
       "price": 2.755,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/BBD/",
       "action": "WATCH"
     },
@@ -1074,7 +1085,7 @@
       "price": 39.47,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -1085,7 +1096,7 @@
       "price": 11.77,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -1096,7 +1107,7 @@
       "price": 55.86,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -1107,7 +1118,7 @@
       "price": 90.6,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
