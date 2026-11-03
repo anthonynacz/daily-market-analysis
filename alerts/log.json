@@ -1,6 +1,50 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-03T20:49:00Z",
+      "ticker": "NBIX",
+      "move_pct": 14.29,
+      "price": 166.14,
+      "session": "regular",
+      "trigger": "News reaction: Q3 beat, raised Ingrezza view",
+      "headline": "Zacks: NBIX Beats on Q3 Earnings & Sales, Raises '26 Ingrezza Sales View",
+      "url": "https://finance.yahoo.com/healthcare/articles/nbix-beats-q3-earnings-sales-151500971.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-03T20:49:00Z",
+      "ticker": "LSCC",
+      "move_pct": 12.27,
+      "price": 107.15,
+      "session": "regular",
+      "trigger": "News reaction: Q3 beat, strong Q4 guide",
+      "headline": "Zacks: LSCC Q3 Earnings Beat Estimates",
+      "url": "https://finance.yahoo.com/technology/ai/articles/lscc-q3-earnings-beat-estimates-150200800.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-03T20:49:00Z",
+      "ticker": "RRX",
+      "move_pct": 11.46,
+      "price": 179.37,
+      "session": "regular",
+      "trigger": "News reaction: Q3 earnings beat",
+      "headline": "Zacks: Regal Rexnord (RRX) Q3 Earnings and Revenues Beat Estimates",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/regal-rexnord-rrx-q3-earnings-121503641.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-03T20:49:00Z",
+      "ticker": "IT",
+      "move_pct": -12.45,
+      "price": 205.98,
+      "session": "regular",
+      "trigger": "News reaction: weak forecast, AI threat",
+      "headline": "Barron's: Gartner Stock Sinks. Weak Forecast Underscores Threat From Cheaper AI Services",
+      "url": "https://finance.yahoo.com/m/eda8cb55-a7b4-3dee-b05f-bef36a372c23/gartner-stock-sinks-weak.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-03T19:48:00Z",
       "ticker": "FISV",
       "move_pct": 13.64,
