@@ -1,6 +1,72 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-03T13:48:00Z",
+      "ticker": "AAPL",
+      "move_pct": -4.32,
+      "price": 323.72,
+      "session": "pre",
+      "trigger": "Big move; post-earnings gap, margin guide (in report)",
+      "headline": "Morning report: AAPL post-earnings gap",
+      "url": "https://anthonynacz.github.io/daily-market-analysis/",
+      "action": "In report: Bullish"
+    },
+    {
+      "ts": "2026-11-03T13:48:00Z",
+      "ticker": "AMD",
+      "move_pct": 4.05,
+      "price": 485.76,
+      "session": "pre",
+      "trigger": "Big move; earnings tonight (in report)",
+      "headline": "Morning report: AMD Q3 earnings tonight",
+      "url": "https://anthonynacz.github.io/daily-market-analysis/",
+      "action": "In report: Bullish"
+    },
+    {
+      "ts": "2026-11-03T13:48:00Z",
+      "ticker": "PLTR",
+      "move_pct": -6.09,
+      "price": 167.48,
+      "session": "pre",
+      "trigger": "Big move; no clear news",
+      "headline": "No clear news found",
+      "url": "https://finance.yahoo.com/quote/PLTR/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-03T13:48:00Z",
+      "ticker": "MU",
+      "move_pct": 4.16,
+      "price": 868.26,
+      "session": "pre",
+      "trigger": "Big move; no clear news, chip rebound",
+      "headline": "No clear news found",
+      "url": "https://finance.yahoo.com/quote/MU/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-03T13:48:00Z",
+      "ticker": "SMCI",
+      "move_pct": 4.1,
+      "price": 31.69,
+      "session": "pre",
+      "trigger": "Big move; no clear news",
+      "headline": "No clear news found",
+      "url": "https://finance.yahoo.com/quote/SMCI/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-03T13:48:00Z",
+      "ticker": "INTC",
+      "move_pct": 4.05,
+      "price": 62.4,
+      "session": "pre",
+      "trigger": "Big move; bounce after Monday drop",
+      "headline": "No clear news found",
+      "url": "https://finance.yahoo.com/quote/INTC/",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-02T20:47:00Z",
       "ticker": "CRWV",
       "move_pct": -9.31,
