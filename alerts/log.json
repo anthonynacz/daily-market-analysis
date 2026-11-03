@@ -1,6 +1,17 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-03T17:50:00Z",
+      "ticker": "DT",
+      "move_pct": -10.9,
+      "price": 49.12,
+      "session": "regular",
+      "trigger": "News reaction: fiscal Q2 2027 earnings, worst post-earnings drop in 3+ years",
+      "headline": "2 Reasons Why This AI-Powered Software Stock Is Tumbling After Earnings (Barron's)",
+      "url": "https://finance.yahoo.com/m/ca49a31a-0694-3c50-99a5-f0fe11e821de/2-reasons-why-this-ai-powered.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-03T16:48:00Z",
       "ticker": "ALAB",
       "move_pct": 4.74,
