@@ -1,6 +1,39 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-03T15:43:00Z",
+      "ticker": "GRAB",
+      "move_pct": 12.06,
+      "price": 3.205,
+      "session": "regular",
+      "trigger": "News reaction: Q3 beat, FY EBITDA guidance raised",
+      "headline": "Grab Holdings Q3 2026 earnings release",
+      "url": "https://www.sec.gov/Archives/edgar/data/0001855612/000185561226000148/a2026q3-earningspressrelea.htm",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-03T15:43:00Z",
+      "ticker": "SHOP",
+      "move_pct": -6.91,
+      "price": 145.42,
+      "session": "regular",
+      "trigger": "News reaction: Q3 revenue/GMV miss",
+      "headline": "Shopify stock tanks as Q3 revenue, total order value miss Wall Street estimates",
+      "url": "https://finance.yahoo.com/markets/stocks/article/shopify-stock-tanks-as-q3-revenue-misses-estimates-for-first-time-since-2022-133246370.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-03T15:43:00Z",
+      "ticker": "CRWV",
+      "move_pct": 7.36,
+      "price": 53.84,
+      "session": "regular",
+      "trigger": "Big move: rebound after 52-week low, no clear news",
+      "headline": "CoreWeave expected to beat earnings estimates ahead of Q3 release",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/coreweave-crwv-expected-beat-earnings-140004833.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-03T14:48:00Z",
       "ticker": "ORCL",
       "move_pct": 3.99,
