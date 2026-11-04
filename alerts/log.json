@@ -1,6 +1,17 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-04T15:48:00Z",
+      "ticker": "GOOGL",
+      "move_pct": 4.3,
+      "price": 292.06,
+      "session": "regular",
+      "trigger": "Big move: post-midterm tech rally, no Alphabet-specific news",
+      "headline": "Apple, Microsoft hit all-time highs as Nasdaq surges 2% in post-election rally",
+      "url": "https://finance.yahoo.com/markets/article/apple-microsoft-hit-all-time-highs-as-nasdaq-surges-2-in-post-election-rally-alphacheck-152548814.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-04T14:50:00Z",
       "ticker": "AMZN",
       "move_pct": 7.18,
@@ -425,7 +436,7 @@
       "price": 92.38,
       "session": "regular",
       "trigger": "Big move; no clear news",
-      "headline": "no clear news \u2014 possibly sector/market flow",
+      "headline": "no clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/NXT/",
       "action": "WATCH"
     },
@@ -458,7 +469,7 @@
       "price": 13.82,
       "session": "regular",
       "trigger": "Big move; no clear news",
-      "headline": "no clear news \u2014 possibly rate/sector flow",
+      "headline": "no clear news — possibly rate/sector flow",
       "url": "https://finance.yahoo.com/quote/RKT/",
       "action": "WATCH"
     },
@@ -601,7 +612,7 @@
       "price": 166.48,
       "session": "regular",
       "trigger": "Big move; no clear news",
-      "headline": "no clear news \u2014 possibly sector/market flow",
+      "headline": "no clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/TSEM/",
       "action": "WATCH"
     },
@@ -1063,7 +1074,7 @@
       "price": 8.53,
       "session": "regular",
       "trigger": "Big move + Q3 growth outlook trimmed",
-      "headline": "Haleon shares plunge 14% after \u00a3500 million buyback launch",
+      "headline": "Haleon shares plunge 14% after £500 million buyback launch",
       "url": "https://finance.yahoo.com/markets/stocks/articles/haleon-launches-500-million-share-072500287.html",
       "action": "WATCH"
     },
@@ -1250,7 +1261,7 @@
       "price": 2.755,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/BBD/",
       "action": "WATCH"
     },
@@ -1261,7 +1272,7 @@
       "price": 39.47,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -1272,7 +1283,7 @@
       "price": 11.77,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -1283,7 +1294,7 @@
       "price": 55.86,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -1294,7 +1305,7 @@
       "price": 90.6,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
