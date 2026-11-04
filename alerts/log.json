@@ -1,6 +1,28 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-04T16:47:00Z",
+      "ticker": "CRWV",
+      "move_pct": -9.36,
+      "price": 48.71,
+      "session": "regular",
+      "trigger": "Big move: neocloud/AI data-center selloff after Democratic midterm sweep; Citi PT cut",
+      "headline": "AI's Building Boom Meets A Blue Wave. 'Neocloud' Stocks Fall",
+      "url": "https://finance.yahoo.com/m/c7cfda24-812a-3e7d-a41e-138b0ad10480/ai-s-building-boom-meets-a.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-04T16:47:00Z",
+      "ticker": "GRAB",
+      "move_pct": 8.19,
+      "price": 3.375,
+      "session": "regular",
+      "trigger": "Big move: continued rally after Q3 beat and raised 2026 outlook",
+      "headline": "Grab Stock Jumps On Raised Outlook After Strong Quarter",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/grab-stock-jumps-raised-outlook-221819163.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-04T15:48:00Z",
       "ticker": "GOOGL",
       "move_pct": 4.3,
@@ -436,7 +458,7 @@
       "price": 92.38,
       "session": "regular",
       "trigger": "Big move; no clear news",
-      "headline": "no clear news — possibly sector/market flow",
+      "headline": "no clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/NXT/",
       "action": "WATCH"
     },
@@ -469,7 +491,7 @@
       "price": 13.82,
       "session": "regular",
       "trigger": "Big move; no clear news",
-      "headline": "no clear news — possibly rate/sector flow",
+      "headline": "no clear news \u2014 possibly rate/sector flow",
       "url": "https://finance.yahoo.com/quote/RKT/",
       "action": "WATCH"
     },
@@ -612,7 +634,7 @@
       "price": 166.48,
       "session": "regular",
       "trigger": "Big move; no clear news",
-      "headline": "no clear news — possibly sector/market flow",
+      "headline": "no clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/TSEM/",
       "action": "WATCH"
     },
@@ -1074,7 +1096,7 @@
       "price": 8.53,
       "session": "regular",
       "trigger": "Big move + Q3 growth outlook trimmed",
-      "headline": "Haleon shares plunge 14% after £500 million buyback launch",
+      "headline": "Haleon shares plunge 14% after \u00a3500 million buyback launch",
       "url": "https://finance.yahoo.com/markets/stocks/articles/haleon-launches-500-million-share-072500287.html",
       "action": "WATCH"
     },
@@ -1261,7 +1283,7 @@
       "price": 2.755,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/BBD/",
       "action": "WATCH"
     },
@@ -1272,7 +1294,7 @@
       "price": 39.47,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -1283,7 +1305,7 @@
       "price": 11.77,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -1294,7 +1316,7 @@
       "price": 55.86,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -1305,7 +1327,7 @@
       "price": 90.6,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
