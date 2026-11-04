@@ -1,6 +1,72 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-04T18:48:00Z",
+      "ticker": "INIO",
+      "move_pct": -20.51,
+      "price": 14.555,
+      "session": "regular",
+      "trigger": "Big move: blue-wave hit to power-equipment makers",
+      "headline": "Flash Heard: Blue Wave Knocks Power Equipment Makers",
+      "url": "https://finance.yahoo.com/m/34fbe765-b241-30a5-a27e-a2d555bcf76d/%E2%9A%A1-flash-heard%3A-blue-wave.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-04T18:48:00Z",
+      "ticker": "MDLN",
+      "move_pct": 16.69,
+      "price": 39.78,
+      "session": "regular",
+      "trigger": "Big move: Q3 earnings",
+      "headline": "Medline Q3 Net Sales Rise - Shares Up Pre-Bell",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/medline-q3-net-sales-rise-125228225.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-04T18:48:00Z",
+      "ticker": "DDOG",
+      "move_pct": -15.07,
+      "price": 187.28,
+      "session": "regular",
+      "trigger": "Big move: flat revenue guide, lower usage from major AI customer",
+      "headline": "Datadog Says Lower Usage From Major AI Customer Is Weighing on Growth",
+      "url": "https://finance.yahoo.com/m/375f6032-b831-3b94-944d-f3b262589f5d/datadog-says-lower-usage-from.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-04T18:48:00Z",
+      "ticker": "ZBH",
+      "move_pct": 15.02,
+      "price": 111.64,
+      "session": "regular",
+      "trigger": "Big move: Q3 beat, raised sales forecast",
+      "headline": "Zimmer raises sales forecast despite slower knee business",
+      "url": "https://finance.yahoo.com/healthcare/articles/zimmer-raises-sales-forecast-despite-173043006.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-04T18:48:00Z",
+      "ticker": "VST",
+      "move_pct": -14.5,
+      "price": 119.345,
+      "session": "regular",
+      "trigger": "Big move: midterms hit AI power names, KeyBanc downgrade",
+      "headline": "Vistra plunges 13.5% as Texas election rattles AI power trade, KeyBanc downgrades",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/vistra-plunges-13-5-texas-180149225.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-04T18:48:00Z",
+      "ticker": "NVT",
+      "move_pct": -14.49,
+      "price": 110.53,
+      "session": "regular",
+      "trigger": "Big move: Q3 results",
+      "headline": "NVT Stock Declines 6% Post Q3 Results",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/nvt-stock-declines-6-post-135000098.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-04T17:47:00Z",
       "ticker": "FIS",
       "move_pct": -23.59,
@@ -524,7 +590,7 @@
       "price": 92.38,
       "session": "regular",
       "trigger": "Big move; no clear news",
-      "headline": "no clear news \u2014 possibly sector/market flow",
+      "headline": "no clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/NXT/",
       "action": "WATCH"
     },
@@ -557,7 +623,7 @@
       "price": 13.82,
       "session": "regular",
       "trigger": "Big move; no clear news",
-      "headline": "no clear news \u2014 possibly rate/sector flow",
+      "headline": "no clear news — possibly rate/sector flow",
       "url": "https://finance.yahoo.com/quote/RKT/",
       "action": "WATCH"
     },
@@ -700,7 +766,7 @@
       "price": 166.48,
       "session": "regular",
       "trigger": "Big move; no clear news",
-      "headline": "no clear news \u2014 possibly sector/market flow",
+      "headline": "no clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/TSEM/",
       "action": "WATCH"
     },
@@ -1162,7 +1228,7 @@
       "price": 8.53,
       "session": "regular",
       "trigger": "Big move + Q3 growth outlook trimmed",
-      "headline": "Haleon shares plunge 14% after \u00a3500 million buyback launch",
+      "headline": "Haleon shares plunge 14% after £500 million buyback launch",
       "url": "https://finance.yahoo.com/markets/stocks/articles/haleon-launches-500-million-share-072500287.html",
       "action": "WATCH"
     },
@@ -1349,7 +1415,7 @@
       "price": 2.755,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/BBD/",
       "action": "WATCH"
     },
@@ -1360,7 +1426,7 @@
       "price": 39.47,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -1371,7 +1437,7 @@
       "price": 11.77,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -1382,7 +1448,7 @@
       "price": 55.86,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -1393,7 +1459,7 @@
       "price": 90.6,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
