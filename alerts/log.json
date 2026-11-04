@@ -1,6 +1,72 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-04T17:47:00Z",
+      "ticker": "FIS",
+      "move_pct": -23.59,
+      "price": 29.8,
+      "session": "regular",
+      "trigger": "Big move: Q3 revenue warning + CFO exit",
+      "headline": "Fidelity National Info Stock Suffers a Double Blow: A Revenue Warning and Sudden Finance Chief Exit",
+      "url": "https://finance.yahoo.com/m/920f743e-cd3c-35ec-9c9e-c652a9351937/fidelity-national-info-stock.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-04T17:47:00Z",
+      "ticker": "PCOR",
+      "move_pct": 19.03,
+      "price": 75.19,
+      "session": "regular",
+      "trigger": "Big move: Q3 beat",
+      "headline": "Procore Technologies (PCOR) Beats Q3 Earnings and Revenue Estimates",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/procore-technologies-pcor-beats-q3-215006598.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-04T17:47:00Z",
+      "ticker": "UNM",
+      "move_pct": -17.42,
+      "price": 75.17,
+      "session": "regular",
+      "trigger": "Big move: Q3 loss, sales miss, LTC reinsurance",
+      "headline": "Unum Group reports sales below analyst estimates in Q3 2026, stock drops",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/unum-group-nyse-unm-reports-214351133.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-04T17:47:00Z",
+      "ticker": "TRMB",
+      "move_pct": -17.01,
+      "price": 54.45,
+      "session": "regular",
+      "trigger": "Big move: outlook cut",
+      "headline": "Trimble cuts growth outlook as European freight market slows",
+      "url": "https://finance.yahoo.com/technology/articles/trimble-cuts-growth-outlook-european-152849476.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-04T17:47:00Z",
+      "ticker": "XYZ",
+      "move_pct": 15.39,
+      "price": 87.7,
+      "session": "regular",
+      "trigger": "Big move: Q3 beat, raised outlook",
+      "headline": "Block earnings lift outlook, shares as Cash App and Square drive growth",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/block-earnings-lift-outlook-shares-163400926.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-04T17:47:00Z",
+      "ticker": "SWK",
+      "move_pct": 15.72,
+      "price": 121.07,
+      "session": "regular",
+      "trigger": "Big move: Q3 beat, raised guidance, $1B buyback",
+      "headline": "SWK's Q3 Earnings Surge on Margin Expansion, 2026 Outlook Raised",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/swks-q3-earnings-surge-margin-164200154.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-04T16:47:00Z",
       "ticker": "CRWV",
       "move_pct": -9.36,
