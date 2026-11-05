@@ -1,6 +1,17 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-05T17:47:00Z",
+      "ticker": "AMD",
+      "move_pct": -15.56,
+      "price": 412.73,
+      "session": "regular",
+      "trigger": "Big move; chip selloff, grew from -11.06% earlier",
+      "headline": "Why Chip Stocks Intel, Nvidia, and AMD Are Sinking Today, Nov. 5",
+      "url": "https://www.tipranks.com/news/why-chip-stocks-intel-nvidia-and-amd-are-sinking-today-nov-5",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-05T17:48:00Z",
       "ticker": "NVDA",
       "move_pct": -8.62,
