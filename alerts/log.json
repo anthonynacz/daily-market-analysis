@@ -1,6 +1,39 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-05T20:47:00Z",
+      "ticker": "TSLA",
+      "move_pct": -10.88,
+      "price": 343.3,
+      "session": "regular",
+      "trigger": "Big move; SpaceX, Tesla stocks tumble as Democratic sweep raises quest",
+      "headline": "SpaceX, Tesla stocks tumble as Democratic sweep raises questions on merger prospects, AI build-out",
+      "url": "https://finance.yahoo.com/markets/article/spacex-tesla-stocks-tumble-as-democratic-sweep-raises-questions-on-merger-prospects-ai-buildout-153753814.html",
+      "action": "In report: Bearish"
+    },
+    {
+      "ts": "2026-11-05T20:47:00Z",
+      "ticker": "MRVL",
+      "move_pct": -14.42,
+      "price": 136.75,
+      "session": "regular",
+      "trigger": "Big move; Marvell Sinks Another 14% as Democratic Sweep Deepens AI Chi",
+      "headline": "Marvell Sinks Another 14% as Democratic Sweep Deepens AI Chip Selloff",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/marvell-sinks-another-14-democratic-170336354.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-05T20:47:00Z",
+      "ticker": "INTC",
+      "move_pct": -7.63,
+      "price": 53.83,
+      "session": "regular",
+      "trigger": "Big move; Intel Sinks 8% as Midterm Chip Sell-Off Deepens",
+      "headline": "Intel Sinks 8% as Midterm Chip Sell-Off Deepens",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/intel-sinks-8-midterm-chip-202040508.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-05T19:47:00Z",
       "ticker": "ORCL",
       "move_pct": -6.61,
