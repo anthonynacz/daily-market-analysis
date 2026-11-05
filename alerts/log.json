@@ -1,6 +1,61 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-05T17:48:00Z",
+      "ticker": "NVDA",
+      "move_pct": -8.62,
+      "price": 182.88,
+      "session": "regular",
+      "trigger": "Big move; AI/chip selloff, grew from -4.1% earlier",
+      "headline": "Nvidia has lost nearly $1.4 trillion since its October record",
+      "url": "https://finance.yahoo.com/markets/article/nvidia-has-lost-nearly-14-trillion-since-its-october-record-165912910.html",
+      "action": "In report: Bullish"
+    },
+    {
+      "ts": "2026-11-05T17:48:00Z",
+      "ticker": "ASX",
+      "move_pct": -18.72,
+      "price": 30.49,
+      "session": "regular",
+      "trigger": "Big move; AI hardware selloff",
+      "headline": "Super Micro Sinks 10%, ASE Technology Down 17%, Celestica Down 13% as AI Hardware Selloff Deepens",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/super-micro-sinks-10-ase-170238778.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-05T17:48:00Z",
+      "ticker": "BE",
+      "move_pct": -17.53,
+      "price": 165.26,
+      "session": "regular",
+      "trigger": "Big move; chip selloff / data-center policy risk",
+      "headline": "AMD Sinks 13%, Bloom Energy Down 18% as Midterm 'Seismic Shift' Deepens Chip Sell-Off",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/amd-sinks-13-bloom-energy-151241226.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-05T17:48:00Z",
+      "ticker": "ALAB",
+      "move_pct": -17.02,
+      "price": 185.27,
+      "session": "regular",
+      "trigger": "Big move; AI unwind",
+      "headline": "Stock Market Today: Nasdaq Slumps 4% As AI Unwinds",
+      "url": "https://finance.yahoo.com/m/38cb0654-6e49-3715-b4e4-f2f830876d7a/stock-market-today-nasdaq.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-05T17:48:00Z",
+      "ticker": "NBIS",
+      "move_pct": -16.95,
+      "price": 117.53,
+      "session": "regular",
+      "trigger": "Big move; Texas data-center vote",
+      "headline": "Nebius Sinks Another 19% as Texas Vote Hits Data Centers",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/nebius-sinks-another-19-texas-155557451.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-05T16:46:00Z",
       "ticker": "U",
       "move_pct": 13.09,
@@ -237,7 +292,7 @@
       "move_pct": -5.14,
       "price": 29.77,
       "session": "regular",
-      "trigger": "Big move: no clear news \u2014 possibly sector/market flow",
+      "trigger": "Big move: no clear news — possibly sector/market flow",
       "headline": "Yahoo Finance most-active list",
       "url": "https://finance.yahoo.com/markets/stocks/most-active/",
       "action": "WATCH"
@@ -248,7 +303,7 @@
       "move_pct": -4.98,
       "price": 134.27,
       "session": "regular",
-      "trigger": "Big move: no clear news \u2014 possibly sector/market flow",
+      "trigger": "Big move: no clear news — possibly sector/market flow",
       "headline": "Yahoo Finance most-active list",
       "url": "https://finance.yahoo.com/markets/stocks/most-active/",
       "action": "WATCH"
@@ -259,7 +314,7 @@
       "move_pct": -4.12,
       "price": 58.05,
       "session": "regular",
-      "trigger": "Big move: no clear news \u2014 possibly sector/market flow",
+      "trigger": "Big move: no clear news — possibly sector/market flow",
       "headline": "Yahoo Finance most-active list",
       "url": "https://finance.yahoo.com/markets/stocks/most-active/",
       "action": "WATCH"
@@ -854,7 +909,7 @@
       "price": 92.38,
       "session": "regular",
       "trigger": "Big move; no clear news",
-      "headline": "no clear news \u2014 possibly sector/market flow",
+      "headline": "no clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/NXT/",
       "action": "WATCH"
     },
@@ -887,7 +942,7 @@
       "price": 13.82,
       "session": "regular",
       "trigger": "Big move; no clear news",
-      "headline": "no clear news \u2014 possibly rate/sector flow",
+      "headline": "no clear news — possibly rate/sector flow",
       "url": "https://finance.yahoo.com/quote/RKT/",
       "action": "WATCH"
     },
@@ -1030,7 +1085,7 @@
       "price": 166.48,
       "session": "regular",
       "trigger": "Big move; no clear news",
-      "headline": "no clear news \u2014 possibly sector/market flow",
+      "headline": "no clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/TSEM/",
       "action": "WATCH"
     },
@@ -1492,7 +1547,7 @@
       "price": 8.53,
       "session": "regular",
       "trigger": "Big move + Q3 growth outlook trimmed",
-      "headline": "Haleon shares plunge 14% after \u00a3500 million buyback launch",
+      "headline": "Haleon shares plunge 14% after £500 million buyback launch",
       "url": "https://finance.yahoo.com/markets/stocks/articles/haleon-launches-500-million-share-072500287.html",
       "action": "WATCH"
     },
@@ -1679,7 +1734,7 @@
       "price": 2.755,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/BBD/",
       "action": "WATCH"
     },
@@ -1690,7 +1745,7 @@
       "price": 39.47,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -1701,7 +1756,7 @@
       "price": 11.77,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -1712,7 +1767,7 @@
       "price": 55.86,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -1723,7 +1778,7 @@
       "price": 90.6,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news — possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
