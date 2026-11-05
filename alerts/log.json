@@ -1,6 +1,72 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-05T15:47:00Z",
+      "ticker": "MU",
+      "move_pct": -14.94,
+      "price": 676.41,
+      "session": "regular",
+      "trigger": "Big move; memory pricing / AI policy risk",
+      "headline": "Yahoo: memory selloff, phone chipmaker cites memory dynamics",
+      "url": "https://finance.yahoo.com/quote/MU/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-05T15:47:00Z",
+      "ticker": "SNDK",
+      "move_pct": -18.14,
+      "price": 849.21,
+      "session": "regular",
+      "trigger": "Big move; memory selloff",
+      "headline": "Sandisk down with memory names",
+      "url": "https://finance.yahoo.com/markets/stocks/losers/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-05T15:47:00Z",
+      "ticker": "APP",
+      "move_pct": 30.04,
+      "price": 353.35,
+      "session": "regular",
+      "trigger": "News reaction + big move (extended from +22.3%)",
+      "headline": "AppLovin stock soars after Q3 earnings, outlook beat",
+      "url": "https://finance.yahoo.com/quote/APP/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-05T15:47:00Z",
+      "ticker": "CRWV",
+      "move_pct": -11.61,
+      "price": 42.8,
+      "session": "regular",
+      "trigger": "Big move; AI-infrastructure sector flow",
+      "headline": "no clear news - possibly sector flow",
+      "url": "https://finance.yahoo.com/markets/stocks/most-active/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-05T15:47:00Z",
+      "ticker": "MRVL",
+      "move_pct": -11.5,
+      "price": 141.43,
+      "session": "regular",
+      "trigger": "Big move; sector flow",
+      "headline": "no clear news - possibly sector flow",
+      "url": "https://finance.yahoo.com/markets/stocks/most-active/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-05T15:47:00Z",
+      "ticker": "SPCX",
+      "move_pct": -8.14,
+      "price": 124.85,
+      "session": "regular",
+      "trigger": "Big move; sector flow",
+      "headline": "no clear news - possibly sector flow",
+      "url": "https://finance.yahoo.com/markets/stocks/most-active/",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-05T14:46:00Z",
       "ticker": "TSLA",
       "move_pct": -8.4,
