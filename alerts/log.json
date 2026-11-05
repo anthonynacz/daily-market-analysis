@@ -1,6 +1,17 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-05T19:47:00Z",
+      "ticker": "ORCL",
+      "move_pct": -6.61,
+      "price": 115.55,
+      "session": "regular",
+      "trigger": "Big move; AI/chip selloff, unconfirmed Tencent lease report",
+      "headline": "Oracle (ORCL) quote page",
+      "url": "https://finance.yahoo.com/quote/ORCL/",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-05T17:47:00Z",
       "ticker": "AMD",
       "move_pct": -15.56,
