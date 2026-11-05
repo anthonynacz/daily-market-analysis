@@ -1,6 +1,50 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-05T14:46:00Z",
+      "ticker": "TSLA",
+      "move_pct": -8.4,
+      "price": 352.47,
+      "session": "regular",
+      "trigger": "Big move; post-midterm political-risk discount on Musk complex",
+      "headline": "Tesla and SpaceX shares drop after Elon Musk's election bet backfires",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/tesla-spacex-shares-drop-elon-110520141.html",
+      "action": "In report: Bearish"
+    },
+    {
+      "ts": "2026-11-05T14:46:00Z",
+      "ticker": "NVDA",
+      "move_pct": -4.12,
+      "price": 191.89,
+      "session": "regular",
+      "trigger": "Big move; chip rout, data-center rule fears",
+      "headline": "Why Chip Stocks Intel, Nvidia, and AMD Are Sinking Today, Nov. 5",
+      "url": "https://www.tipranks.com/news/why-chip-stocks-intel-nvidia-and-amd-are-sinking-today-nov-5",
+      "action": "In report: Bullish"
+    },
+    {
+      "ts": "2026-11-05T14:46:00Z",
+      "ticker": "AMD",
+      "move_pct": -11.06,
+      "price": 434.74,
+      "session": "regular",
+      "trigger": "Big move; chip-sector selloff",
+      "headline": "Why Chip Stocks Intel, Nvidia, and AMD Are Sinking Today, Nov. 5",
+      "url": "https://www.tipranks.com/news/why-chip-stocks-intel-nvidia-and-amd-are-sinking-today-nov-5",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-05T14:46:00Z",
+      "ticker": "INTC",
+      "move_pct": -6.49,
+      "price": 54.49,
+      "session": "regular",
+      "trigger": "Big move; chip-sector selloff",
+      "headline": "Why Chip Stocks Intel, Nvidia, and AMD Are Sinking Today, Nov. 5",
+      "url": "https://www.tipranks.com/news/why-chip-stocks-intel-nvidia-and-amd-are-sinking-today-nov-5",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-05T13:50:00Z",
       "ticker": "APP",
       "move_pct": 22.3,
