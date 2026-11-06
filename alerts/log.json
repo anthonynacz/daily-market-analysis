@@ -1,6 +1,61 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-06T14:47:00Z",
+      "ticker": "MRVL",
+      "move_pct": 9.35,
+      "price": 146.04,
+      "session": "regular",
+      "trigger": "Big move: chip rebound, no clear company news",
+      "headline": "Yahoo: Marvell quote/headlines (Q3 call announced; Lumentum deal debate)",
+      "url": "https://finance.yahoo.com/quote/MRVL/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-06T14:47:00Z",
+      "ticker": "INTC",
+      "move_pct": 8.2,
+      "price": 56.53,
+      "session": "regular",
+      "trigger": "Big move: chip rebound",
+      "headline": "24/7 Wall St: AMD Jumps 8%, Intel and NVIDIA Climb 5% as Chip Stocks Rebound",
+      "url": "https://finance.yahoo.com/quote/INTC/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-06T14:47:00Z",
+      "ticker": "SMCI",
+      "move_pct": 7.7,
+      "price": 29.17,
+      "session": "regular",
+      "trigger": "Big move: rebound after post-earnings drop",
+      "headline": "Yahoo: Supermicro quote/headlines",
+      "url": "https://finance.yahoo.com/quote/SMCI/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-06T14:47:00Z",
+      "ticker": "NVDA",
+      "move_pct": 6.82,
+      "price": 193.99,
+      "session": "regular",
+      "trigger": "Big move: chip rebound",
+      "headline": "Yahoo Finance: Nvidia, AMD, Micron lead chip sector higher",
+      "url": "https://finance.yahoo.com/quote/NVDA/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-06T14:47:00Z",
+      "ticker": "TSLA",
+      "move_pct": 2.79,
+      "price": 353.27,
+      "session": "regular",
+      "trigger": "News reaction: Cybertruck production to end",
+      "headline": "CBS News: Musk says Tesla will end Cybertruck production next year",
+      "url": "https://finance.yahoo.com/quote/TSLA/",
+      "action": "In report: Bearish"
+    },
+    {
       "ts": "2026-11-06T13:49:26Z",
       "ticker": "NBIS",
       "move_pct": 9.74,
