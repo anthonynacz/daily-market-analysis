@@ -1,6 +1,50 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-06T17:47:00Z",
+      "ticker": "IONQ",
+      "move_pct": 15.23,
+      "price": 30.46,
+      "session": "regular",
+      "trigger": "Big move + news: Q3 beat, higher guidance",
+      "headline": "IonQ's Q3 Beat, Higher Guidance Supported by Superion 256 Demand, Morgan Stanley Says",
+      "url": "https://finance.yahoo.com/technology/ai/articles/ionq-apos-q3-beat-higher-160951629.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-06T17:47:00Z",
+      "ticker": "TEAM",
+      "move_pct": -15.15,
+      "price": 155.52,
+      "session": "regular",
+      "trigger": "Big move + news: FY27 growth outlook slows despite beat",
+      "headline": "Atlassian shares fall about 14% as fiscal 2027 growth outlook slows sharply",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/atlassian-stocks-fall-14-fiscal-170437162.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-06T17:47:00Z",
+      "ticker": "MCHP",
+      "move_pct": -14.85,
+      "price": 55.22,
+      "session": "regular",
+      "trigger": "Big move + news: Q2 beat, sell-off on outlook/supply constraints",
+      "headline": "MCHP Q2 Earnings Beat Estimates, Revenues Rise on Demand Recovery",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/mchp-q2-earnings-beat-estimates-152400781.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-06T17:47:00Z",
+      "ticker": "HALO",
+      "move_pct": -14.7,
+      "price": 104.89,
+      "session": "regular",
+      "trigger": "Big move; reason unclear (earnings day)",
+      "headline": "Halozyme reaffirms zero to minimal impact on royalty revenue from Medicare negotiation",
+      "url": "https://finance.yahoo.com/healthcare/articles/halozyme-reaffirms-projects-zero-minimal-150400152.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-06T14:48:00Z",
       "ticker": "MRNA",
       "move_pct": 8.5,
