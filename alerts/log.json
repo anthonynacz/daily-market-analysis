@@ -1,6 +1,39 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-09T18:46:00Z",
+      "ticker": "AMD",
+      "move_pct": 12.95,
+      "price": 507.19,
+      "session": "regular",
+      "trigger": "Big move + news; grew from +7.78% earlier today",
+      "headline": "AMD Stock Rises On Google Cloud Deal, Wall Street Upgrade",
+      "url": "https://finance.yahoo.com/m/544d9f43-0b7f-3c42-b942-64d1474d8198/amd-stock-rises-on-google.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-09T18:46:00Z",
+      "ticker": "QXO",
+      "move_pct": 20.23,
+      "price": 13.9,
+      "session": "regular",
+      "trigger": "Big move + news; Jacobs stays CEO, prelim Q3 sales +79%",
+      "headline": "Why Did QXO Stock Soar Monday?",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/why-did-qxo-stock-soar-164054186.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-09T18:46:00Z",
+      "ticker": "CRWV",
+      "move_pct": 5.41,
+      "price": 48.91,
+      "session": "regular",
+      "trigger": "Big move; AI rebound ahead of earnings",
+      "headline": "CoreWeave Rises 5%, Nebius Up 7% as AI Stocks Rebound Ahead of Earnings",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/coreweave-rises-5-nebius-7-182825101.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-09T16:46:00Z",
       "ticker": "NOK",
       "move_pct": 6.98,
