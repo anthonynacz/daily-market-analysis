@@ -1,6 +1,17 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-09T16:46:00Z",
+      "ticker": "NOK",
+      "move_pct": 6.98,
+      "price": 8.2,
+      "session": "regular",
+      "trigger": "Big move; no clear news - possibly sector/market flow (European ADRs surge)",
+      "headline": "European Equities Traded in the US as ADRs Surge in Monday Trading",
+      "url": "https://finance.yahoo.com/markets/world-indices/articles/european-equities-traded-us-american-161302851.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-09T15:47:00Z",
       "ticker": "MU",
       "move_pct": 6.18,
