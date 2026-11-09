@@ -1,6 +1,39 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-09T19:47:00Z",
+      "ticker": "SPCX",
+      "move_pct": 5.34,
+      "price": 141.45,
+      "session": "regular",
+      "trigger": "Big move + news: NASA $10B moon base awards",
+      "headline": "SpaceX, Rocket Lab blast higher as NASA hands out $10 billion in moon base awards",
+      "url": "https://finance.yahoo.com/markets/article/spacex-rocket-lab-blast-higher-as-nasa-hands-out-10-billion-in-moon-base-awards-164320855.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-09T19:47:00Z",
+      "ticker": "INTC",
+      "move_pct": 4.5,
+      "price": 58.81,
+      "session": "regular",
+      "trigger": "Big move; no clear news - possibly sector flow",
+      "headline": "AMD Just Eased Wall Street's AI Spending Scare",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/amd-just-eased-wall-street-160339772.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-09T19:47:00Z",
+      "ticker": "SOFI",
+      "move_pct": 4.35,
+      "price": 16.92,
+      "session": "regular",
+      "trigger": "Big move + news: Q3 / 2027 guide",
+      "headline": "SoFi CEO Calls Q3 \"Exceptional\" as 2027 Guide Lands at $0.90 a Share",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/sofi-ceo-calls-q3-exceptional-175452500.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-09T18:46:00Z",
       "ticker": "AMD",
       "move_pct": 12.95,
