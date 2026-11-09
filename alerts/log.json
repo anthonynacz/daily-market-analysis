@@ -1,6 +1,61 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-09T15:47:00Z",
+      "ticker": "MU",
+      "move_pct": 6.18,
+      "price": 732.64,
+      "session": "regular",
+      "trigger": "Big move: rebound after ~30% weekly drop",
+      "headline": "Barron's: memory-chip competition fears may be overstated",
+      "url": "https://stockanalysis.com/stocks/mu/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-09T15:47:00Z",
+      "ticker": "TSLA",
+      "move_pct": 5.62,
+      "price": 378.34,
+      "session": "regular",
+      "trigger": "Big move: Cybertruck/robotaxi news",
+      "headline": "Musk: Cybertruck refunds, line to close; robotaxi expands to San Antonio",
+      "url": "https://stockanalysis.com/stocks/tsla/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-09T15:47:00Z",
+      "ticker": "META",
+      "move_pct": 4.91,
+      "price": 640.13,
+      "session": "regular",
+      "trigger": "Big move + analyst: JPM Focus List add",
+      "headline": "JPMorgan adds Meta to Analyst Focus List, $940 target",
+      "url": "https://stockanalysis.com/stocks/meta/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-09T15:47:00Z",
+      "ticker": "TSM",
+      "move_pct": 4.35,
+      "price": 391.77,
+      "session": "regular",
+      "trigger": "Big move; no clear news - possibly sector flow",
+      "headline": "No clear news - possibly sector/market flow",
+      "url": "https://stockanalysis.com/stocks/tsm/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-09T15:47:00Z",
+      "ticker": "GOOGL",
+      "move_pct": 3.1,
+      "price": 293.6,
+      "session": "regular",
+      "trigger": "News reaction: new TPU AI chips",
+      "headline": "Google unveils two new TPU AI chip systems",
+      "url": "https://stockanalysis.com/stocks/googl/",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-09T14:48:00Z",
       "ticker": "AMD",
       "move_pct": 7.78,
