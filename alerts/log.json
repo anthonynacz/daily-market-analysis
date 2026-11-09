@@ -1,6 +1,39 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-09T14:48:00Z",
+      "ticker": "AMD",
+      "move_pct": 7.78,
+      "price": 483.98,
+      "session": "regular",
+      "trigger": "Big move + reported Oppenheimer upgrade (unconfirmed)",
+      "headline": "Oppenheimer upgrades AMD to Outperform, $600 target (TipRanks via stockanalysis.com)",
+      "url": "https://stockanalysis.com/stocks/amd/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-09T14:48:00Z",
+      "ticker": "AVGO",
+      "move_pct": 6.1,
+      "price": 311.61,
+      "session": "regular",
+      "trigger": "Big move; no clear news - possibly sector flow",
+      "headline": "No clear news - possibly sector/market flow",
+      "url": "https://stockanalysis.com/stocks/avgo/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-09T14:48:00Z",
+      "ticker": "AMZN",
+      "move_pct": 5.46,
+      "price": 273.46,
+      "session": "regular",
+      "trigger": "Big move; home robot report",
+      "headline": "Amazon Stock (AMZN) Climbs on New Home Robot Hiring Plans",
+      "url": "https://stockanalysis.com/stocks/amzn/",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-09T13:48:00Z",
       "ticker": "NVDA",
       "move_pct": -5.45,
