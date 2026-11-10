@@ -1,0 +1,605 @@
+import React, { useState, useMemo } from "react";
+
+/**
+ * MarketMatrix — Recency × Impact news matrix for US equities, by industry.
+ *
+ * Snapshot date: Tuesday, November 10, 2026 — pre-market ~02:00 ET (no pre-market prints yet); quotes = Mon Nov 9 close; option quotes, OI & volume = Cboe delayed chain after the Mon Nov 9 session.
+ * Window: last 3 days (Nov 7) → coming 2 weeks (Nov 24).
+ *
+ * Self-contained: only depends on React. Inline styles + raw SVG, no libs.
+ * Drop <MarketMatrix /> anywhere and it renders.
+ *
+ * ⚠ Educational analysis, NOT financial advice. Option premiums are ESTIMATES
+ *   derived from spot + implied vol; confirm live on your broker before trading.
+ */
+
+// ------------------------------------------------------------------ palette
+const INDUSTRIES = {
+  tech:     { label: "Technology / Semis", color: "#3b82f6" },
+  energy:   { label: "Energy",             color: "#f59e0b" },
+  health:   { label: "Healthcare / Pharma", color: "#10b981" },
+  finance:  { label: "Financials",         color: "#a855f7" },
+  consumer: { label: "Consumer / Retail",  color: "#ef4444" },
+};
+
+const DIR = {
+  BULLISH: { glyph: "↑", label: "Bullish" },
+  BEARISH: { glyph: "↓", label: "Bearish" },
+  MIXED:   { glyph: "↔", label: "Mixed / uncertain" },
+};
+
+// 18-day axis: Nov 7 .. Nov 24 (last 3 days → coming 2 weeks). Today = index 3 (Nov 10).
+const DAYS = [
+  { idx: 0, date: "Nov 7", dow: "Sat" },
+  { idx: 1, date: "Nov 8", dow: "Sun" },
+  { idx: 2, date: "Nov 9", dow: "Mon" },
+  { idx: 3, date: "Nov 10", dow: "Tue" }, // TODAY
+  { idx: 4, date: "Nov 11", dow: "Wed" },
+  { idx: 5, date: "Nov 12", dow: "Thu" },
+  { idx: 6, date: "Nov 13", dow: "Fri" },
+  { idx: 7, date: "Nov 14", dow: "Sat" },
+  { idx: 8, date: "Nov 15", dow: "Sun" },
+  { idx: 9, date: "Nov 16", dow: "Mon" },
+  { idx: 10, date: "Nov 17", dow: "Tue" },
+  { idx: 11, date: "Nov 18", dow: "Wed" },
+  { idx: 12, date: "Nov 19", dow: "Thu" },
+  { idx: 13, date: "Nov 20", dow: "Fri" },
+  { idx: 14, date: "Nov 21", dow: "Sat" },
+  { idx: 15, date: "Nov 22", dow: "Sun" },
+  { idx: 16, date: "Nov 23", dow: "Mon" },
+  { idx: 17, date: "Nov 24", dow: "Tue" },
+];
+const TODAY_IDX = 3;
+
+// impact: 3 = HIGH (top), 2 = MEDIUM, 1 = LOW (bottom)
+const IMPACT_LABEL = { 3: "HIGH", 2: "MEDIUM", 1: "LOW" };
+
+// ------------------------------------------------------------------ events
+// dayIdx maps the event date onto the 9-day axis above.
+const EVENTS = [
+  // ---- TECHNOLOGY / SEMIS / ENERGY / HEALTH / FINANCE / CONSUMER (grouped by industry)
+  { id: "t1", ind: "tech", dayIdx: 2, future: false, impact: 3, dir: "BEARISH",
+    headline: "Mon Nov 9: NVIDIA falls 4.3% to $178.67 (lowest close since Apr 7; 459M shares vs 137M 20d avg) after its board opened a probe into whether CEO Jensen Huang was targeted by a foreign-intelligence plot (he admitted an affair); China calls the claim baseless and Trump added that the FBI is looking into it — the stock lagged a +6.9% SOX day (Yahoo/AFP, Nasdaq/AP, CNN headline)", tickers: "NVDA · AMD · AVGO · SMH",
+    rec: "WATCH: relative weakness on a +6.9% semis day is the signal; the probe is an open-ended headline risk into the Nov 17 print. No new long; defined-risk only (iron condor / put spread if it fails $175)." },
+  { id: "t2", ind: "tech", dayIdx: 2, future: false, impact: 3, dir: "BULLISH",
+    headline: "Mon Nov 9 chip rebound: SOX +6.9%, AMD +13.3% ($508.58), AVGO +8.8% ($319.48), AMAT +11.4%, MU +6.3%, INTC +5.5%, PLTR +5.5%; Nasdaq Composite +2.74% to 25,253.14, QQQ +3.5% (Yahoo chart data; Nasdaq/AP) — but SOX is still −2.9% over 5 days and −20% over 21 days", tickers: "SMH · AMD · AVGO · AMAT · QQQ",
+    rec: "HOLD/WATCH: a one-day squeeze inside a 4-week downtrend (QQQ −9.6% in 21d, SMH below its 50d $564). A higher low plus reclaiming the 50-day is the bar before adding." },
+  { id: "t3", ind: "tech", dayIdx: 3, future: false, impact: 2, dir: "MIXED",
+    headline: "Tue Nov 10 AMC: CoreWeave reports — consensus loss ~$1.45 (Nasdaq-fed calendar) vs ~$1.21 on $3.54B revenue (Stocktwits preview) [EST.; sources disagree]; CRWV $48.98, −40% in 21 days; Cerebras, Rocket Lab, Trade Desk also report this week (dates not retrieved)", tickers: "CRWV · NVDA · NBIS · IREN",
+    rec: "WATCH: backlog and financing commentary is the tell for AI-infrastructure credit; high-IV binary, wait for the print." },
+  { id: "t4", ind: "tech", dayIdx: 4, future: true, impact: 1, dir: "MIXED",
+    headline: "Wed Nov 11 (Veterans Day — equities open): quiet tape after CPI; Anthropic IPO roadshow reportedly under way this week (press reports, unconfirmed; S-1 amendment of Nov 2 left date and price range blank)", tickers: "MSFT · AMZN · GOOGL · NVDA",
+    rec: "WATCH: record-size AI IPO supply can drain megacap liquidity; treat timing as unconfirmed." },
+  { id: "t5", ind: "tech", dayIdx: 5, future: true, impact: 3, dir: "MIXED",
+    headline: "Thu Nov 12 AMC: Cisco (cons. EPS $1.15 per Nasdaq; $1.32 / rev $18.11B per Stocktwits — sources disagree) and Applied Materials (cons. EPS $4.06) report; Nebius also reports this week (time not retrieved). CSCO $98.65 (−16.7% in 21d), AMAT $370.55 (−26.9%)", tickers: "CSCO · AMAT · NBIS · SMH",
+    rec: "WATCH: AMAT's WFE/China commentary reprices semicap; both oversold (RSI 39–43) so a 'less bad' guide can squeeze — IVs are high (CSCO iv30 ~50%), defined risk only." },
+  { id: "t6", ind: "tech", dayIdx: 10, future: true, impact: 3, dir: "MIXED",
+    headline: "NVIDIA FQ3 earnings — Tue Nov 17 after close (per Nasdaq calendar and press; IR page not re-fetched this run) [EST.]; cons. EPS $2.49; options (Nov 20 180 straddle $18.83) imply ≈ ±10.5% vs ~$179.93; probe overhang adds headline risk", tickers: "NVDA · AMD · AVGO · SMH · MU",
+    rec: "WATCH: the single biggest AI-sentiment catalyst; guidance decides direction. Iron condor beyond the implied move fits; do not buy naked premium at ~55% IV." },
+  { id: "t7", ind: "tech", dayIdx: 10, future: true, impact: 2, dir: "MIXED",
+    headline: "Microsoft Ignite, San Francisco — Nov 17–20 (Microsoft's event page and Moscone Center listing, via search) — agentic-AI / Copilot / Azure announcements", tickers: "MSFT",
+    rec: "HOLD: MSFT is the relative-strength megacap (above 50d $517 and 200d $440); a modest tailwind, not the thesis." },
+  { id: "t8", ind: "tech", dayIdx: 9, future: true, impact: 2, dir: "MIXED",
+    headline: "Week of Nov 16: Anthropic IPO listing reportedly targeted before Thanksgiving (Nov 26) per The Information; roadshow reportedly the week of Nov 9 — NOT company-confirmed, date has slipped several times", tickers: "MSFT · AMZN · GOOGL · NVDA",
+    rec: "WATCH: do not trade on an assumed date; supply/valuation headlines can hit AI-complex sentiment." },
+  { id: "t9", ind: "tech", dayIdx: 11, future: true, impact: 2, dir: "MIXED",
+    headline: "Wed Nov 18 AMC: Palo Alto Networks reports (cons. EPS $0.52, Nasdaq) — enterprise-security budget read", tickers: "PANW · CRWD · MSFT",
+    rec: "WATCH: guide vs a high bar; wait for the reaction." },
+  { id: "t10", ind: "tech", dayIdx: 12, future: true, impact: 2, dir: "MIXED",
+    headline: "Thu Nov 19: Intuit (AMC, cons. EPS $2.47), NetEase and Alibaba (BMO, cons. $2.40 / $1.31) report (Nasdaq calendar) — software multiple and China-consumer reads", tickers: "INTU · NTES · BABA",
+    rec: "WATCH: software multiple test amid a ~4.86% 10-year." },
+  { id: "t11", ind: "tech", dayIdx: 16, future: true, impact: 1, dir: "MIXED",
+    headline: "Mon Nov 23 AMC: HPE (cons. EPS $1.17) and Agilent ($1.72) report (Nasdaq calendar); NVIDIA GTC Washington (Nov 30–Dec 3) and AWS re:Invent (Nov 30–Dec 4) fall just after the window", tickers: "HPE · A · NVDA · AMZN",
+    rec: "WATCH: AI-server demand read; low signal for the index." },
+  { id: "e1", ind: "energy", dayIdx: 2, future: false, impact: 3, dir: "BEARISH",
+    headline: "Mon Nov 9: crude drops on hopes for US–Iran talks — Brent −5.9% to $92.57, WTI −4.4% to $86.85 (AFP/Yahoo; AP: Trump played down renewed strikes); XLE $61.94 sits at a 20-day low (5d −7.9%, RSI 30), XOM $164.73 (−8.3% in 5d), USO −3.9%", tickers: "XLE · XOM · CVX · COP · USO",
+    rec: "AVOID new longs while the diplomacy bid unwinds the war premium; shorts are late (RSI 30) — a bear put spread on XOM fits below $165, invalid above $170." },
+  { id: "e2", ind: "energy", dayIdx: 2, future: false, impact: 2, dir: "BULLISH",
+    headline: "Mon Nov 9 BMO: Constellation Energy beats profit expectations and jumps >10% (AP) after falling ~9% post-midterms; Occidental reports AMC (cons. EPS $1.43) — result not retrieved", tickers: "CEG · VST · OXY",
+    rec: "WATCH: AI-power names trade as high-beta AI proxies; do not chase a +10% gap." },
+  { id: "e3", ind: "energy", dayIdx: 3, future: false, impact: 1, dir: "MIXED",
+    headline: "Tue Nov 10 AMC: Petrobras reports (cons. EPS $1.38, Nasdaq); 10-yr Treasury auction 1:00 pm ET same day", tickers: "PBR · XLE",
+    rec: "HOLD/WATCH: dividend and capex plan matter more than EPS." },
+  { id: "e4", ind: "energy", dayIdx: 5, future: true, impact: 2, dir: "MIXED",
+    headline: "Thu Nov 12 [EST.]: weekly EIA petroleum status — Wed Nov 11 is Veterans Day, so the usual Wednesday release may shift a day (not verified on eia.gov); first inventory read after the −5% crude day", tickers: "XLE · USO · XOM",
+    rec: "WATCH: a build extends the slide; a draw could spark the first bounce." },
+  { id: "e5", ind: "energy", dayIdx: 10, future: true, impact: 2, dir: "MIXED",
+    headline: "Mid-November [EST.]: DeGolyer & MacNaughton capacity assessment of OPEC+ members expected ahead of the 21-country ministerial on Nov 29 (just outside the window); core members still pump ~5M bpd below pre-war levels with Hormuz disrupted", tickers: "XLE · XOM · USO",
+    rec: "WATCH: a 2027 quota framework that adds supply is bearish crude; headline-driven." },
+  { id: "e6", ind: "energy", dayIdx: 13, future: true, impact: 1, dir: "MIXED",
+    headline: "Fri Nov 20 — monthly options expiration (third Friday): energy ETF open interest (XLE, USO) rolls", tickers: "XLE · XOM · USO",
+    rec: "WATCH: pin risk; avoid short-dated debit buys into the close." },
+  { id: "h1", ind: "health", dayIdx: 2, future: false, impact: 2, dir: "MIXED",
+    headline: "Mon Nov 9: healthcare leads quality — XLV $188.33 (+1.9%, +10.3% in 21d, above 50d $173.72), LLY $1,411.95 (+4.3%, 20-day high; option spreads wide); biotech single-name gaps: ACAD −22%, IONS −21%, JANX −28% (Yahoo sidebar / swingtradebot; catalysts not retrieved)", tickers: "XLV · XBI · LLY · ACAD · IONS",
+    rec: "HOLD winners / buy dips in XLV; avoid LLY and XLV options (XLV Dec chain spreads 17% median) — shares only." },
+  { id: "h2", ind: "health", dayIdx: 7, future: true, impact: 2, dir: "MIXED",
+    headline: "Sat Nov 14 PDUFA goal dates: Summit Therapeutics ivonescimab + chemo (EGFR-mutated NSCLC) and Cytokinetics aficamten (HCM label expansion) (RTTNews / BioPharma Watch via search; company dates not verified) [EST.]", tickers: "SMMT · CYTK",
+    rec: "WATCH: binary biotech events; defined risk and small size only — not core ideas." },
+  { id: "h3", ind: "health", dayIdx: 15, future: true, impact: 2, dir: "MIXED",
+    headline: "Sun Nov 22 PDUFA goal dates: Savara molgramostim (aPAP; extended from Aug 22) and Capricor deramiocel (DMD) (search results; aggregator-sourced) [EST.]; Nuvalent (Nov 27) and Vertex povetacicept (Nov 30) fall just after the window", tickers: "SVRA · CAPR · NUVL · VRTX",
+    rec: "WATCH: binary biotech events; early approvals and 3-month extensions both happen." },
+  { id: "h4", ind: "health", dayIdx: 12, future: true, impact: 1, dir: "MIXED",
+    headline: "Thu Nov 19: Veeva reports (cons. EPS $1.68; time not supplied, Nasdaq calendar) — life-sciences software read", tickers: "VEEV · XLV",
+    rec: "WATCH: low signal for the sector." },
+  { id: "f1", ind: "finance", dayIdx: 2, future: false, impact: 3, dir: "BULLISH",
+    headline: "Mon Nov 9 broad relief rally: S&P 500 +2.35% to 7,549.94, Dow +2.15% to 52,389.75; advancers 4,705 vs decliners 1,343, 44.3% of stocks above their 50-day (highest in 44 sessions); VIX −22% to 19.92 (VIX3M 20.85 — inversion cleared); all 11 sectors up, industrials and discretionary >+3%", tickers: "SPY · QQQ · IWM · DIA",
+    rec: "HOLD: oversold squeeze with improving breadth, but SPY ($752.69) is still below its 50-day $765 — the next test is $765–778 resistance." },
+  { id: "f2", ind: "finance", dayIdx: 2, future: false, impact: 3, dir: "BEARISH",
+    headline: "Rates: Dec 9 FOMC hike odds still >80% (CME FedWatch via AP) after Oct payrolls beat; Fed held at 3.75–4.00% on Oct 28 with Cook and Hammack voting for a hike; 10-yr 4.86%, DXY ~101.6; Fed speakers this week (Goolsbee, Musalem, Bowman, Hammack, Daly — dates not retrieved)", tickers: "SPY · IWM · TLT · KRE",
+    rec: "SELL rate-sensitive risk on strength: a hike is the base case; long-duration growth and small caps are most exposed to a hot CPI." },
+  { id: "f3", ind: "finance", dayIdx: 2, future: false, impact: 2, dir: "BULLISH",
+    headline: "Mon Nov 9: financials follow the tape — XLF $57.99 (+1.5%, +6.0% in 21d), GS +4.7% ($906), BAC +2.3% ($50.55, still −6.9% in 21d and below its 50d $55.00), JPM +2.3%; KKR +1.7% on a record quarterly profit (AP)", tickers: "XLF · GS · BAC · KKR · KRE",
+    rec: "HOLD financials ETFs; BAC remains the weak relative name (below both MAs)." },
+  { id: "f4", ind: "finance", dayIdx: 3, future: false, impact: 3, dir: "MIXED",
+    headline: "OCTOBER CPI — Tue Nov 10, 8:30 ET (BLS); one forecaster expects headline +0.25% m/m (from +0.65%) and core +0.24% (from +0.33%) (Business Standard, Nov 8; Street-wide median not retrieved). Last CPI before the Dec 9 FOMC; the 10-year Treasury auction follows at 1:00 pm ET", tickers: "SPY · QQQ · IWM · TLT",
+    rec: "DE-RISK slightly into the print: a soft print is the squeeze trigger, a hot one cements a hike — keep defined risk." },
+  { id: "f5", ind: "finance", dayIdx: 4, future: true, impact: 1, dir: "MIXED",
+    headline: "Wed Nov 11 — Veterans Day: NYSE/Nasdaq open; US bond market closed per SIFMA convention [EST., not re-verified this run]; Fed speakers possible", tickers: "TLT · SPY",
+    rec: "WATCH: thin rates liquidity after CPI; equities trade normally." },
+  { id: "f6", ind: "finance", dayIdx: 5, future: true, impact: 2, dir: "MIXED",
+    headline: "Thu Nov 12: 30-year bond auction 1:00 pm ET (Treasury refunding; settles Nov 16); Brookfield reports BMO (cons. EPS $0.72), Nu Holdings AMC ($0.22) (Nasdaq calendar)", tickers: "TLT · BN · NU",
+    rec: "WATCH: weak long-end demand would pressure growth multiples." },
+  { id: "f7", ind: "finance", dayIdx: 6, future: true, impact: 3, dir: "MIXED",
+    headline: "OCTOBER PPI — Fri Nov 13, 8:30 ET (BLS); Japan megabanks MUFG ($0.45), SMFG ($0.24), Mizuho ($0.21) report", tickers: "SPY · TLT · IWM",
+    rec: "WATCH: a second hot inflation print after CPI would push hike odds toward certainty." },
+  { id: "f8", ind: "finance", dayIdx: 10, future: true, impact: 3, dir: "MIXED",
+    headline: "OCTOBER RETAIL SALES — Tue Nov 17, 8:30 ET (Census schedule); same morning as Home Depot, Disney and the NVDA print", tickers: "WMT · HD · TGT · XLY · SPY",
+    rec: "WATCH: strong consumer = hike confirmation; a miss helps duration but hurts retailers." },
+  { id: "f9", ind: "finance", dayIdx: 11, future: true, impact: 3, dir: "MIXED",
+    headline: "FOMC MINUTES (Oct 27–28 meeting) — Wed Nov 18, 2:00 pm ET (CONFIRMED, federalreserve.gov calendar); Dec 8–9 meeting with new projections is next", tickers: "SPY · TLT · IWM · KRE",
+    rec: "WATCH: hawkish detail on hikes would extend the squeeze on small caps and long-duration tech." },
+  { id: "f10", ind: "finance", dayIdx: 13, future: true, impact: 2, dir: "MIXED",
+    headline: "Fri Nov 20 — monthly options expiration; post-NVDA positioning unwinds; McGraw Hill investor day Nov 18 and Sabre Nov 17 are the only investor days found for the window (company releases / aggregators)", tickers: "SPY · QQQ · IWM · NVDA",
+    rec: "WATCH: expect pin/unpin volatility; avoid initiating new short-dated size into the close." },
+  { id: "c1", ind: "consumer", dayIdx: 2, future: false, impact: 2, dir: "BULLISH",
+    headline: "Mon Nov 9 consumer strength: XLY $121.01 (+2.9%), AMZN $266.93 (+2.9%, +8.7% in 5d; Oct 29 EPS $1.89 missed $1.96 but AWS +39% to $46.0B, upgrade Nov 2), TSLA +5.5%, META +5.1%, DIS +2.0% (Yahoo chart data; 247WallSt, MarketBeat via search)", tickers: "AMZN · XLY · TSLA · DIS",
+    rec: "HOLD winners; the rally is broad but extended into a hot-rate backdrop — buy dips, not gaps." },
+  { id: "c2", ind: "consumer", dayIdx: 2, future: false, impact: 2, dir: "MIXED",
+    headline: "Retail run-up into earnings: Home Depot $353.42 (+21.6% in 21d, RSI 69, 20d high $355.44), Walmart $125.66 (+12.9%, RSI 65), Costco $1,066 (+12.6%), staples XLP $90.89 (+8.9% in 21d) — all near highs before Nov 17–19 prints (Yahoo chart data)", tickers: "HD · WMT · COST · XLP",
+    rec: "TRIM into strength before prints — bars are higher after the run; HD/COST options are too thin to trade (HD ~29k contracts/day)." },
+  { id: "c3", ind: "consumer", dayIdx: 2, future: false, impact: 2, dir: "MIXED",
+    headline: "Mon Nov 9 AMC: Take-Two reported fiscal Q2 (cons. EPS $0.49) — result NOT retrieved this run; company's GTA VI launch date remains Nov 19 per the Aug 7 earnings summary", tickers: "TTWO",
+    rec: "WATCH: check the print and any GTA VI date change before the Nov 19 launch." },
+  { id: "c4", ind: "consumer", dayIdx: 10, future: true, impact: 3, dir: "MIXED",
+    headline: "Tue Nov 17 BMO: Home Depot (cons. EPS $3.86) and Disney ($1.67) report (Nasdaq calendar), alongside October retail sales", tickers: "HD · DIS · XLY",
+    rec: "WATCH: HD +21.6% in 21d with 80%-priced hike risk for housing — fragile bar; thin options, shares/ETF view only." },
+  { id: "c5", ind: "consumer", dayIdx: 11, future: true, impact: 3, dir: "MIXED",
+    headline: "Wed Nov 18 BMO: Target (cons. EPS $2.04), Lowe's ($2.86), TJX ($1.33) report (Nasdaq calendar) — holiday-guide commentary", tickers: "TGT · LOW · TJX",
+    rec: "WATCH: guide commentary into the holiday season; LOW/TJX near highs." },
+  { id: "c6", ind: "consumer", dayIdx: 12, future: true, impact: 3, dir: "BEARISH",
+    headline: "WALMART FQ3 — Thu Nov 19 BMO (Nasdaq calendar; not confirmed on WMT IR — the IR page lists no date) [EST.]; cons. EPS $0.64; WMT +12.9% in 21d into a high bar; Nov 20 straddle implies ≈ ±6.6%", tickers: "WMT · COST · TGT · XLP",
+    rec: "TRIM/WATCH: bearish skew into the print — bear put spread below $125; invalid above $131." },
+  { id: "c7", ind: "consumer", dayIdx: 12, future: true, impact: 3, dir: "MIXED",
+    headline: "Thu Nov 19: Take-Two's Grand Theft Auto VI scheduled launch (per the company's Aug 7 earnings summary; confirm no delay); Ross Stores reports AMC (cons. EPS $1.82)", tickers: "TTWO · ROST · MSFT · SONY",
+    rec: "WATCH: the biggest entertainment launch of the year; delay risk was the historical pattern, a clean launch is a catalyst for TTWO." },
+];
+
+// ------------------------------------------------------------------ options
+// Each idea carries a `strategy` (chosen by IV regime, sentiment & binary risk),
+// a `profile` (risk appetite), and a stated CAPITAL figure. Defined-risk + cash-
+// secured only — no naked shorts; total capital at risk per idea is kept <= $1,500
+// (so cash-secured puts only fit genuinely cheap stocks — otherwise use spreads).
+const OPTION_PLAYS = [
+  { ticker: "MSFT", name: "Microsoft", rank: 1, spot: "$545.18 (Mon Nov 9 close, +2.7%; no pre-market prints yet at ~02:00 ET; Cboe delayed last $543.50 — chain premiums reference $543.50) [Yahoo Finance chart / Cboe delayed quote]", sentiment: "Bullish",
+    catalyst: "No earnings before expiry (next report ~late Jan, EST.) · Microsoft Ignite Nov 17–20, San Francisco (Microsoft event page) · Oct CPI today 8:30 ET, PPI Nov 13, retail sales Nov 17, FOMC minutes Nov 18 (CONFIRMED), Dec 9 FOMC (hike odds >80%) · ex-dividend date before Dec 18 n/a (not verified; short puts are far OTM so early-assignment risk is low) · cons. EPS/rev n/a (no print in window)",
+    iv: "IV ~26% (Dec 18, ATM 545C/P 26.3/25.8; Cboe iv30 25.8) · IVR n/a · no binary before expiry · 1σ to Dec 18 ≈ ±$46 (±8.5%) → $497 / $590",
+    liq: "A — Mon Nov 9 full session ≈407.6k option contracts (20d avg n/a) & 25.3M shares (20d avg 26.0M); Dec 18 OI 11.0k / 6.1k on the 500P / 490P, 8.9k / 6.9k on the 540C / 570C, 9.8k / 20.5k on the 560C / 600C; spreads 4–8% of mid [Cboe delayed chain, Mon Nov 9 session / Yahoo]",
+    thesis: "Relative strength that survives a broken tape: MSFT $545.18 is +7.5% in 5d and +1.9% in 21d vs QQQ −9.6% and SMH −19.2%, above its rising 50-day ($517.28) and 200-day ($440.24), RSI 55; support $507 (20-day low) / $517 (50-day), resistance $555.8 (20-day high). Capital rotates to quality software/cloud with visible earnings while semis are de-grossed, and Ignite (Nov 17–20) is a mild sentiment tailwind. Carried from the Nov 8 report (then-spot $530.61, +2.7%: working) and re-set to today's strikes. Risk: it is near the 20-day high after a +7.5% week, high-multiple megacaps are the most exposed to a >80%-priced Dec hike and a hot CPI today, and Anthropic-IPO supply could drain megacap liquidity. Invalid on a close below $507. Conviction 4/5.",
+    ideas: [
+      { profile: "Conservative", strategy: "Put Credit Spread", text: "Sell $500P / buy $490P · Dec 18 '26 · credit $1.25 (mids 4.925 − 3.675) · capital ~$875 · max profit ~$125 · BE $498.75 · R:R 1:0.14 · POP ~83% (1−|Δ short 0.17|) · exit: buy back at ~50% profit (≈$0.63), or if MSFT closes below $500; close by Dec 11 (~7 DTE) — short strike sits at ~1σ ($497) and under the $507 20-day low; OI 11.0k / 6.1k, spreads 5–7%" },
+      { profile: "Moderate", strategy: "Bull Call Debit Spread", text: "Buy $540C / sell $570C · Dec 18 '26 · debit $13.55 (mids 22.50 − 8.95) · capital ~$1,355 · max profit ~$1,645 · BE $553.55 · R:R 1:1.21 · POP ~40% (lognormal, IV 26%) · exit +75–100% (~$23.7–27.1 spread value) or stop −50% (~$6.78) / MSFT close below $507; close with ≥10 days left (by Dec 8) — near-the-money long leg (Δ +0.58), short leg just above the $555.8 20-day high; OI 8.9k / 6.9k, spreads 4–6%" },
+      { profile: "Aggressive", strategy: "Bull Call Debit Spread (OTM)", text: "Buy $560C / sell $600C · Dec 18 '26 · debit $9.89 (mids 12.55 − 2.665 = 9.885) · capital ~$989 · max profit ~$3,012 · BE $569.88 · R:R 1:3.05 · POP ~27% (lognormal, IV 25%) · exit +100% (~$19.8 spread value) or stop −50% (~$4.94) / MSFT close below $507; close with ≥10 days left (by Dec 8) — needs a breakout above $555.8; OTM spread chosen over a naked call to cap cost; OI 9.8k / 20.5k, spreads 4–8%" },
+    ] },
+  { ticker: "AMZN", name: "Amazon", rank: 2, spot: "$266.93 (Mon Nov 9 close, +2.9%; no pre-market prints yet at ~02:00 ET; Cboe delayed last $267.40 — chain premiums reference $267.40) [Yahoo Finance chart / Cboe delayed quote]", sentiment: "Bullish",
+    catalyst: "No earnings before expiry (Q3 reported Oct 29; next ~late Jan, EST.) · AWS re:Invent Nov 30–Dec 4 (amazon event page; just after the window, may lift AWS sentiment into Dec) · Oct CPI today, PPI Nov 13, retail sales Nov 17, FOMC minutes Nov 18, Dec 9 FOMC · no ex-dividend (AMZN pays none) · cons. EPS/rev n/a (no print in window)",
+    iv: "IV ~32.8% (Dec 18, ATM 270C/P 33.0/32.6; Cboe iv30 32.8) · IVR n/a · no binary before expiry · 1σ to Dec 18 ≈ ±$28 (±10.5%) → $239 / $295",
+    liq: "A — Mon Nov 9 full session ≈952.2k option contracts (20d avg n/a) & 51.4M shares (20d avg 49.7M); Dec 18 OI 18.7k / 15.5k on the 240P / 230P, 16.6k / 9.9k on the 270C / 295C, 23.0k / 7.7k on the 285C / 310C; spreads 2–9% of mid [Cboe delayed chain, Mon Nov 9 session / Yahoo]",
+    thesis: "Post-earnings strength with an AWS re-acceleration: Q3 (Oct 29) EPS $1.89 missed $1.96, but AWS grew 39% to $46.0B, an upgrade followed on Nov 2 (247WallSt), and AMZN is +8.7% in 5d to $266.93 — at its 20-day high, above the 50-day ($253.96) and 200-day ($244.08), RSI 53, with 2026 capex guided ~$220B. XLY (+7.2% in 21d) confirms consumer/cloud leadership while Alphabet (−18%) and semis lag; support $253.96 (50-day) / $240.35 (20-day low). Risk: the EPS miss and heavy capex, a hot CPI/hike repricing hits high-multiple names, and a +8.7% week is extended. Invalid on a close below $250. Conviction 4/5 (factor scores 3/4/3/3/5).",
+    ideas: [
+      { profile: "Conservative", strategy: "Put Credit Spread", text: "Sell $240P / buy $230P · Dec 18 '26 · credit $1.19 (mids 3.06 − 1.87) · capital ~$881 · max profit ~$119 · BE $238.81 · R:R 1:0.14 · POP ~83% (1−|Δ short 0.17|) · exit: buy back at ~50% profit (≈$0.60), or if AMZN closes below $240; close by Dec 11 (~7 DTE) — short strike at ~1σ ($239.4), under the $240.35 20-day low; OI 18.7k / 15.5k, spreads 6–9%" },
+      { profile: "Moderate", strategy: "Bull Call Debit Spread", text: "Buy $270C / sell $295C · Dec 18 '26 · debit $7.97 (mids 10.675 − 2.71 = 7.965) · capital ~$797 · max profit ~$1,704 · BE $277.96 · R:R 1:2.14 · POP ~34% (lognormal, IV 32.5%) · exit +75–100% (~$13.9–15.9 spread value) or stop −50% (~$3.98) / AMZN close below $250; close with ≥10 days left (by Dec 8) — long leg ATM (Δ +0.50), short leg at ~1σ ($295.4); OI 16.6k / 9.9k, spreads 2–5%" },
+      { profile: "Aggressive", strategy: "Bull Call Debit Spread (OTM)", text: "Buy $285C / sell $310C · Dec 18 '26 · debit $3.85 (mids 4.925 − 1.075 = 3.85) · capital ~$385 · max profit ~$2,115 · BE $288.85 · R:R 1:5.49 · POP ~21% (lognormal, IV 31.6%) · exit +100% (~$7.70 spread value) or stop −50% (~$1.93) / AMZN close below $250; close with ≥10 days left (by Dec 8) — OTM spread (long Δ +0.30) for a continuation breakout; OI 23.0k / 7.7k, spreads 3–8%" },
+    ] },
+  { ticker: "WMT", name: "Walmart", rank: 3, spot: "$125.66 (Mon Nov 9 close, +0.1%; no pre-market prints yet at ~02:00 ET; Cboe delayed last $125.49 — chain premiums reference $125.49) [Yahoo Finance chart / Cboe delayed quote]", sentiment: "Bearish",
+    catalyst: "FQ3 earnings Thu Nov 19 BMO (Nasdaq calendar; WMT IR page lists no date — EST.) · cons. EPS $0.64 (Nasdaq); estimate-revision trend n/a · Oct retail sales Nov 17, HD/DIS Nov 17, TGT/LOW/TJX Nov 18 as read-throughs · Dec 9 FOMC · ex-dividend before Dec 18 n/a (not verified; short puts $115/$120 are OTM) · Dec 18 expiry is after earnings",
+    iv: "IV ~32.5% (Dec 18, ATM 125C/P 32.8/32.3; Cboe iv30 34.3) · IVR n/a · options imply ≈ ±6.6% to Nov 20 (125 straddle $8.30 vs $125.49) vs hist. avg earnings move n/a · 1σ to Dec 18 ≈ ±$13 (±10.5%) → $112 / $139",
+    liq: "A — Mon Nov 9 full session ≈74.9k option contracts (20d avg n/a) & 23.8M shares (20d avg 23.0M); Dec 18 put OI 971 / 5.0k / 10.1k / 9.9k on the 130P / 120P / 125P / 115P; spreads 4–10% of mid ($0.12–0.75 wide on the legs used) [Cboe delayed chain, Mon Nov 9 session / Yahoo]",
+    thesis: "A defensive crowd into a high bar: WMT +12.9% in 21 days to $125.66 (flat since the Nov 8 report: then-spot $125.52, +0.1%), RSI 65, vs 50-day $112.93 / 200-day $118.75, 20-day high $129.17; staples XLP +8.9% in 21d. The market already pays for a beat-and-raise; an in-line quarter or cautious holiday guide into a >80%-priced hike sets up a pullback toward $118.75 (200-day) / $112.9 (50-day). Debit spreads cut vega into the print. Carried from the Nov 8 report after re-validation (staples/retail still at highs, same catalyst). Risk: Walmart beats habitually, the Monday risk-on squeeze did not hurt it, and a hot retail-sales print Nov 17 would extend the run. Invalid on a close above $131. Conviction 3/5.",
+    ideas: [
+      { profile: "Conservative", strategy: "Bear Put Debit Spread (ITM long leg)", text: "Buy $130P / sell $120P · Dec 18 '26 · debit $4.87 (mids 7.675 − 2.81 = 4.865) · capital ~$486 · max profit ~$514 · BE $125.14 · R:R 1:1.06 · POP ~51% (lognormal, IV 32.5%) · exit +75–100% (~$8.5–9.7 spread value) or stop −50% (~$2.43) / WMT close above $131; close with ≥10 days left (by Dec 8) — held through the Nov 19 BMO print; in-the-money long leg (Δ −0.60) = higher-probability tier (130P: OI 971, spread 9.8% — passes the gate narrowly); (a Jan 15 / credit-spread version was rejected: the Jan 115P and 120P legs are 10–20% wide, and the 135+ puts/145C legs fail the gate)" },
+      { profile: "Moderate", strategy: "Bear Put Debit Spread", text: "Buy $125P / sell $115P · Dec 18 '26 · debit $3.31 (mids 4.825 − 1.52 = 3.305) · capital ~$330 · max profit ~$670 · BE $121.69 · R:R 1:2.03 · POP ~41% (lognormal, IV 32.5%) · exit +75–100% (~$5.8–6.6 spread value) or stop −50% (~$1.65) / WMT close above $131; close with ≥10 days left (by Dec 8) — held through the Nov 19 BMO print (IV crush hits the long leg, the short leg offsets); at-the-money long leg (Δ −0.45); OI 10.1k / 9.9k, spreads 5–8%" },
+      { profile: "Aggressive", strategy: "Bear Put Debit Spread (OTM)", text: "Buy $120P / sell $115P · Dec 18 '26 · debit $1.29 (mids 2.81 − 1.52) · capital ~$129 · max profit ~$371 · BE $118.71 · R:R 1:2.88 · POP ~32% (lognormal, IV 33%) · exit +100% (~$2.58 spread value) or stop −50% (~$0.65) / WMT close above $131; close with ≥10 days left (by Dec 8) — tight OTM spread targeting the 200-day ($118.75); chosen over a naked put because IV is ~33% into a binary; OI 5.0k / 9.9k, spreads 4–8%" },
+    ] },
+  { ticker: "XOM", name: "Exxon Mobil", rank: 4, spot: "$164.73 (Mon Nov 9 close, −0.7%; 20-day low; no pre-market prints yet at ~02:00 ET; Cboe delayed last $164.40 — chain premiums reference $164.40) [Yahoo Finance chart / Cboe delayed quote]", sentiment: "Bearish",
+    catalyst: "No earnings before expiry (Q3 reported Oct 30: adj. EPS $4.23 vs $3.90 cons.; next ~late Jan, EST.) · US–Iran diplomacy headlines (Brent −5.9% to $92.57 Mon) · OPEC+ 21-country ministerial Nov 29 (after the window, before expiry) · EIA weekly report (date may shift for Veterans Day) · ex-dividend (Q4 dividend raised to $1.07) date before Dec 18 n/a (not verified; long put legs benefit, short put leg is OTM) · Dec 18 expiry",
+    iv: "IV ~29.5% (Dec 18, ATM 165C/P 29.7/29.4; Cboe iv30 30.0) · IVR n/a · no scheduled binary before expiry (headline-driven) · 1σ to Dec 18 ≈ ±$15.7 (±9.5%) → $149 / $180",
+    liq: "A — Mon Nov 9 full session ≈42.1k option contracts (20d avg n/a; passes the ≥20k gate on the prior full session) & 17.2M shares (20d avg 14.2M); Dec 18 put OI 2.0k / 4.6k / 3.3k / 4.5k on the 170P / 160P / 165P / 155P; spreads 4–9% of mid ($0.25–0.40 wide) [Cboe delayed chain, Mon Nov 9 session / Yahoo]",
+    thesis: "The war premium is leaking out of energy: Brent fell 5.9% Monday on US–Iran diplomacy, XLE sits at a 20-day low ($61.94, 5d −7.9%, RSI 30) and XOM closed at $164.73, its 20-day low (5d −8.3%), below the 50-day ($168.98) and still above the 200-day ($155.75); the whole group lagged a +2.4% S&P day (XOM −0.7%, CVX −0.9%). Targets: $155.75 (200-day) then the $150s. Risk: Q3 profit doubled with a $20B 2027 buyback and a raised dividend, Hormuz remains effectively shut so any failed-talks headline reverses crude sharply (talks have repeatedly stalled), and RSI 34 is near oversold. Invalid on a close above $170 (50-day area). Conviction 3/5 (3/4/3/3/4).",
+    ideas: [
+      { profile: "Conservative", strategy: "Bear Put Debit Spread (ITM long leg)", text: "Buy $170P / sell $160P · Dec 18 '26 · debit $5.10 (mids 9.50 − 4.40) · capital ~$510 · max profit ~$490 · BE $164.90 · R:R 1:0.96 · POP ~53% (lognormal, IV 29.5%) · exit +75% (~$8.9 spread value) up to the $10.00 max, or stop −50% (~$2.55) / XOM close above $170; close with ≥10 days left (by Dec 8) — in-the-money long leg (Δ −0.63) = highest-probability tier, R:R just under 1:1; OI 2.0k / 4.6k, spreads 4–7%" },
+      { profile: "Moderate", strategy: "Bear Put Debit Spread", text: "Buy $165P / sell $155P · Dec 18 '26 · debit $3.81 (mids 6.60 − 2.785 = 3.815) · capital ~$381 · max profit ~$618 · BE $161.19 · R:R 1:1.62 · POP ~44% (lognormal, IV 29.5%) · exit +75–100% (~$6.7–7.6 spread value) or stop −50% (~$1.91) / XOM close above $170; close with ≥10 days left (by Dec 8) — at-the-money long leg (Δ −0.50), short leg at the 200-day ($155.75) target; OI 3.3k / 4.5k, spreads 6–9%" },
+      { profile: "Aggressive", strategy: "Bear Put Debit Spread (OTM)", text: "Buy $160P / sell $155P · Dec 18 '26 · debit $1.62 (mids 4.40 − 2.785 = 1.615) · capital ~$162 · max profit ~$338 · BE $158.38 · R:R 1:2.09 · POP ~37% (lognormal, IV 30.5%) · exit +100% (~$3.2 spread value) or stop −50% (~$0.81) / XOM close above $170; close with ≥10 days left (by Dec 8) — tight OTM spread (long Δ −0.37) aimed at the 200-day; chosen over a naked put because the 165 level is a prerequisite and IV is ~30%; OI 4.6k / 4.5k, spreads 7–9%" },
+    ] },
+  { ticker: "NVDA", name: "NVIDIA", rank: 5, spot: "$178.67 (Mon Nov 9 close, −4.3%; lowest close since Apr 7; no pre-market prints yet at ~02:00 ET; Cboe delayed last $179.93 — chain premiums reference $179.93) [Yahoo Finance chart / Cboe delayed quote]", sentiment: "Neutral",
+    catalyst: "FQ3 earnings Tue Nov 17 AFTER CLOSE (Nasdaq calendar + press; IR page not re-fetched — EST.) · cons. EPS $2.49 (Nasdaq); revenue consensus n/a this run; estimate trend n/a · board probe into the Huang foreign-intelligence claim (headline risk, FBI reportedly looking) · Oct CPI today, PPI Nov 13, FOMC minutes Nov 18, opex Nov 20, GTC Washington Nov 30–Dec 3 · Dec 18 expiry is after earnings and straddles nothing else · no ex-dividend risk (tiny dividend; short legs far OTM)",
+    iv: "IV ~54.7% (Dec 18, ATM 180C/P 54.8/54.5; Cboe iv30 57.0) · IVR n/a · options imply ≈ ±10.5% to Nov 20 (180 straddle $18.83 vs $179.93; Nov 13 weekly 180 straddle $10.03) vs hist. avg earnings move n/a · 1σ to Dec 18 ≈ ±$31.7 (±17.6%) → $148 / $212",
+    liq: "A — Mon Nov 9 full session ≈6.95M option contracts (20d avg n/a; elevated on the probe) & 459.1M shares (20d avg 137.1M); Dec 18 OI 29.3k / 23.4k on the 150P / 140P, 42.1k / 76.5k on the 210C / 220C, 14.8k / 10.2k on the 155P / 145P, 10.1k / 19.1k on the 205C / 215C, 45.6k / 53.4k on the 160P / 200C; spreads 2–8% of mid [Cboe delayed chain, Mon Nov 9 session / Yahoo]",
+    thesis: "Direction is a coin-flip into two binaries (the Nov 17 print and an unquantified probe), so the edge is the premium, not the direction: NVDA is −22.1% in 21d, RSI 27, below its 50-day ($219.04) and 200-day ($204.63), and lagged a +6.9% SOX day — stock-specific weakness argues against buying — yet it is washed out ($178.67 vs a $181.60 support break) and the options already price ±10.5%. Selling Dec 18 iron condors with short strikes outside that move harvests ~55% IV and the post-earnings crush; the previous report's bullish NVDA stance (then-spot $186.64, −4.3%: against) is replaced rather than repeated. Risk: a probe escalation (congressional inquiry, executive departure) or an AI-capex guide shock can gap through either wing; the 150/210 shorts are ~1σ, not a guarantee. Exit if NVDA closes outside $160–$200 before the print. Invalid on a close below $160 or above $200. Conviction 3/5 (4/2/3/3/5).",
+    ideas: [
+      { profile: "Conservative", strategy: "Iron Condor (wide, ~1σ shorts)", text: "Iron condor: sell $150P / buy $140P + sell $210C / buy $220C · Dec 18 '26 · credit $2.53 (puts 3.30 − 1.98 + calls 2.97 − 1.76) · capital ~$747 · max profit ~$253 · BE $147.47 / $212.53 · R:R 1:0.34 · POP ~64% (1−Σ|Δ short| 0.16+0.20) · exit: buy back at ~50% profit (≈$1.27), or if NVDA closes through $150 / $210; close by Dec 11 (~7 DTE) — held THROUGH the Nov 17 print on purpose: shorts sit at ~1σ ($148 / $212), beyond the ±10.5% implied move ($161 / $199); OI 23k–76k, spreads 2–8%" },
+      { profile: "Moderate", strategy: "Iron Condor (~0.8σ shorts)", text: "Iron condor: sell $155P / buy $145P + sell $205C / buy $215C · Dec 18 '26 · credit $3.38 (puts 4.325 − 2.54 + calls 3.875 − 2.275 = 3.385) · capital ~$662 · max profit ~$338 · BE $151.62 / $208.38 · R:R 1:0.51 · POP ~56% (1−Σ|Δ short| 0.20+0.24) · exit: buy back at ~50% profit (≈$1.69), or if NVDA closes through $155 / $205; close by Dec 11 (~7 DTE) — shorts at ~0.8σ, outside the implied earnings move; OI 10k–19k, spreads 3–4%" },
+      { profile: "Aggressive", strategy: "Iron Condor (tight, at implied-move edge)", text: "Iron condor: sell $160P / buy $150P + sell $200C / buy $210C · Dec 18 '26 · credit $4.23 (puts 5.50 − 3.30 + calls 5.00 − 2.97) · capital ~$577 · max profit ~$423 · BE $155.77 / $204.23 · R:R 1:0.73 · POP ~46% (1−Σ|Δ short| 0.25+0.29) · exit: buy back at ~50% profit (≈$2.12), or if NVDA closes through $160 / $200; close by Dec 11 (~7 DTE) — shorts just outside the ±10.5% implied move (−11.1% / +11.2%): highest premium and highest gap risk, thesis is IV crush after the print; OI 29k–53k, spreads 2–4%" },
+    ] },
+];
+
+const RISK_COLORS = {
+  Conservative: "#22c55e",
+  Moderate:     "#eab308",
+  Aggressive:   "#ef4444",
+};
+
+// ------------------------------------------------------------------ geometry
+const M = { left: 78, top: 28, right: 26, bottom: 58 };
+const PLOT_W = 980;
+const PLOT_H = 384;
+const COL_W = PLOT_W / DAYS.length;
+const SVG_W = M.left + PLOT_W + M.right;
+const SVG_H = M.top + PLOT_H + M.bottom;
+// today line sits on the boundary between Nov 10 and Nov 11
+const TODAY_X = M.left + (TODAY_IDX + 1) * COL_W;
+
+const xCenter = (dayIdx) => M.left + (dayIdx + 0.5) * COL_W;
+const yCenter = (impact) => M.top + PLOT_H * ((3 - impact) / 3 + 1 / 6);
+
+// deterministic mini-grid offset so co-located dots don't overlap
+function cellOffset(i, n) {
+  const perRow = Math.min(n, 3);
+  const rows = Math.ceil(n / 3);
+  const col = i % 3;
+  const row = Math.floor(i / 3);
+  const dx = (col - (perRow - 1) / 2) * 21;
+  const dy = (row - (rows - 1) / 2) * 22;
+  return { dx, dy };
+}
+
+// ------------------------------------------------------------------ component
+export default function MarketMatrix() {
+  const [tab, setTab] = useState("matrix");
+  const [activeInds, setActiveInds] = useState(() => new Set(Object.keys(INDUSTRIES)));
+  const [selected, setSelected] = useState(null);
+  const [hovered, setHovered] = useState(null);
+  const [risk, setRisk] = useState("All");
+
+  const toggleInd = (key) =>
+    setActiveInds((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+
+  // group visible events by (dayIdx, impact) so we can spread them
+  const positioned = useMemo(() => {
+    const visible = EVENTS.filter((e) => activeInds.has(e.ind));
+    const groups = {};
+    visible.forEach((e) => {
+      const k = `${e.dayIdx}-${e.impact}`;
+      (groups[k] = groups[k] || []).push(e);
+    });
+    const out = [];
+    Object.values(groups).forEach((arr) => {
+      arr.forEach((e, i) => {
+        const { dx, dy } = cellOffset(i, arr.length);
+        out.push({ ...e, cx: xCenter(e.dayIdx) + dx, cy: yCenter(e.impact) + dy });
+      });
+    });
+    return out;
+  }, [activeInds]);
+
+  const detail = selected || hovered;
+
+  return (
+    <div style={S.root}>
+      <div style={S.header}>
+        <div>
+          <h1 style={S.h1}>US Market Pulse — Recency × Impact Matrix</h1>
+          <div style={S.sub}>
+            Snapshot <b style={{ color: "#e2e8f0" }}>Tuesday, Nov 10 2026 · pre-market ~02:00 ET (quotes = Mon Nov 9 close)</b> · window: last 3 days → next 2 weeks ·
+            color = industry · dot = event · {DIR.BULLISH.glyph}/{DIR.BEARISH.glyph}/{DIR.MIXED.glyph} = bullish / bearish / mixed
+          </div>
+        </div>
+        <div style={S.tabs}>
+          <button style={tabBtn(tab === "matrix")} onClick={() => setTab("matrix")}>News Matrix</button>
+          <button style={tabBtn(tab === "options")} onClick={() => setTab("options")}>Top Option Plays</button>
+        </div>
+      </div>
+
+      {tab === "matrix" ? (
+        <>
+          {/* legend */}
+          <div style={S.legend}>
+            {Object.entries(INDUSTRIES).map(([k, v]) => {
+              const on = activeInds.has(k);
+              return (
+                <button key={k} onClick={() => toggleInd(k)}
+                        style={{ ...S.chip, opacity: on ? 1 : 0.32, borderColor: v.color }}>
+                  <span style={{ ...S.dot, background: v.color }} />
+                  {v.label}
+                </button>
+              );
+            })}
+            <span style={S.legendNote}>click a chip to filter · click a dot to pin its recommendation</span>
+          </div>
+
+          <div style={S.matrixWrap}>
+            <svg width={SVG_W} height={SVG_H} style={{ display: "block" }}
+                 onClick={() => setSelected(null)}>
+              {/* future background */}
+              <rect x={TODAY_X} y={M.top} width={M.left + PLOT_W - TODAY_X} height={PLOT_H}
+                    fill="#1e293b" opacity={0.55} />
+              <text x={(TODAY_X + M.left + PLOT_W) / 2} y={M.top + 15} fill="#64748b"
+                    fontSize={11} textAnchor="middle" letterSpacing={2}>
+                FORECAST / UPCOMING
+              </text>
+
+              {/* impact bands + labels */}
+              {[1, 2, 3].map((lvl) => {
+                const yTop = M.top + PLOT_H * ((3 - lvl) / 3);
+                return (
+                  <g key={lvl}>
+                    {lvl < 3 && (
+                      <line x1={M.left} y1={yTop} x2={M.left + PLOT_W} y2={yTop}
+                            stroke="#334155" strokeDasharray="3 4" />
+                    )}
+                    <text x={M.left - 12} y={yCenter(lvl)} fill="#94a3b8" fontSize={11}
+                          textAnchor="end" dominantBaseline="middle" fontWeight={600}>
+                      {IMPACT_LABEL[lvl]}
+                    </text>
+                  </g>
+                );
+              })}
+
+              {/* plot border */}
+              <rect x={M.left} y={M.top} width={PLOT_W} height={PLOT_H} fill="none" stroke="#334155" />
+
+              {/* day columns + x labels */}
+              {DAYS.map((d) => {
+                const x = M.left + d.idx * COL_W;
+                const weekend = d.dow === "Sat" || d.dow === "Sun";
+                return (
+                  <g key={d.idx}>
+                    {d.idx > 0 && (
+                      <line x1={x} y1={M.top} x2={x} y2={M.top + PLOT_H} stroke="#1f2a3a" />
+                    )}
+                    <text x={x + COL_W / 2} y={M.top + PLOT_H + 20} fill={d.idx === TODAY_IDX ? "#f8fafc" : "#94a3b8"}
+                          fontSize={11} textAnchor="middle" fontWeight={d.idx === TODAY_IDX ? 700 : 500}>
+                      {d.date}
+                    </text>
+                    <text x={x + COL_W / 2} y={M.top + PLOT_H + 34} fill={weekend ? "#475569" : "#64748b"}
+                          fontSize={9} textAnchor="middle">
+                      {d.dow}
+                    </text>
+                  </g>
+                );
+              })}
+
+              {/* TODAY divider */}
+              <line x1={TODAY_X} y1={M.top - 6} x2={TODAY_X} y2={M.top + PLOT_H + 6}
+                    stroke="#f8fafc" strokeWidth={2} />
+              <text x={TODAY_X} y={M.top - 12} fill="#f8fafc" fontSize={11} textAnchor="middle"
+                    fontWeight={700} letterSpacing={1}>
+                ▸ TODAY (Nov 10)
+              </text>
+
+              {/* axis titles */}
+              <text x={M.left + PLOT_W / 2} y={SVG_H - 6} fill="#cbd5e1" fontSize={12}
+                    textAnchor="middle" fontWeight={600} letterSpacing={1}>
+                RECENCY  →  (past · today · upcoming)
+              </text>
+              <text x={16} y={M.top + PLOT_H / 2} fill="#cbd5e1" fontSize={12} fontWeight={600}
+                    textAnchor="middle" letterSpacing={1}
+                    transform={`rotate(-90 16 ${M.top + PLOT_H / 2})`}>
+                IMPACT  ↑
+              </text>
+
+              {/* event dots */}
+              {positioned.map((e) => {
+                const c = INDUSTRIES[e.ind].color;
+                const isOn = detail && detail.id === e.id;
+                return (
+                  <g key={e.id} style={{ cursor: "pointer" }}
+                     onMouseEnter={() => setHovered(e)}
+                     onMouseLeave={() => setHovered(null)}
+                     onClick={(ev) => { ev.stopPropagation(); setSelected(e); }}>
+                    <circle cx={e.cx} cy={e.cy} r={isOn ? 13 : 10}
+                            fill={c} stroke={isOn ? "#f8fafc" : "rgba(255,255,255,0.55)"}
+                            strokeWidth={isOn ? 2.5 : 1} />
+                    <text x={e.cx} y={e.cy} fill="#fff" fontSize={10} fontWeight={700}
+                          textAnchor="middle" dominantBaseline="central" style={{ pointerEvents: "none" }}>
+                      {DIR[e.dir].glyph}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+
+          {/* detail panel */}
+          <div style={S.detail}>
+            {detail ? (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <span style={{ ...S.dot, background: INDUSTRIES[detail.ind].color, width: 14, height: 14 }} />
+                  <b style={{ color: "#f1f5f9" }}>{detail.headline}</b>
+                  <span style={badge(detail.future ? "#38bdf8" : "#64748b")}>
+                    {detail.future ? "UPCOMING" : "PAST"}
+                  </span>
+                  <span style={badge("#475569")}>{IMPACT_LABEL[detail.impact]} IMPACT</span>
+                  <span style={badge(dirColor(detail.dir))}>{DIR[detail.dir].glyph} {DIR[detail.dir].label}</span>
+                </div>
+                <div style={S.tickers}>{detail.tickers}</div>
+                <div style={S.recBox}>
+                  <span style={S.recLabel}>What to do</span> {detail.rec}
+                </div>
+              </>
+            ) : (
+              <span style={{ color: "#64748b" }}>Hover or click a dot to see the headline, affected tickers, and the recommended action.</span>
+            )}
+          </div>
+
+          {/* full recommendation ledger */}
+          <details style={S.ledger}>
+            <summary style={S.ledgerSummary}>All {EVENTS.length} events &amp; recommendations (full ledger)</summary>
+            <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+              {EVENTS.filter((e) => activeInds.has(e.ind))
+                .slice()
+                .sort((a, b) => a.dayIdx - b.dayIdx || b.impact - a.impact)
+                .map((e) => (
+                  <div key={e.id} style={S.ledgerRow} onClick={() => setSelected(e)}>
+                    <span style={{ ...S.dot, background: INDUSTRIES[e.ind].color }} />
+                    <span style={{ color: "#64748b", width: 52, fontSize: 12 }}>
+                      {DAYS[e.dayIdx].date}
+                    </span>
+                    <span style={{ color: dirColor(e.dir), width: 16, textAlign: "center" }}>{DIR[e.dir].glyph}</span>
+                    <span style={{ flex: 1, color: "#cbd5e1", fontSize: 13 }}>
+                      <b style={{ color: "#e2e8f0" }}>{e.tickers}</b> — {e.headline}
+                      <span style={{ color: "#94a3b8" }}> → {e.rec}</span>
+                    </span>
+                  </div>
+                ))}
+            </div>
+          </details>
+        </>
+      ) : (
+        // ---------------------------------------------------------- options tab
+        <div style={{ marginTop: 6 }}>
+          <div style={S.optHead}>
+            <div style={S.sub}>
+              Strongest options plays for the coming month — strategy chosen per name by <b style={{ color: "#e2e8f0" }}>IV, sentiment &amp; upcoming binary events</b> (long calls/puts, debit &amp; credit spreads, cash-secured puts). Every idea is <b style={{ color: "#e2e8f0" }}>defined-risk</b> with total capital at risk <b style={{ color: "#e2e8f0" }}>under $1,500/trade</b> (debit × 100, or max loss / collateral) on a liquid chain. No naked shorts.
+            </div>
+            <div style={S.riskRow}>
+              {["All", "Conservative", "Moderate", "Aggressive"].map((r) => (
+                <button key={r} onClick={() => setRisk(r)}
+                        style={{ ...S.riskBtn, ...(risk === r ? { background: r === "All" ? "#334155" : RISK_COLORS[r], color: "#0b1220", borderColor: "transparent" } : {}) }}>
+                  {r}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={S.optGrid}>
+            {OPTION_PLAYS.map((p) => (
+              <div key={p.ticker} style={S.optCard}>
+                <div style={S.optTop}>
+                  <span style={S.optRank}>#{p.rank}</span>
+                  <b style={{ color: "#f8fafc", fontSize: 18 }}>{p.ticker}</b>
+                  <span style={{ color: "#94a3b8" }}>{p.name}</span>
+                  <span style={{ ...badge(sentColor(p.sentiment)), marginLeft: "auto" }}>{p.sentiment}</span>
+                  <span style={{ color: "#cbd5e1", fontSize: 13 }}>{p.spot}</span>
+                </div>
+                <div style={S.optMeta}><span style={S.k}>Catalyst</span> {p.catalyst}</div>
+                <div style={S.optMeta}><span style={S.k}>IV</span> {p.iv}</div>
+                <div style={S.optMeta}><span style={S.k}>Liquidity</span> {p.liq}</div>
+                <div style={S.optThesis}>{p.thesis}</div>
+                <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
+                  {p.ideas.filter((i) => risk === "All" || i.profile === risk).map((i, ix) => (
+                    <div key={ix} style={S.ideaRow}>
+                      <span style={{ ...S.ideaTag, background: RISK_COLORS[i.profile] }}>{i.profile}</span>
+                      <span style={S.stratTag}>{i.strategy}</span>
+                      <span style={{ color: "#e2e8f0", fontSize: 13 }}>{i.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={S.disclaimer}>
+        ⚠ Educational analysis, <b>not financial advice</b>. Strikes, premiums &amp; IV are
+        <b> estimates</b> from spot + implied vol — confirm live bid/ask, expirations, and assignment/margin terms on your broker before trading. Long options can
+        expire worthless; credit &amp; cash-secured strategies carry assignment and collateral obligations. Size aggressive OTM ideas as lottery tickets.
+      </div>
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------ helpers
+function dirColor(d) {
+  return d === "BULLISH" ? "#22c55e" : d === "BEARISH" ? "#f43f5e" : "#94a3b8";
+}
+function sentColor(s) {
+  if (!s) return "#94a3b8";
+  if (s.indexOf("Bull") > -1) return "#22c55e";
+  if (s.indexOf("Bear") > -1) return "#f43f5e";
+  return "#fbbf24";
+}
+function tabBtn(active) {
+  return {
+    ...S.tabBtn,
+    background: active ? "#334155" : "transparent",
+    color: active ? "#f8fafc" : "#94a3b8",
+  };
+}
+function badge(color) {
+  return {
+    fontSize: 10, fontWeight: 700, letterSpacing: 0.5, padding: "2px 8px",
+    borderRadius: 999, color: "#0b1220", background: color, whiteSpace: "nowrap",
+  };
+}
+
+// ------------------------------------------------------------------ styles
+const S = {
+  root: {
+    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+    background: "#0b1220", color: "#cbd5e1", padding: 20, borderRadius: 14,
+    maxWidth: 920, margin: "0 auto",
+  },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" },
+  h1: { margin: 0, fontSize: 20, color: "#f8fafc", fontWeight: 700 },
+  sub: { fontSize: 12.5, color: "#94a3b8", marginTop: 4, lineHeight: 1.5 },
+  tabs: { display: "flex", gap: 4, background: "#0f1729", padding: 4, borderRadius: 10, border: "1px solid #1f2a3a" },
+  tabBtn: { border: "none", padding: "7px 14px", borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: "pointer" },
+  legend: { display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", margin: "16px 0 10px" },
+  chip: {
+    display: "inline-flex", alignItems: "center", gap: 7, padding: "5px 11px",
+    background: "#0f1729", border: "1.5px solid", borderRadius: 999, color: "#e2e8f0",
+    fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+  },
+  dot: { width: 11, height: 11, borderRadius: "50%", display: "inline-block", flexShrink: 0 },
+  legendNote: { color: "#475569", fontSize: 11.5, marginLeft: 4 },
+  matrixWrap: { background: "#0f1729", border: "1px solid #1f2a3a", borderRadius: 12, padding: 8, overflowX: "auto" },
+  detail: {
+    marginTop: 12, background: "#0f1729", border: "1px solid #1f2a3a", borderRadius: 10,
+    padding: 14, minHeight: 58,
+  },
+  tickers: { color: "#7dd3fc", fontSize: 13, fontWeight: 600, marginTop: 8, fontFamily: "ui-monospace, monospace" },
+  recBox: { marginTop: 8, fontSize: 13.5, color: "#e2e8f0", lineHeight: 1.5 },
+  recLabel: {
+    fontSize: 10, fontWeight: 800, letterSpacing: 1, color: "#0b1220", background: "#fbbf24",
+    padding: "2px 7px", borderRadius: 5, marginRight: 8,
+  },
+  ledger: { marginTop: 12, background: "#0f1729", border: "1px solid #1f2a3a", borderRadius: 10, padding: "10px 14px" },
+  ledgerSummary: { cursor: "pointer", color: "#cbd5e1", fontSize: 13, fontWeight: 600 },
+  ledgerRow: { display: "flex", alignItems: "center", gap: 10, padding: "6px 8px", borderRadius: 7, cursor: "pointer", background: "#0b1220" },
+  optHead: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 12 },
+  riskRow: { display: "flex", gap: 6 },
+  riskBtn: {
+    border: "1.5px solid #334155", background: "transparent", color: "#cbd5e1",
+    padding: "6px 12px", borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: "pointer",
+  },
+  optGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))", gap: 12 },
+  optCard: { background: "#0f1729", border: "1px solid #1f2a3a", borderRadius: 12, padding: 14 },
+  optTop: { display: "flex", alignItems: "center", gap: 8, marginBottom: 10 },
+  optRank: { fontSize: 11, fontWeight: 800, color: "#0b1220", background: "#38bdf8", padding: "2px 7px", borderRadius: 6 },
+  optMeta: { fontSize: 12.5, color: "#cbd5e1", marginTop: 4, lineHeight: 1.45 },
+  k: { display: "inline-block", width: 72, color: "#64748b", fontWeight: 600, fontSize: 11 },
+  optThesis: { fontSize: 12.5, color: "#94a3b8", marginTop: 10, lineHeight: 1.5, fontStyle: "italic" },
+  ideaRow: { display: "flex", alignItems: "center", gap: 8, background: "#0b1220", padding: "6px 8px", borderRadius: 7, flexWrap: "wrap" },
+  ideaTag: { fontSize: 10, fontWeight: 800, color: "#0b1220", padding: "2px 7px", borderRadius: 5, width: 88, textAlign: "center", flexShrink: 0 },
+  stratTag: { fontSize: 10, fontWeight: 700, color: "#cbd5e1", border: "1px solid #334155", background: "#0f1729", padding: "2px 7px", borderRadius: 5, whiteSpace: "nowrap", flexShrink: 0 },
+  disclaimer: {
+    marginTop: 16, fontSize: 11.5, color: "#64748b", lineHeight: 1.5,
+    borderTop: "1px solid #1f2a3a", paddingTop: 12,
+  },
+};
