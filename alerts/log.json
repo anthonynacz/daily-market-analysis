@@ -1,6 +1,50 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-10T14:48:00Z",
+      "ticker": "NVDA",
+      "move_pct": -4.38,
+      "price": 170.84,
+      "session": "regular",
+      "trigger": "Big move: Huang spy probe / China chip limits",
+      "headline": "Jensen Huang's spy scandal may cost Nvidia the China chip fight it was winning",
+      "url": "https://finance.yahoo.com/markets/article/jensen-huangs-spy-scandal-may-cost-nvidia-the-china-chip-fight-it-was-winning-121310306.html",
+      "action": "In report: Neutral"
+    },
+    {
+      "ts": "2026-11-10T14:48:00Z",
+      "ticker": "GEV",
+      "move_pct": -6.92,
+      "price": 771.94,
+      "session": "regular",
+      "trigger": "Big move: no clear news - possibly sector flow",
+      "headline": "Musk: SoftBank Is Defaulting on Their Turbine Orders",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/musk-softbank-defaulting-turbine-orders-195332761.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-10T14:48:00Z",
+      "ticker": "SE",
+      "move_pct": 6.22,
+      "price": 82.8,
+      "session": "regular",
+      "trigger": "Big move + news: Q3 2026 earnings",
+      "headline": "Sea Limited Reports Third Quarter 2026 Results",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/sea-limited-reports-third-quarter-113000884.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-10T14:48:00Z",
+      "ticker": "TTWO",
+      "move_pct": 3.81,
+      "price": 215.3,
+      "session": "regular",
+      "trigger": "News reaction: earnings, GTA VI preorders",
+      "headline": "Take-Two Shares Rise Over 3% After Quarterly Results as GTA VI November 19 Release Confirmed",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/two-shares-rise-over-3-113921042.html",
+      "action": "In report events: WATCH"
+    },
+    {
       "ts": "2026-11-09T20:47:00Z",
       "ticker": "NVDA",
       "move_pct": -4.52,
