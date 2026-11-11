@@ -1,6 +1,50 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-11T13:50:00Z",
+      "ticker": "NVDA",
+      "move_pct": 3.75,
+      "price": 175.22,
+      "session": "pre",
+      "trigger": "News reaction (rebound / CoreWeave lift)",
+      "headline": "Nvidia rebounds premarket after sharp sell-off",
+      "url": "https://www.cnbc.com/2026/11/11/stocks-moving-the-most-today-live-updates.html",
+      "action": "In report: Neutral"
+    },
+    {
+      "ts": "2026-11-11T13:50:00Z",
+      "ticker": "CRWV",
+      "move_pct": 15.1,
+      "price": 56.09,
+      "session": "pre",
+      "trigger": "Big move (Q3 beat, guidance raised)",
+      "headline": "CoreWeave Q3 revenue $3.66B beats, raises outlook",
+      "url": "https://www.cnbc.com/2026/11/11/stocks-moving-the-most-today-live-updates.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-11T13:50:00Z",
+      "ticker": "NBIS",
+      "move_pct": 12.25,
+      "price": 150.41,
+      "session": "pre",
+      "trigger": "Big move (neocloud sympathy)",
+      "headline": "Neocloud peers rise after CoreWeave report",
+      "url": "https://www.cnbc.com/2026/11/10/stock-market-movers-live-updates.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-11T13:50:00Z",
+      "ticker": "BE",
+      "move_pct": 7.46,
+      "price": 199.26,
+      "session": "pre",
+      "trigger": "Big move, no clear news",
+      "headline": "Why Is Bloom Energy Stock Surging Wednesday?",
+      "url": "https://www.benzinga.com/trading-ideas/movers/26/11/63134471/why-is-bloom-energy-stock-surging-wednesday",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-10T20:48:00Z",
       "ticker": "INIO",
       "move_pct": -7.88,
