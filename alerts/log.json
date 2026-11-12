@@ -1,6 +1,72 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-12T14:52:00Z",
+      "ticker": "NBIS",
+      "move_pct": -18.98,
+      "price": 125.33,
+      "session": "regular",
+      "trigger": "Big move: AI-infrastructure selloff after Nvidia CEO resignation",
+      "headline": "Jensen Huang's exit puts Nvidia's $530 billion web of AI deals under the microscope",
+      "url": "https://finance.yahoo.com/markets/article/jensen-huangs-exit-puts-nvidias-530-billion-web-of-ai-deals-under-the-microscope-153142269.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-12T14:52:00Z",
+      "ticker": "BABA",
+      "move_pct": -7.02,
+      "price": 94.39,
+      "session": "regular",
+      "trigger": "Big move: report of Commerce rule barring Chinese AI firms from advanced chips offshore",
+      "headline": "Alibaba Sinks 7% as U.S. Readies Curbs on China's Remote AI Chip Access",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/alibaba-sinks-7-u-readies-145849242.html",
+      "action": "WATCH (earnings Nov 19)"
+    },
+    {
+      "ts": "2026-11-12T14:52:00Z",
+      "ticker": "PANW",
+      "move_pct": -5.24,
+      "price": 316.95,
+      "session": "regular",
+      "trigger": "Big move: no clear news - possibly sector/market flow",
+      "headline": "",
+      "url": "",
+      "action": "WATCH (earnings Nov 18)"
+    },
+    {
+      "ts": "2026-11-12T14:52:00Z",
+      "ticker": "ONON",
+      "move_pct": -5.08,
+      "price": 32.95,
+      "session": "regular",
+      "trigger": "Big move: no clear news",
+      "headline": "",
+      "url": "",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-12T14:52:00Z",
+      "ticker": "AVGO",
+      "move_pct": 4.37,
+      "price": 360.31,
+      "session": "regular",
+      "trigger": "Big move: rotation into Nvidia rivals after Huang resignation",
+      "headline": "Broadcom, AMD stock outlook after Huang's exit from Nvidia",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/broadcom-amd-stock-outlook-huang-153231894.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-12T14:52:00Z",
+      "ticker": "AMD",
+      "move_pct": 2.92,
+      "price": 569.03,
+      "session": "regular",
+      "trigger": "News reaction: Huang resignation rotation + William Blair upgrade",
+      "headline": "Broadcom, AMD stock outlook after Huang's exit from Nvidia",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/broadcom-amd-stock-outlook-huang-153231894.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-12T13:48:00Z",
       "ticker": "NVDA",
       "move_pct": -8.48,
