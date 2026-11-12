@@ -1,6 +1,17 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-12T16:46:00Z",
+      "ticker": "SMCI",
+      "move_pct": -11.5,
+      "price": 26.93,
+      "session": "regular",
+      "trigger": "Big move: AI-server selloff after Nvidia CEO ouster report",
+      "headline": "Super Micro Slides 7% Despite Gartner's $957 Billion AI Server Forecast; Dell Falls 4%",
+      "url": "https://finance.yahoo.com/technology/ai/articles/super-micro-slides-7-despite-160250995.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-12T14:52:00Z",
       "ticker": "NBIS",
       "move_pct": -18.98,
