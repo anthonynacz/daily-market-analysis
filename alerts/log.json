@@ -1,6 +1,17 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-12T18:47:00Z",
+      "ticker": "GPN",
+      "move_pct": -10.45,
+      "price": 89.75,
+      "session": "regular",
+      "trigger": "Big move + news: CD&R and GTCR abandon takeover talks",
+      "headline": "Global Payments falls 9% as CD&R, GTCR abandon takeover talks",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/global-payments-falls-9-cd-174216727.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-12T16:46:00Z",
       "ticker": "SMCI",
       "move_pct": -11.5,
