@@ -1,6 +1,72 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-13T16:05:00Z",
+      "ticker": "NVDA",
+      "move_pct": -4.14,
+      "price": 159.32,
+      "session": "regular",
+      "trigger": "News reaction: CEO exit follow-through",
+      "headline": "Nvidia stock slips as investors digest CEO exit, broader chip sector falls",
+      "url": "https://finance.yahoo.com/markets/article/nvidia-stock-slips-as-investors-digest-ceo-exit-rest-of-chip-sector-falls-144818245.html",
+      "action": "In report: Bearish"
+    },
+    {
+      "ts": "2026-11-13T16:05:00Z",
+      "ticker": "NBIS",
+      "move_pct": -12.85,
+      "price": 112.11,
+      "session": "regular",
+      "trigger": "Big move: neocloud selloff",
+      "headline": "Nvidia stock slips as investors digest CEO exit, broader chip sector falls",
+      "url": "https://finance.yahoo.com/markets/article/nvidia-stock-slips-as-investors-digest-ceo-exit-rest-of-chip-sector-falls-144818245.html",
+      "action": "In report: AVOID"
+    },
+    {
+      "ts": "2026-11-13T16:05:00Z",
+      "ticker": "CRWV",
+      "move_pct": -10.97,
+      "price": 50.39,
+      "session": "regular",
+      "trigger": "Big move: neocloud/sector flow",
+      "headline": "Nvidia stock slips as investors digest CEO exit, broader chip sector falls",
+      "url": "https://finance.yahoo.com/markets/article/nvidia-stock-slips-as-investors-digest-ceo-exit-rest-of-chip-sector-falls-144818245.html",
+      "action": "In report: AVOID"
+    },
+    {
+      "ts": "2026-11-13T16:05:00Z",
+      "ticker": "AMD",
+      "move_pct": -9.76,
+      "price": 528.19,
+      "session": "regular",
+      "trigger": "Big move: reversal of rival rotation",
+      "headline": "Nvidia stock slips as investors digest CEO exit, broader chip sector falls",
+      "url": "https://finance.yahoo.com/markets/article/nvidia-stock-slips-as-investors-digest-ceo-exit-rest-of-chip-sector-falls-144818245.html",
+      "action": "In report: HOLD"
+    },
+    {
+      "ts": "2026-11-13T16:05:00Z",
+      "ticker": "NU",
+      "move_pct": 9.68,
+      "price": 12.975,
+      "session": "regular",
+      "trigger": "Big move: no clear news",
+      "headline": "",
+      "url": "",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-13T16:05:00Z",
+      "ticker": "INTC",
+      "move_pct": -6.02,
+      "price": 57.52,
+      "session": "regular",
+      "trigger": "Big move: chip-sector weakness",
+      "headline": "Nvidia stock slips as investors digest CEO exit, broader chip sector falls",
+      "url": "https://finance.yahoo.com/markets/article/nvidia-stock-slips-as-investors-digest-ceo-exit-rest-of-chip-sector-falls-144818245.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-12T19:48:00Z",
       "ticker": "IONQ",
       "move_pct": -9.31,
