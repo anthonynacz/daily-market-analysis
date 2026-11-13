@@ -1,6 +1,17 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-13T16:55:00Z",
+      "ticker": "CBRS",
+      "move_pct": 6.84,
+      "price": 104.44,
+      "session": "regular",
+      "trigger": "Big move + news reaction: Q3 beat, raised outlook, Microsoft deal",
+      "headline": "Cerebras stock surges on Q3 results, outlook raise, hyperscaler deals",
+      "url": "https://finance.yahoo.com/markets/stocks/article/cerebras-stock-surges-after-ai-chipmaker-posts-q3-record-revenue-deals-with-hyperscalers-124719638.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-13T16:05:00Z",
       "ticker": "NVDA",
       "move_pct": -4.14,
