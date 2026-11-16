@@ -1,6 +1,17 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-16T17:46:00Z",
+      "ticker": "MSTR",
+      "move_pct": -7.73,
+      "price": 103.0,
+      "session": "regular",
+      "trigger": "Big move: Bitcoin selloff below Strategy cost basis",
+      "headline": "Strategy Sinks 8% as Bitcoin Selloff Deepens; Coinbase and MARA Fall 7%",
+      "url": "https://finance.yahoo.com/markets/crypto/articles/strategy-sinks-8-bitcoin-selloff-140825125.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-16T16:47:00Z",
       "ticker": "IONQ",
       "move_pct": -7.79,
