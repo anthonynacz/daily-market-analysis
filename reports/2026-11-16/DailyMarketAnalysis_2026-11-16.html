@@ -27,7 +27,7 @@ const { useState, useMemo } = React;
 /**
  * MarketMatrix — Recency × Impact news matrix for US equities, by industry.
  *
- * Snapshot date: Monday, November 16, 2026 — trading-day edition, built pre-market (~2 am ET, before the 4 am pre-market session); stock quotes = Fri Nov 13 close; option quotes, OI & volume = Cboe delayed chain after the Fri Nov 13 session; futures, gold, crude & Bitcoin = Mon ~1:40–1:50 am ET (Yahoo).
+ * Snapshot date: Monday, November 16, 2026 — trading-day edition, rebuilt after the close (~5:45 pm ET) with lean-tagged upcoming events; stock quotes = Mon Nov 16 close (Yahoo Finance chart, cross-checked with Cboe delayed quotes); option quotes, OI & volume = Cboe delayed chain after the Mon Nov 16 session (full-session volume). Supersedes the ~2 am ET pre-market build of the same date.
  * Window: last 3 days (Nov 13) → coming 2 weeks (Nov 30).
  *
  * Self-contained: only depends on React. Inline styles + raw SVG, no libs.
@@ -42,7 +42,7 @@ const INDUSTRIES = {
   tech:     { label: "Technology / Semis", color: "#3b82f6" },
   energy:   { label: "Energy",             color: "#f59e0b" },
   health:   { label: "Healthcare / Pharma", color: "#10b981" },
-  finance:  { label: "Financials",         color: "#a855f7" },
+  finance:  { label: "Financials / Macro", color: "#a855f7" },
   consumer: { label: "Consumer / Retail",  color: "#ef4444" },
 };
 
@@ -78,158 +78,181 @@ const TODAY_IDX = 3;
 // impact: 3 = HIGH (top), 2 = MEDIUM, 1 = LOW (bottom)
 const IMPACT_LABEL = { 3: "HIGH", 2: "MEDIUM", 1: "LOW" };
 
+// Upcoming events cannot have a known outcome, so their `dir` is a LEAN, not a result:
+//   dir BULLISH / BEARISH = the evidence leans that way; `conf` (1-3) says how strongly
+//   and `basis` names the evidence. dir MIXED = pending, no measurable lean.
+// `conf` and `basis` are optional and only used on upcoming events (see template/LEAN_RULES.md).
+const CONF_LABEL = { 3: "HIGH", 2: "MEDIUM", 1: "LOW" };
+const PENDING_GLYPH = "?";
+const isPending = (e) => e.future && e.dir === "MIXED";
+const dirGlyph = (e) => (isPending(e) ? PENDING_GLYPH : DIR[e.dir].glyph);
+const dirLabel = (e) => {
+  if (!e.future) return DIR[e.dir].label;
+  if (e.dir === "MIXED") return "Pending · no lean";
+  return `Leans ${DIR[e.dir].label.toLowerCase()} · ${CONF_LABEL[e.conf] || "LOW"} confidence`;
+};
+
+// Running score of past leans vs what actually happened (updated by the daily run).
+const LEAN_RECORD = { hits: 0, misses: 0, since: "" };
+
 // ------------------------------------------------------------------ events
 // dayIdx maps the event date onto the 9-day axis above.
 const EVENTS = [
-  // ---- TECHNOLOGY / SEMIS ----------------------
+  // ---- TECHNOLOGY / SEMIS ------------------------------------------
   { id: "t1", ind: "tech", dayIdx: 0, future: false, impact: 3, dir: "BEARISH",
-    headline: "Fri Nov 13: AI-hardware selloff — NVIDIA $162.85 (−2.01%; sixth straight weekly loss, 365.8M shares) after HSBC cut it to Hold (PT $375 → $170, 'struggle until a permanent CEO is named') and Truist downgraded it, a day after Jensen Huang resigned (CFO Colette Kress interim CEO); AMD −8.75% to $534.06, Broadcom −4.76% to $347.01 (Redburn downgrade), Arm −4.63% (FT: NVIDIA's board approached Arm CEO Rene Haas), Dell −7.18%; Nasdaq-100 −1.22% to 27,943.74, under its 200-day (Motley Fool, CappNotes, TechCrunch, Yahoo chart data)", tickers: "NVDA · AMD · AVGO · ARM · DELL · SMH · QQQ",
-    rec: "SELL / AVOID chasing semis into NVIDIA's print: leadership is unresolved and estimates are being cut; a QQQ bear put spread is the cleaner hedge than single-name puts at 59–67% IV." },
+    headline: "Fri Nov 13: chip rotation reverses. AMD −8.75% to $534.06 and Broadcom −4.76% to $347.01 fell harder than NVIDIA (−2.01% to $162.85) after the board accepted Jensen Huang's resignation on Nov 11; interim CEO Colette Kress [Yahoo closes; MarketSpeaker; TheStreet]", tickers: "AMD · AVGO · NVDA",
+    rec: "HOLD/AVOID new longs: the 'take share from NVIDIA' trade is unwinding into Tuesday's print. Wait for NVIDIA's guide before adding semis." },
   { id: "t2", ind: "tech", dayIdx: 0, future: false, impact: 2, dir: "BEARISH",
-    headline: "Fri Nov 13: Cisco −6.24% to $95.64 despite an FQ1 beat and a raised FY EPS outlook ($5.47–5.53); Applied Materials −2.74% despite Q4 adj. EPS $4.16 vs $4.05 — 'sell the good news' across AI-infrastructure hardware (CappNotes, Yahoo chart data)", tickers: "CSCO · AMAT",
-    rec: "WATCH: selling on beats is a late-cycle tell; CSCO is under its 50-day ($107.76) and 200-day ($102.35) — no new longs until it reclaims ~$102." },
-  { id: "t3", ind: "tech", dayIdx: 0, future: false, impact: 2, dir: "BULLISH",
-    headline: "Fri Nov 13: Apple hit an intraday record ($360.80) and closed $356.27 (+0.39%) as a refuge from the chip selloff; Microsoft +0.17% as an Outlook / Teams outage eased; Cerebras +11.22% on a surprise Q3 profit (revenue $231M vs $215M) (CappNotes, Yahoo chart data)", tickers: "AAPL · MSFT · CBRS",
-    rec: "HOLD / BUY dips in AAPL above its 50-day ($339): relative strength vs QQQ (−6.6% in 21d) with no AI-capex exposure; see the AAPL play." },
-  { id: "t4", ind: "tech", dayIdx: 3, future: false, impact: 2, dir: "MIXED",
-    headline: "Mon Nov 16 (TODAY) pre-open: Nasdaq-100 futures −1.1% (NQ 27,725 at ~1:40 am ET), S&P futures −0.5% (Yahoo futures data); Baidu Q3 2026 results BMO, call 7:30 am ET (CONFIRMED, Baidu release via Finviz; cons. EPS $6.11 per FXEmpire); KE Holdings and H World also BMO (CappNotes)", tickers: "QQQ · NQ · BIDU · BEKE",
-    rec: "WATCH: a −1% Nasdaq open puts QQQ near $672, below Friday's 200-day; let the first hour settle before adding risk, and size hedges before Tuesday's NVIDIA print." },
-  { id: "t5", ind: "tech", dayIdx: 4, future: true, impact: 3, dir: "MIXED",
-    headline: "NVIDIA Q3 FY27 earnings — Tue Nov 17 AMC (~4:20 pm ET release, call 5:00 pm ET; CONFIRMED date per company call notice via MarketPulse / FXEmpire): cons. EPS $2.47 on revenue $108.8B (FXEmpire; ~+91% y/y); options price roughly ±9–10.6% (MarketPulse / Yahoo-Barchart); first report under interim CEO Kress — the Q4 guide matters more than the quarter", tickers: "NVDA · SMH · AMD · AVGO · QQQ",
-    rec: "WATCH, don't gamble: implied move ±~10% at 59% IV; if you must play it, use a defined-risk spread sized as a loss — a guide that holds ~$108B+ with no CEO-search surprises is the bullish bar." },
-  { id: "t6", ind: "tech", dayIdx: 4, future: true, impact: 2, dir: "MIXED",
-    headline: "Microsoft Ignite — Tue Nov 17 to Fri Nov 20, Moscone Center, San Francisco (EST. — multiple event listings agree; Copilot / Azure AI-agent announcements); JD.com Q3 Tue BMO (cons. EPS $5.93, FXEmpire)", tickers: "MSFT · JD",
-    rec: "HOLD MSFT: Ignite is incremental, not a re-rating event; the stock is pinned near its 50-day ($519) — wait for a close above ~$540 before adding." },
-  { id: "t7", ind: "tech", dayIdx: 5, future: true, impact: 2, dir: "MIXED",
-    headline: "Wed Nov 18 AMC: Palo Alto Networks FQ1 (cons. EPS $0.97, FXEmpire) [EST. timing]; Anthropic IPO pricing expected the same evening (range $70–78, 825M shares; EST. — CappNotes / RTTNews)", tickers: "PANW · CRWD",
-    rec: "WATCH PANW: it is 12% under its 50-day ($367.50) into the print — a beat-and-hold of $312 support is needed before any bullish structure." },
-  { id: "t8", ind: "tech", dayIdx: 6, future: true, impact: 3, dir: "MIXED",
-    headline: "Anthropic (Nasdaq: ANT) first trade targeted Thu Nov 19 (EST. — Barchart / FXEmpire / CappNotes; company has not named a first-trade date): 825M Class A shares at $70–78 after a Nov 10 roadshow launch (RTTNews); last private valuation $965B post-money (May 2026)", tickers: "AMZN · GOOGL · NVDA · QQQ",
-    rec: "WATCH: a ~$60B+ float competes for AI dollars; a strong debut helps holders (AMZN, GOOGL) but can drain megacap tech in the days around it — don't chase day-one pops." },
-  { id: "t9", ind: "tech", dayIdx: 6, future: true, impact: 2, dir: "MIXED",
-    headline: "Thu Nov 19: Alibaba and PDD BMO (Barchart week-ahead); Intuit (cons. EPS $2.46), Keysight ($3.37) and Elastic ($0.81) AMC (FXEmpire) [EST. timing]", tickers: "BABA · PDD · INTU · KEYS · ESTC",
-    rec: "WATCH BABA: −13.8% on the week and below its 50-day ($106.87) and 200-day ($122.79); wait for the print rather than catching the knife." },
-  { id: "t10", ind: "tech", dayIdx: 11, future: true, impact: 2, dir: "MIXED",
-    headline: "Tue Nov 24: Dell FQ3, Analog Devices and Workday listed (EST. — Digrin calendar marks time unconfirmed); Dell enters −27% in 21d after Friday's −7.18% on AI-server concentration worries (CappNotes, Yahoo chart data)", tickers: "DELL · ADI · WDAY",
-    rec: "AVOID DELL into the print: 91% IV and a broken trend (under its 50-day $493.50); revisit after results." },
-  { id: "t11", ind: "tech", dayIdx: 17, future: true, impact: 2, dir: "MIXED",
-    headline: "Mon Nov 30: AWS re:Invent opens (Nov 30 – Dec 4, Las Vegas; EST. — event listings citing AWS FAQ); Cyber Monday the same day", tickers: "AMZN · MSFT · GOOGL",
-    rec: "WATCH AMZN into re:Invent: holds above its 50-day ($254.81) — a close back above the $275 20-day high would re-open the bullish case dropped today." },
-  // ---- ENERGY ----------------------------------
-  { id: "e1", ind: "energy", dayIdx: 0, future: false, impact: 2, dir: "MIXED",
-    headline: "Fri Nov 13: WTI $88.56 (−0.20%), Brent $95.84 (+0.02%); Energy sector +0.98% (XLE $64.96, +5.4% on the week, sitting on its 50-day $64.99); natural gas −3.29% to $3.23 (CappNotes, Yahoo chart data)", tickers: "XLE · USO · XOM · CVX",
-    rec: "HOLD energy: XLE is testing its 50-day — a weekly close above ~$66 confirms; below $62 the bounce failed." },
-  { id: "e2", ind: "energy", dayIdx: 3, future: false, impact: 2, dir: "BULLISH",
-    headline: "Mon Nov 16 (TODAY) overnight: WTI futures +1.0% to $89.41 while equity futures fall (Yahoo futures data, ~1:40 am ET)", tickers: "USO · XLE · CVX",
-    rec: "WATCH: crude firming against a risk-off tape supports integrateds (CVX above its 50-day $215.48); no chase above XLE's $70 20-day high." },
-  { id: "e3", ind: "energy", dayIdx: 4, future: true, impact: 1, dir: "MIXED",
-    headline: "Tue Nov 17, 4:30 pm ET: API weekly crude inventories (FXEmpire calendar)", tickers: "USO · XLE",
-    rec: "WATCH: a second straight build after last week's +4.7M bbl EIA print would pressure WTI back toward the $84 20-day low." },
-  { id: "e4", ind: "energy", dayIdx: 5, future: true, impact: 2, dir: "MIXED",
-    headline: "Wed Nov 18, 10:30 am ET: EIA Weekly Petroleum Status Report (Barchart week-ahead; prior week crude +4.7M bbl per FXEmpire)", tickers: "USO · XLE · VLO · MPC",
-    rec: "WATCH: builds plus refinery utilization near 95% favor refiners' margins over crude producers — HOLD rather than add to upstream." },
-  { id: "e5", ind: "energy", dayIdx: 12, future: true, impact: 2, dir: "MIXED",
-    headline: "Wed Nov 25, 10:30 am ET: EIA weekly report ahead of the Thanksgiving holiday [EST. — standard Wednesday release]", tickers: "USO · XLE",
-    rec: "WATCH: holiday-week gasoline demand read; low impact unless inventories surprise by >5M bbl." },
-  { id: "e6", ind: "energy", dayIdx: 16, future: true, impact: 3, dir: "MIXED",
-    headline: "Sun Nov 29: OPEC+ ministerial meeting (full 21-country group; core-7 monthly meeting the same day) — expected to set the 2027 production framework after holding December output at September levels (OPEC Nov 1 release via search; Rystad: 'the much more important test')", tickers: "XLE · XOM · CVX · USO",
-    rec: "WATCH: a 2027 baseline increase is bearish crude; continued restraint plus Gulf export disruption is bullish — avoid new short-dated energy options that straddle the meeting." },
-  // ---- HEALTHCARE / PHARMA ---------------------
-  { id: "h1", ind: "health", dayIdx: 0, future: false, impact: 2, dir: "BULLISH",
-    headline: "Fri Nov 13: Health Care +0.54% on a down tape (XLV $188.85, +6.6% in 21d, 52-week high $192.32); Tandem Diabetes +14.62%, Steris +4.29% (Jefferies upgrade to Buy); UnitedHealth +0.58% to $407.46; Heartflow −19.13% despite a Q3 beat (CappNotes, Yahoo chart data)", tickers: "XLV · UNH · TNDM · STE · HTFL",
-    rec: "BUY defensive health care on dips: sector leadership in a risk-off tape; see the UNH play for a defined-risk way in." },
-  { id: "h2", ind: "health", dayIdx: 1, future: false, impact: 2, dir: "MIXED",
-    headline: "Sat Nov 14 PDUFA goal dates: Summit ivonescimab (EGFR-mutant NSCLC; OS not statistically significant — BioSpace / Fierce), Cytokinetics aficamten label expansion and Teva Igalmi at-home use (BiopharmaWatch) — no FDA outcome found in any source retrieved as of Mon ~2 am ET", tickers: "SMMT · CYTK · TEVA",
-    rec: "WATCH SMMT at the open: a delayed / no-news outcome is itself a negative; avoid options until the FDA letter is public." },
-  { id: "h3", ind: "health", dayIdx: 9, future: true, impact: 2, dir: "MIXED",
-    headline: "Sun Nov 22 PDUFA dates: Capricor deramiocel in Duchenne (resubmission; date extended to Nov 22) and Savara molgramostim in autoimmune PAP (BiopharmaWatch, PharmaNow) — weekend dates, so action may land Fri Nov 20 or Mon Nov 23", tickers: "CAPR · SVRA",
-    rec: "AVOID binary small caps unless sized as a lottery ticket; defined-risk only." },
-  { id: "h4", ind: "health", dayIdx: 11, future: true, impact: 2, dir: "MIXED",
-    headline: "Tue Nov 24: Medtronic FQ2 FY27 (TheStreet week calendar; EST. timing)", tickers: "MDT · XLV",
-    rec: "HOLD MDT into the print; a medtech beat would support the health-care rotation (XLV, UNH)." },
-  { id: "h5", ind: "health", dayIdx: 12, future: true, impact: 1, dir: "MIXED",
-    headline: "Wed Nov 25 PDUFA: Sanofi venglustat in type 3 Gaucher disease (BiopharmaWatch)", tickers: "SNY",
-    rec: "HOLD: small revenue line for Sanofi; low stock impact." },
-  { id: "h6", ind: "health", dayIdx: 14, future: true, impact: 2, dir: "MIXED",
-    headline: "Fri Nov 27 PDUFA dates: BridgeBio BBP-418 (LGMD2I/R9) and GSK neladalkib (ALK+ NSCLC); PolyPid D-PLEX100 Sat Nov 28 (BiopharmaWatch)", tickers: "BBIO · GSK · PYPD",
-    rec: "WATCH BBIO: approval is largely expected; the risk is the label — avoid long premium into a holiday half-session." },
-  { id: "h7", ind: "health", dayIdx: 17, future: true, impact: 2, dir: "MIXED",
-    headline: "Mon Nov 30 PDUFA: Vertex povetacicept in IgA nephropathy (BiopharmaWatch); Cogent bezuclastinib is listed Nov 30 by some trackers but the company says Dec 30", tickers: "VRTX · COGT",
-    rec: "HOLD VRTX: approval would add a new kidney franchise; options are fairly priced — no edge into the date." },
-  // ---- FINANCIALS / MACRO ----------------------
-  { id: "f1", ind: "finance", dayIdx: 0, future: false, impact: 3, dir: "MIXED",
-    headline: "Fri Nov 13, October PPI: +0.3% m/m vs +0.4% expected, but +6.5% y/y; core +0.3% m/m. December hike: Kalshi 91.5%, Polymarket 90.5%, CME FedWatch fully priced (CappNotes)", tickers: "SPY · TLT · GLD",
-    rec: "WATCH: hot y/y inflation keeps the Fed hiking — favor short-duration and avoid long bonds (TLT under its 50- and 200-day)." },
-  { id: "f2", ind: "finance", dayIdx: 0, future: false, impact: 3, dir: "BEARISH",
-    headline: "Fri Nov 13 close: S&P 500 7,561.67 (−0.40%; +2.51% on the week but under its 50-day 7,667), Nasdaq Comp 25,136.27 (−0.91%), Dow 52,347.55 (+0.10%), Russell 2000 2,790.49 (−0.31%); VIX 19.30 (+3.2%) vs VIX3M 20.62; S&P breadth 314 up / 185 down; equal-weight +0.20% (CappNotes, Yahoo chart data)", tickers: "SPY · QQQ · IWM · DIA",
-    rec: "HEDGE, don't panic: the damage is concentrated in tech — keep a QQQ put spread against long exposure; the equal-weight index is holding up." },
-  { id: "f3", ind: "finance", dayIdx: 0, future: false, impact: 3, dir: "BEARISH",
-    headline: "Fri Nov 13 rates & dollar: 2-yr 4.88%, 10-yr 5.15% (≈+30 bp on the week), 30-yr 5.47%, 2s10s ~+27 bp (wider); dollar index 103.43 (+0.25%); high-yield spreads 320 bp (CappNotes)", tickers: "TLT · UUP · XLF · KRE",
-    rec: "WATCH: a steeper curve helps bank margins (XLF +6.2% in 21d) but 5%+ long yields squeeze equity multiples — favor financials over long-duration growth." },
-  { id: "f4", ind: "finance", dayIdx: 0, future: false, impact: 2, dir: "BEARISH",
-    headline: "Fri Nov 13: gold futures $3,886.30, GLD $355.45 after a $352.91 low, below its 50-day ($380.91) and 200-day ($408.42), RSI 38; silver −1.89%, copper −1.70% (CappNotes, Yahoo chart data)", tickers: "GLD · GDX · SLV",
-    rec: "SELL rallies in gold while real yields rise; see the GLD bear put spread (invalid above $370)." },
-  { id: "f5", ind: "finance", dayIdx: 0, future: false, impact: 2, dir: "BEARISH",
-    headline: "Fri Nov 13: Strategy −2.44% (MSCI removes it from its USA / World / ACWI indexes effective the Nov 30 close — The Block); Bitcoin −4.35% to ~$68,237 (CappNotes)", tickers: "MSTR · IBIT · COIN",
-    rec: "AVOID MSTR into forced index selling through Nov 30; a bear put spread fits only if it fails to hold $108 (20-day low)." },
-  { id: "f6", ind: "finance", dayIdx: 2, future: false, impact: 2, dir: "BEARISH",
-    headline: "Sun Nov 15: Bitcoin ~$64,500 (Thrive in Markets, Sunday evening; Yahoo ~$64,567 Mon ~1:50 am ET) — −5.5% from Friday's 4 pm level and under its 50-day (~$79.7K) and 200-day (~$72.9K), RSI ~22; IBIT ($38.94 Fri) implies ~$36.8 at the open (ESTIMATE)", tickers: "IBIT · COIN · MSTR",
-    rec: "WATCH, don't press: the move is extended (RSI ~22) after the gap — the IBIT bear play from Nov 15 is closed here; re-short only a failed bounce toward $40." },
-  { id: "f7", ind: "finance", dayIdx: 3, future: false, impact: 3, dir: "MIXED",
-    headline: "Mon Nov 16 (TODAY): Fed Chair Kevin Warsh opening remarks, SF Fed Productivity and Jobs conference, 12:00 pm ET; Barr on AI and financial stability 5:00 am (federalreserve.gov); Williams 9:05 am, Empire State survey 8:30 am (forecast 17.6–19.4 vs 25.5 prior), 3- and 6-month bill auctions 11:30 am (FXEmpire, CappNotes); overnight gold −1.1% to $3,842.70, DXY 103.46 (Yahoo)", tickers: "TLT · SPY · GLD · UUP",
-    rec: "WATCH Warsh at noon: any push-back on December hike pricing (~91%) would squeeze the dollar and gold shorts — GLD bear trades are invalid above $370." },
+    headline: "Fri Nov 13: Cisco −6.24% to $95.64 despite FQ1 EPS $1.21 vs $1.15 consensus; Applied Materials −2.74% despite $4.16 vs $4.06. Cerebras +11.2% to $108.72 on core revenue $230.9M vs $214.7M and a Q4 guide of $310–330M vs $271M, plus a Microsoft deal [Nasdaq earnings calendar; MarketSpeaker; Yahoo]", tickers: "CSCO · AMAT · CBRS",
+    rec: "WATCH: beats are being sold in hardware. Treat a gap-up on good news as a chance to trim, not to chase." },
+  { id: "t3", ind: "tech", dayIdx: 3, future: false, impact: 3, dir: "BEARISH",
+    headline: "Mon Nov 16 (TODAY): semis rout. SOX −5.3%, Nasdaq-100 −2.7%; Sandisk −8.6%, Micron −7.6% to $719.02, Marvell −7.3%, Intel −7.0%, AMD −5.6%, Broadcom −3.9%. Drivers: unwinding of NVIDIA-rival bets before earnings, Treasury Secretary Bessent's push for tighter chip-export enforcement, and new Commerce curbs on remote access to advanced AI chips [TheStreet; Investing.com; Yahoo]", tickers: "SMH · MU · AMD · INTC",
+    rec: "SELL strength / WATCH: SMH closed $461.90, 17% under its 50-day. A bear put spread fits if it loses the $447.73 20-day low; stand aside if NVIDIA's guide reverses the tape." },
+  { id: "t4", ind: "tech", dayIdx: 3, future: false, impact: 3, dir: "BEARISH",
+    headline: "Mon Nov 16 (TODAY): NVIDIA −4.1% to $156.14 on 330M shares after a CNBC report that the board is not considering Huang's return; Bessent called for an outsider CEO. It is down more than $2T from its October peak, RSI(14) 23 [TheStreet; MarketSpeaker; Cboe]", tickers: "NVDA",
+    rec: "HOLD (no new size): deeply oversold into a binary. Use defined-risk structures only; options price about ±9.7% through Friday." },
+  { id: "t5", ind: "tech", dayIdx: 3, future: false, impact: 2, dir: "BEARISH",
+    headline: "Mon Nov 16 (TODAY): megacaps sold. Alphabet −4.1% to $283.72 (−16.7% in 21 sessions, below its 50- and 200-day), Amazon −3.3% to $257.75, Tesla −2.7%, Meta −2.4%; Apple and Microsoft about −1% [TheStreet; Yahoo]", tickers: "GOOGL · AMZN · META",
+    rec: "WATCH: Apple ($352.78, above its 50-day) is the relative-strength holdout; Alphabet's trend is broken until it reclaims ~$327 (50-day)." },
+  { id: "t6", ind: "tech", dayIdx: 3, future: false, impact: 1, dir: "BEARISH",
+    headline: "Mon Nov 16 (TODAY): Baidu −5.4% to $73.94 after its Q3 report before the open (consensus EPS $0.57; result detail not retrieved) [Nasdaq earnings calendar; Yahoo]", tickers: "BIDU",
+    rec: "AVOID: China internet sold off with US chips; wait for Alibaba and PDD on Thursday before taking a view." },
+  { id: "t7", ind: "tech", dayIdx: 4, future: true, impact: 3, dir: "MIXED",
+    headline: "NVIDIA Q3 FY27 — Tue Nov 17 AMC (CONFIRMED: release ~1:20 pm PT, call 2:00 pm PT): consensus EPS $2.49 (14 estimates; 1 raised, 0 cut in 4 weeks); the Nov 20 straddle prices ±9.7% vs an average ±4.8% move over the last 4 prints. First report under interim CEO Kress [MarketSpeaker; Nasdaq; Cboe]", tickers: "NVDA · SMH · QQQ",
+    rec: "WATCH (both ways): a clean beat-and-raise with stable leadership commentary can squeeze a deeply oversold group; a soft guide or governance surprise breaks $150. Only defined-risk spreads; the options already price a large move." },
+  { id: "t8", ind: "tech", dayIdx: 4, future: true, impact: 2, dir: "MIXED",
+    headline: "Microsoft Ignite — Tue Nov 17 to Fri Nov 20, San Francisco (keynote Tue; Copilot and AI-agent announcements expected) [ITDaily / ecorpit event listings]", tickers: "MSFT",
+    rec: "HOLD: MSFT at $517.99 sits on its 50-day ($519); product news rarely moves it more than the NVIDIA print will this week." },
+  { id: "t9", ind: "tech", dayIdx: 5, future: true, impact: 2, dir: "MIXED",
+    headline: "Wed Nov 18 AMC: Palo Alto Networks FQ1 (consensus EPS $0.52, no revisions in 4 weeks). The stock fell after each of its last 4 reports (−9.3%, −5.6%, −6.8%, −7.4%); the Nov 20 straddle prices ±11.6% [Nasdaq; Yahoo; Cboe]", tickers: "PANW",
+    rec: "WATCH: four straight post-earnings drops show a high bar, but 4 prints are too few to call it. Only a defined-risk spread; avoid selling strikes inside ±12%." },
+  { id: "t10", ind: "tech", dayIdx: 6, future: true, impact: 3, dir: "MIXED",
+    headline: "Anthropic IPO: pricing expected Wed Nov 18, first trade on Nasdaq (ANT) expected Thu Nov 19, subject to regulatory clearance: 825M Class A shares at $70–78, up to ~$64.4B raised plus a $26B private placement; Altimeter reportedly seeks a $5B allocation [TheNextWeb; letsdatascience; FourWeekMBA; MarketSpeaker]", tickers: "QQQ · AMZN · GOOGL",
+    rec: "WATCH: the largest equity supply event of the year lands on an already weak AI complex. Avoid adding AI longs into Thursday; a strong debut would ease the supply worry." },
+  { id: "t11", ind: "tech", dayIdx: 6, future: true, impact: 2, dir: "MIXED",
+    headline: "Thu Nov 19: Alibaba (consensus EPS $1.56) and PDD ($2.61) before the open; Intuit ($2.47) and Keysight ($3.09) after the close [Nasdaq earnings calendar]", tickers: "BABA · PDD · INTU",
+    rec: "WATCH: BABA's Nov 20 straddle prices ±7.7%; wait for the print rather than pre-positioning." },
+  { id: "t12", ind: "tech", dayIdx: 11, future: true, impact: 2, dir: "MIXED",
+    headline: "Tue Nov 24: Dell FQ3 AMC (consensus EPS $6.41) after a −29% month; Analog Devices BMO ($3.89); Workday ($1.28), Autodesk ($2.27) and HP ($0.75) AMC [Nasdaq earnings calendar]. DELL's Nov 27 straddle prices ±17% (IV 124%) [Cboe]", tickers: "DELL · ADI · WDAY",
+    rec: "WATCH: Dell's options price an extreme move; only small defined-risk spreads. ADI is a clean read on industrial chips." },
+  { id: "t13", ind: "tech", dayIdx: 17, future: true, impact: 2, dir: "MIXED",
+    headline: "AWS re:Invent opens Mon Nov 30 (to Dec 4, Las Vegas): AI-infrastructure and agent announcements [ecorpit; CX Today event listings]", tickers: "AMZN",
+    rec: "WATCH: AMZN ($257.75) is just above its 50-day ($254.80); re:Invent is a sentiment catalyst, not an earnings one." },
+  // ---- ENERGY ------------------------------------------------------
+  { id: "e1", ind: "energy", dayIdx: 0, future: false, impact: 2, dir: "BULLISH",
+    headline: "Fri Nov 13: energy held up as tech sold. Exxon +0.48% to $170.59, Chevron +1.64% to $219.89, XLE +0.98% to $64.96; WTI $88.56 (−0.20%), Brent $95.84 [Yahoo]", tickers: "XLE · XOM · CVX",
+    rec: "HOLD: energy was a hiding place on Friday, but it depends on crude holding $85." },
+  { id: "e2", ind: "energy", dayIdx: 3, future: false, impact: 3, dir: "BEARISH",
+    headline: "Mon Nov 16 (TODAY): crude breaks lower. WTI −3.1% to $85.74, lowest close since late August (TheStreet; Yahoo front-month $85.06), Brent −4.2% to $91.84; XLE −1.96% to $63.69 (below its 50-day $64.98), Exxon −2.2%; copper fell below $6 and Freeport −6.8% [TheStreet; Yahoo]", tickers: "XLE · XOM · FCX",
+    rec: "WATCH: bearish below XLE ~$61.60 (20-day low). A bear put spread fits if it breaks, with OPEC+ on Nov 29 as the next catalyst." },
+  { id: "e3", ind: "energy", dayIdx: 5, future: true, impact: 2, dir: "MIXED",
+    headline: "Wed Nov 18, 10:30 am ET: EIA weekly petroleum status report (prior week crude +4.66M bbl) [Nasdaq economic calendar]", tickers: "USO · XLE",
+    rec: "WATCH: a second large build would confirm the oversupply story behind crude's −16% month." },
+  { id: "e4", ind: "energy", dayIdx: 7, future: true, impact: 1, dir: "MIXED",
+    headline: "Fri Nov 20, 1:00 pm ET: Baker Hughes rig count (prior oil rigs 463) [Nasdaq economic calendar]", tickers: "XLE",
+    rec: "LOW signal: watch only for a sharp change in the oil rig count." },
+  { id: "e5", ind: "energy", dayIdx: 16, future: true, impact: 3, dir: "MIXED",
+    headline: "Sun Nov 29: OPEC+ full ministerial meeting is expected to set the 2027 production framework and baselines after the core-7 kept December targets steady on Nov 1. The IEA and other forecasters warn of 2027 excess supply if Gulf flows normalise [GV Wire / Reuters via EngineeringNews; New Arab]", tickers: "XLE · XOM · CVX",
+    rec: "WATCH (both ways): higher 2027 baselines would extend crude's slide (XLE puts); a disciplined framework could squeeze shorts. Keep any position defined-risk through the weekend gap." },
+  // ---- HEALTHCARE / BIOTECH ----------------------------------------
+  { id: "h1", ind: "health", dayIdx: 1, future: false, impact: 2, dir: "BEARISH",
+    headline: "Sat Nov 14 PDUFA dates: Summit ivonescimab in EGFR-mutant NSCLC (overall survival missed statistical significance; FDA had said significant OS is needed), Cytokinetics aficamten label expansion, Teva Igalmi at-home use [BiopharmaWatch; Fierce Pharma; BioSpace]. No decision found in retrieved sources; SMMT −16.5% to $11.82 Monday, CYTK −5.3% [Yahoo]", tickers: "SMMT · CYTK · TEVA",
+    rec: "AVOID SMMT until the FDA outcome is public; the tape is pricing a negative or delayed decision." },
+  { id: "h2", ind: "health", dayIdx: 3, future: false, impact: 2, dir: "BULLISH",
+    headline: "Mon Nov 16 (TODAY): managed care rallies on a down tape. Centene +4.9%, Elevance +3.9%, Humana +2.5%, UnitedHealth +1.1% to $412.02; XLV −0.5% but +6.3% over the month and above its 50-day [TheStreet; Yahoo]", tickers: "UNH · CNC · ELV",
+    rec: "BUY on dips / defined risk: insurers show relative strength in a risk-off tape. Invalid below UNH's 50-day (~$392)." },
+  { id: "h3", ind: "health", dayIdx: 3, future: false, impact: 2, dir: "BEARISH",
+    headline: "Mon Nov 16 (TODAY): biotech slides. XBI −3.1% to $145.88 (−7.0% in 5 sessions, below its 50-day $153.91); Capricor −12.9% to $8.30 ahead of its Nov 22 PDUFA [Yahoo]", tickers: "XBI · CAPR",
+    rec: "WATCH: XBI lost its 50-day. Avoid binary-event longs while risk appetite is falling." },
+  { id: "h4", ind: "health", dayIdx: 9, future: true, impact: 2, dir: "MIXED",
+    headline: "Sun Nov 22 PDUFA dates: Capricor deramiocel in Duchenne (resubmission) and Savara molgramostim in autoimmune PAP (FDA can act the prior business day) [BiopharmaWatch; search-cited FDA timeline]", tickers: "CAPR · SVRA",
+    rec: "AVOID binary sizing: single-outcome events. Only tiny, defined-risk positions if any." },
+  { id: "h5", ind: "health", dayIdx: 11, future: true, impact: 2, dir: "MIXED",
+    headline: "Tue Nov 24 BMO: Medtronic FQ2 FY27 (consensus EPS $1.34, no revisions in 4 weeks); the Nov 27 straddle prices ±4.7% [Nasdaq; Cboe]", tickers: "MDT",
+    rec: "HOLD: MDT ($102.88) is +8.6% in a month and above both averages, so the bar is higher; no edge before the print." },
+  { id: "h7", ind: "health", dayIdx: 14, future: true, impact: 2, dir: "MIXED",
+    headline: "Fri Nov 27 PDUFA dates: BridgeBio BBP-418 (LGMD2I/R9) and GSK / Nuvalent neladalkib (ALK+ NSCLC) [BiopharmaWatch]", tickers: "BBIO · GSK",
+    rec: "WATCH: BBIO ($77.36) is the cleaner binary; defined-risk only over a holiday-thinned session." },
+  { id: "h8", ind: "health", dayIdx: 17, future: true, impact: 2, dir: "MIXED",
+    headline: "Mon Nov 30 PDUFA: Vertex povetacicept in IgA nephropathy; Cogent bezuclastinib is listed for Nov 30 by some trackers, but the company says Dec 30 [BiopharmaWatch; search-cited company date]", tickers: "VRTX · COGT",
+    rec: "HOLD VRTX: a label for a mega-cap is incremental. Do not trade COGT on the Nov 30 date." },
+  // ---- FINANCIALS / MACRO / RATES / CRYPTO -------------------------
+  { id: "f1", ind: "finance", dayIdx: 0, future: false, impact: 3, dir: "BEARISH",
+    headline: "Fri Nov 13: October PPI +0.3% m/m (vs +0.4% forecast) but +6.5% y/y, highest since Nov 2022; core +0.3% m/m, 5.0% y/y. BofA now sees hikes in Dec, Jan and Mar to a 4.5–4.75% peak; SF Fed's Daly: 'further tightening will be needed'. S&P 500 −0.40% to 7,561.67, Nasdaq-100 −1.22% [MarketSpeaker / BLS; TheStreet; Yahoo]", tickers: "SPY · QQQ · TLT",
+    rec: "HOLD hedges: a softer monthly print did not change the hiking path. Rate-sensitive growth stays vulnerable." },
+  { id: "f2", ind: "finance", dayIdx: 0, future: false, impact: 2, dir: "BEARISH",
+    headline: "Fri Nov 13: 10-yr yield 5.15% (+1.0% on the day), dollar index 103.41, gold flat at $3,886 after Thursday's −2.9%; NAAIM equity exposure fell to 72.9 from 78.6 [Yahoo; TheStreet]", tickers: "TLT · GLD",
+    rec: "WATCH: real-rate and dollar pressure keeps weighing on gold and long bonds." },
+  { id: "f3", ind: "finance", dayIdx: 1, future: false, impact: 2, dir: "BEARISH",
+    headline: "Sat Nov 14: Bitcoin slid toward $62,000 late Saturday; long liquidations about $700M Thursday, $629M Friday and $165M+ Saturday; US spot Bitcoin ETFs logged 7 straight outflow sessions (~$1.91B since Nov 5) and Bitcoin broke its ~$73k 200-day [MarketSpeaker / CoinGlass]", tickers: "IBIT · MSTR · COIN",
+    rec: "SELL rallies: bearish below $62k (Nansen's key test); a close back above $73k would end the selling, per Nansen." },
+  { id: "f4", ind: "finance", dayIdx: 3, future: false, impact: 3, dir: "BEARISH",
+    headline: "Mon Nov 16 (TODAY): S&P 500 −1.92% to 7,416.59 (worst day since Nov 5), Nasdaq-100 −2.67%, Russell 2000 −1.70%, Dow −1.41%; equal-weight S&P −1.0%; breadth 145 up / 356 down; VIX +19–21% to ~23 (VIX3M 23.0, flat term structure) [TheStreet; Yahoo]", tickers: "SPY · QQQ · IWM",
+    rec: "HEDGE: QQQ is 7.7% below its 50-day and 3% below its 200-day. Index bear put spreads fit; the next support is QQQ's $647 20-day low." },
+  { id: "f5", ind: "finance", dayIdx: 3, future: false, impact: 3, dir: "MIXED",
+    headline: "Mon Nov 16 (TODAY): Fed Chair Warsh's first remarks since the October meeting (staff modelling AI scenarios including worker displacement). A December hike is fully priced (50 bp odds 4% vs 8%); 26 bp by December, 83 bp through Nov 2027. 2-yr 4.83% (−2 bp), 10-yr 5.13% (2s10s ≈ +30 bp); dollar at its highest close since April 2025; Empire State 7.8 vs 17.6 expected [TheStreet; Nasdaq economic calendar]", tickers: "TLT · DXY · SPY",
+    rec: "WATCH: no new hawkish shock, but the hiking path plus a strong dollar caps multiples. TLT ($79.38) is flat; no edge." },
+  { id: "f6", ind: "finance", dayIdx: 3, future: false, impact: 3, dir: "BEARISH",
+    headline: "Mon Nov 16 (TODAY): crypto and metals slide. Bitcoin futures −5.6% to 65,070 (lowest close since Aug 18); IBIT −5.5% to $36.79 (RSI 24), Strategy −7.7%, Coinbase −6.1%, Robinhood −7.5%; gold's lowest close since Sep 2025 (GLD −0.7% to $352.93, −7.0% in 5 sessions); silver ~$47.50 [TheStreet; Yahoo]", tickers: "IBIT · GLD · MSTR",
+    rec: "SELL rallies in GLD and IBIT: both are below their 50- and 200-day. Use bear put spreads, not naked puts, given oversold RSIs." },
+  { id: "f7", ind: "finance", dayIdx: 3, future: false, impact: 1, dir: "BEARISH",
+    headline: "Mon Nov 16 (TODAY): JPMorgan −2.3% to $338.21 after reports that customers could not access accounts because of a tech problem; outage reports also at BofA and Wells Fargo [TheStreet; MarketSpeaker]", tickers: "JPM · BAC · WFC",
+    rec: "HOLD: an operational headline, not a credit one. JPM sits just under its 50-day ($340)." },
   { id: "f8", ind: "finance", dayIdx: 4, future: true, impact: 3, dir: "MIXED",
-    headline: "OCTOBER RETAIL SALES — Tue Nov 17, 8:30 am ET (forecast +0.2% headline / +0.4% control vs +0.8% / +0.9% prior, FXEmpire); import prices 8:30; industrial production 9:15 (federalreserve.gov G.17); Waller 9:10 am (federalreserve.gov); Musalem, Hammack, Williams later (FXEmpire)", tickers: "XLY · XRT · SPY · TLT",
-    rec: "WATCH: a weak control group plus 5%+ yields would hit discretionary names (Stifel already cut Lowe's to Sell) — trim XLY strength into the print." },
+    headline: "Tue Nov 17: October retail sales 8:30 am ET (CONFIRMED, census.gov; September was +0.8%) and industrial production 9:15 am (CONFIRMED, federalreserve.gov); Waller on payments 9:10 am [Census; Fed; Thrive in Markets]", tickers: "XRT · SPY",
+    rec: "WATCH (both ways): a hot print adds to hike odds (bad for long bonds and growth); a weak control group hits retailers before HD, TGT and WMT report." },
   { id: "f9", ind: "finance", dayIdx: 5, future: true, impact: 3, dir: "MIXED",
-    headline: "FOMC MINUTES (Oct 27–28) — Wed Nov 18, 2:00 pm ET (federalreserve.gov); housing starts / permits 8:30 (forecast 1.25M / 1.38M), Barr 1:35 pm (federalreserve.gov); Kashkari, Williams later (FXEmpire)", tickers: "SPY · TLT · KRE · IWM",
-    rec: "WATCH: minutes showing several officials open to 50 bp would push the 10-yr above 5.2% — keep duration short." },
-  { id: "f10", ind: "finance", dayIdx: 6, future: true, impact: 2, dir: "MIXED",
-    headline: "Thu Nov 19: jobless claims and Philly Fed 8:30 am (forecast 199K / 19.2), leading index 10:00 (FXEmpire); Fed's Jefferson 9:25 am and Barr 2:15 pm (federalreserve.gov); Hammack, Goolsbee, Barkin (FXEmpire)", tickers: "TLT · SPY · IWM",
-    rec: "WATCH: claims are the cleanest read on whether 5% yields are biting — a jump above ~230K would flip rate-hike pricing." },
-  { id: "f11", ind: "finance", dayIdx: 7, future: true, impact: 2, dir: "MIXED",
-    headline: "Fri Nov 20: monthly options expiration (Thrive in Markets); UMich final November sentiment 10:00 am (forecast 52.1, prelim 51.0); Waller 8:25 am and Cook 12:15 pm (federalreserve.gov)", tickers: "SPY · QQQ · NVDA",
-    rec: "WATCH: post-NVIDIA dealer gamma unwinds at expiry can exaggerate Friday moves — avoid opening short-dated trades into the close." },
-  { id: "f12", ind: "finance", dayIdx: 12, future: true, impact: 3, dir: "MIXED",
-    headline: "Wed Nov 25, 8:30 am ET: Q3 GDP (second estimate) + corporate profits and October personal income / PCE (bea.gov); Beige Book 2:00 pm (federalreserve.gov); pending holiday-shortened trading", tickers: "SPY · TLT · GLD",
-    rec: "WATCH: PCE is the Fed's preferred gauge — a hot core print cements a December hike; a soft one is the main risk to the GLD / QQQ bear trades." },
-  { id: "f13", ind: "finance", dayIdx: 13, future: true, impact: 1, dir: "MIXED",
-    headline: "Thu Nov 26: Thanksgiving — US markets closed; Fed daily and weekly releases move to Fri Nov 27 (federalreserve.gov); Fri Nov 27 equity early close 1:00 pm ET [EST. — standard NYSE holiday schedule, not re-fetched]", tickers: "SPY · QQQ · IWM",
-    rec: "HOLD: thin holiday liquidity — avoid opening new options positions on the half-day." },
-  { id: "f14", ind: "finance", dayIdx: 17, future: true, impact: 2, dir: "BEARISH",
-    headline: "Mon Nov 30 close: MSCI November index review takes effect — Strategy removed from MSCI USA / World / ACWI, Metaplanet from Japan Small Cap (The Block, Bitcoin Magazine)", tickers: "MSTR · IBIT · EEM",
-    rec: "SELL / AVOID MSTR into passive selling at the Nov 30 close; any post-deletion bounce is a better entry than now." },
-  // ---- CONSUMER / RETAIL -----------------------
+    headline: "Wed Nov 18: FOMC minutes (Oct 27–28 meeting) 2:00 pm ET (CONFIRMED, federalreserve.gov); housing starts / permits 8:30 (consensus 1.25M / 1.38M); 20-yr bond auction 1:00 pm; Barr 1:35 pm [Fed; Nasdaq economic calendar]", tickers: "TLT · SPY",
+    rec: "WATCH: the minutes show how many members already favored hiking. Hawkish detail pressures TLT and QQQ into Anthropic's debut." },
+  { id: "f10", ind: "finance", dayIdx: 7, future: true, impact: 2, dir: "MIXED",
+    headline: "Fri Nov 20: monthly options expiration (Nov 20 monthlies per Cboe chain); UMich final November sentiment 10:00 am (consensus 51.0; 1-yr inflation expectations 4.3%); Waller 8:25 am, Cook 12:15 pm [Cboe; Nasdaq economic calendar; federalreserve.gov]", tickers: "SPY · QQQ",
+    rec: "WATCH: expect pinning and elevated volume after a week of NVIDIA and IPO flows; avoid opening size into the close." },
+  { id: "f11", ind: "finance", dayIdx: 12, future: true, impact: 3, dir: "MIXED",
+    headline: "Wed Nov 25, 8:30 am ET: Q3 GDP (second estimate) + corporate profits and October personal income / PCE (CONFIRMED, bea.gov); Beige Book 2:00 pm (federalreserve.gov)", tickers: "TLT · SPY · GLD",
+    rec: "WATCH (both ways): core PCE is the Fed's gauge before Dec 8–9. A hot print → TLT and GLD down; a soft one gives bonds and gold a relief rally." },
+  { id: "f12", ind: "finance", dayIdx: 13, future: true, impact: 1, dir: "MIXED",
+    headline: "Thu Nov 26: Thanksgiving — US markets closed; Fed daily and weekly releases move to Fri Nov 27 [federalreserve.gov]", tickers: "SPY",
+    rec: "NOTE: holiday-thin liquidity around the break; avoid opening new short-dated positions Wednesday afternoon." },
+  { id: "f13", ind: "finance", dayIdx: 17, future: true, impact: 2, dir: "MIXED",
+    headline: "Mon Nov 30 close: MSCI removes Strategy from its USA / World / ACWI indexes ('non-operating company' rule); passive funds hold ~$3B of MSTR, >3% of shares [The Block; Bitcoin Magazine]", tickers: "MSTR · IBIT",
+    rec: "WATCH: forced index selling at the Nov 30 close is known and partly priced (MSTR −7.7% today). Avoid catching the knife before then." },
+  // ---- CONSUMER / RETAIL -------------------------------------------
   { id: "c1", ind: "consumer", dayIdx: 0, future: false, impact: 2, dir: "BULLISH",
-    headline: "Fri Nov 13: Consumer Staples led (+1.42%) — Walmart +1.51% to $128.09 (RSI 68), Costco +1.28% to $1,106.21 (RSI 76); Domino's +2.55% on a Baird upgrade to Outperform (CappNotes, Yahoo chart data)", tickers: "XLP · WMT · COST · DPZ",
-    rec: "BUY staples on dips rather than at RSI 70+; see the WMT earnings play for a defined-risk structure." },
-  { id: "c2", ind: "consumer", dayIdx: 0, future: false, impact: 2, dir: "BEARISH",
-    headline: "Fri Nov 13: Consumer Discretionary −0.40% (XLY $119.98); Flowers Foods −7.99% on a Q3 miss and guidance cut; United −1.74% and American −1.05% after an FAA nationwide ground stop (CappNotes)", tickers: "XLY · FLO · UAL · AAL",
-    rec: "WATCH: discretionary is lagging staples into retail sales — favor quality staples over cyclical retail." },
-  { id: "c3", ind: "consumer", dayIdx: 3, future: false, impact: 1, dir: "MIXED",
-    headline: "Mon Nov 16 (TODAY) BMO: Tyson Foods (cons. EPS $0.59) and Aramark ($0.75) (FXEmpire)", tickers: "TSN · ARMK",
-    rec: "HOLD: protein-margin read only; low market impact." },
+    headline: "Fri Nov 13: staples led. XLP +1.42% to $92.35, PepsiCo +2.24%, Coca-Cola +1.86%, Walmart +1.51% to $128.09, Costco +1.28% to $1,106.21; XLY −0.40% [Yahoo]", tickers: "XLP · WMT · KO",
+    rec: "HOLD staples: defensive rotation is intact. Costco's RSI is ~77, so don't chase it." },
+  { id: "c2", ind: "consumer", dayIdx: 3, future: false, impact: 2, dir: "BULLISH",
+    headline: "Mon Nov 16 (TODAY): Tyson Foods +8.7% to $63.95 (S&P 500's top gainer) after FQ4 results before the open, on an improving beef outlook despite cautious FY27 guidance; Coca-Cola hit a record; Tractor Supply +4.1%; staples (+0.3%) and utilities (+0.1%) were the only sectors up [TheStreet; Yahoo]", tickers: "TSN · KO · XLP",
+    rec: "HOLD: staples remain the market's shelter; TSN's gap is news-driven, so wait for a pullback." },
+  { id: "c3", ind: "consumer", dayIdx: 3, future: false, impact: 2, dir: "BEARISH",
+    headline: "Mon Nov 16 (TODAY): Consumer Discretionary −2.1% (XLY $118.15); TJX −2.4% to $131.09 into Wednesday's print (−11% in 21 sessions, below its 50- and 200-day), Ross −3.75%, Take-Two −6.3% to $213.47 three days before GTA VI [TheStreet; Yahoo]", tickers: "XLY · TJX · TTWO",
+    rec: "WATCH: off-price retail is weak into earnings. TJX options are too thin (~18k contracts) for a play." },
   { id: "c4", ind: "consumer", dayIdx: 4, future: true, impact: 3, dir: "MIXED",
-    headline: "Tue Nov 17 BMO: Home Depot Q3 (cons. EPS $3.84–3.86, revenue $42.7–42.8B; FY comps guide flat to +2%; BofA sees comps +1.3%) and Disney FQ4 (cons. EPS $1.69) (FXEmpire, Benzinga) [EST. timing], alongside October retail sales", tickers: "HD · DIS · XLY",
-    rec: "WATCH HD: +13% in 21d into a soft-housing print — the bar is high; a put credit spread is safer than chasing calls." },
-  { id: "c5", ind: "consumer", dayIdx: 5, future: true, impact: 3, dir: "MIXED",
-    headline: "Wed Nov 18 BMO: Target (cons. EPS $2.07), Lowe's ($2.89; Stifel cut to Sell, PT $190) and TJX ($1.34) (FXEmpire, Barchart week-ahead) [EST. timing]", tickers: "TGT · LOW · TJX",
-    rec: "WATCH: TGT trades at 47% IV — let the print pass; LOW at $227.73 vs a Sell target of $190 is the most vulnerable to a guide cut." },
-  { id: "c6", ind: "consumer", dayIdx: 6, future: true, impact: 3, dir: "MIXED",
-    headline: "Thu Nov 19 BMO: Walmart Q3 FY27 — cons. EPS $0.63–0.64 on revenue ~$187.2B vs a $0.62–0.64 guide (FXEmpire, Hudson Labs; date per calendars, EST.); Nov 20 options price ±6.2% vs a ~±4.5% historical average day-0 move (Cboe chain / Barchart); Ross Stores ($1.86) and Gap ($0.78) AMC", tickers: "WMT · ROST · GAP · XLP",
-    rec: "BUY WMT with defined risk: a guide raise into the holidays is the base case, but options are rich — sell put spreads below the implied move rather than buying calls; see the WMT play." },
-  { id: "c7", ind: "consumer", dayIdx: 6, future: true, impact: 2, dir: "BULLISH",
-    headline: "Thu Nov 19: Grand Theft Auto VI launch on PS5 and Xbox Series X|S (Take-Two has repeatedly reaffirmed Nov 19 — Gematsu, HotHardware; no delay found)", tickers: "TTWO · SONY · MSFT",
-    rec: "HOLD TTWO (+8.8% in 21d): launch is priced; trim into a sell-the-news reaction above $237 (20-day high)." },
-  { id: "c8", ind: "consumer", dayIdx: 11, future: true, impact: 2, dir: "MIXED",
-    headline: "Tue Nov 24: Best Buy BMO (EST. — TheStreet week calendar)", tickers: "BBY · XRT",
-    rec: "WATCH: holiday-electronics read-through; avoid short premium into the print." },
-  { id: "c9", ind: "consumer", dayIdx: 12, future: true, impact: 2, dir: "MIXED",
-    headline: "Wed Nov 25: Deere FQ4 (EST. — TheStreet week calendar), into GDP / PCE the same morning", tickers: "DE · XLI",
-    rec: "WATCH DE: farm-equipment downturn is known; the FY27 guide is the swing factor." },
-  { id: "c10", ind: "consumer", dayIdx: 14, future: true, impact: 2, dir: "MIXED",
-    headline: "Fri Nov 27: Black Friday, with an equity half-day (1:00 pm ET, EST.); Cyber Monday follows Nov 30 (Barchart / week-ahead coverage)", tickers: "AMZN · WMT · TGT · XRT",
-    rec: "WATCH early traffic data: strong units with heavy discounting is margin-negative for department stores, neutral for WMT / AMZN." },
+    headline: "Tue Nov 17 BMO: Home Depot Q3 (consensus EPS $3.86; 4-week revisions 2 up / 2 down); the Nov 20 straddle prices ±4.7% vs an average ±2.2% over the last 4 prints [Nasdaq; Cboe; Yahoo]", tickers: "HD",
+    rec: "WATCH (both ways): options already price twice HD's recent average move. Selling a defined-risk range outside ±5% fits better than a directional bet." },
+  { id: "c5", ind: "consumer", dayIdx: 4, future: true, impact: 2, dir: "BEARISH", conf: 1, basis: "4-wk EPS revisions 0 up / 2 down for FQ4 (cons. $1.67) [Nasdaq estimate data]",
+    headline: "Tue Nov 17 BMO: Disney FQ4 (consensus EPS $1.67; 4-week revisions 0 up / 2 down); the Nov 20 straddle prices ±6.6% vs an average ±6.5% over the last 4 prints [Nasdaq; Cboe; Yahoo]", tickers: "DIS",
+    rec: "WATCH: a miss or soft parks outlook gives a bear put spread room below $113; a streaming beat can lift it 5–7% (it rose after 2 of the last 4 prints)." },
+  { id: "c6", ind: "consumer", dayIdx: 5, future: true, impact: 3, dir: "MIXED",
+    headline: "Wed Nov 18 BMO: Target Q3 (consensus EPS $2.04; revisions 2 up / 1 down; Nov 20 straddle ±9.1% vs average ±4.4%) and TJX ($1.33; no revisions) [Nasdaq; Cboe; Yahoo]", tickers: "TGT · TJX",
+    rec: "WATCH (both ways): TGT's implied move is double its recent average, so selling a defined-risk range fits better than a directional bet." },
+  { id: "c7", ind: "consumer", dayIdx: 5, future: true, impact: 2, dir: "BEARISH", conf: 1, basis: "4-wk EPS revisions 1 up / 3 down for Q3 (cons. $2.86) [Nasdaq estimate data]",
+    headline: "Wed Nov 18 BMO: Lowe's Q3 (consensus EPS $2.86; 4-week revisions 1 up / 3 down); the Nov 20 straddle prices ±5.1% vs an average ±3.2% over the last 4 prints [Nasdaq; Cboe; Yahoo]", tickers: "LOW",
+    rec: "WATCH: estimates are drifting lower into the print (LOW is +14% in a month, so the bar is higher). LOW options are too thin (~5k contracts) to trade; use it as a read for HD and XHB." },
+  { id: "c8", ind: "consumer", dayIdx: 6, future: true, impact: 3, dir: "BULLISH", conf: 1, basis: "4-wk EPS revisions 3 up / 0 down for Q3 (cons. $0.64) [Nasdaq estimate data]; note: fell after 3 of last 4 prints (only 4 obs, not counted)",
+    headline: "Thu Nov 19 BMO: Walmart Q3 FY27 (consensus EPS $0.64; 4-week revisions 3 up / 0 down); the Nov 20 straddle prices ±6.3% vs an average ±6.1% over the last 4 prints. Ross Stores ($1.82) after the close [Nasdaq; Cboe; Yahoo]", tickers: "WMT · ROST",
+    rec: "BUY via defined risk (see WMT play): estimates are rising, but WMT fell after 3 of its last 4 reports even on beats. A miss or a cautious holiday guide can take it to $120; a raise can retest the $135 high." },
+  { id: "c9", ind: "consumer", dayIdx: 6, future: true, impact: 2, dir: "MIXED",
+    headline: "Thu Nov 19: Grand Theft Auto VI launches on PS5 and Xbox Series X|S (Take-Two has reaffirmed the date; Zelnick called it firm) [Outlook Respawn; PCWorld]", tickers: "TTWO · SONY",
+    rec: "WATCH: TTWO fell 6.3% today. Launch-day sales data decide whether this is sell-the-news or a re-rating." },
+  { id: "c10", ind: "consumer", dayIdx: 11, future: true, impact: 2, dir: "MIXED",
+    headline: "Tue Nov 24: Best Buy ($1.48), Dollar Tree ($0.88), Burlington ($1.69), Dick's ($1.38) BMO; Conference Board consumer confidence 10:00 am (prior 91.7) [Nasdaq earnings & economic calendars]", tickers: "BBY · DLTR · XRT",
+    rec: "WATCH: the last big retail read before Black Friday; BBY options are thin, so use XRT for any view." },
+  { id: "c11", ind: "consumer", dayIdx: 12, future: true, impact: 2, dir: "MIXED",
+    headline: "Wed Nov 25 BMO: Deere FQ4 (consensus EPS $4.07; 1 up / 0 down); the Nov 27 straddle prices ±7.7% [Nasdaq; Cboe]", tickers: "DE",
+    rec: "WATCH: ag-cycle read into the holiday; DE options are thin (~3k contracts), so no play." },
+  { id: "c12", ind: "consumer", dayIdx: 14, future: true, impact: 2, dir: "MIXED",
+    headline: "Fri Nov 27: Black Friday kicks off holiday shopping (the day after the Thanksgiving market closure; Cyber Monday Nov 30) [federalreserve.gov holiday schedule]", tickers: "XRT · AMZN · WMT",
+    rec: "WATCH: early foot-traffic and online-sales tallies set the tone for retail into December." },
 ];
 
 // ------------------------------------------------------------------ options
@@ -238,55 +261,50 @@ const EVENTS = [
 // secured only — no naked shorts; total capital at risk per idea is kept <= $1,500
 // (so cash-secured puts only fit genuinely cheap stocks — otherwise use spreads).
 const OPTION_PLAYS = [
-  { ticker: "QQQ", name: "Invesco QQQ (Nasdaq-100)", rank: 1, spot: "$679.89 (Fri Nov 13 close, −1.20%; extended-hours $674.25; no pre-market yet at ~2 am ET — NQ futures −1.10% imply ~$672.41, ESTIMATE) [Yahoo Finance chart / Cboe delayed quote]", sentiment: "Bearish",
-    catalyst: "No earnings (ETF) · NVIDIA Q3 FY27 Tue Nov 17 AMC (CONFIRMED date; cons. EPS $2.47 / rev $108.8B per FXEmpire; first report under interim CEO Kress) · retail sales Nov 17 · FOMC minutes Nov 18 2:00 pm (CONFIRMED, federalreserve.gov) · Anthropic (ANT) first trade targeted Nov 19 (EST.) · GDP / PCE Nov 25 (CONFIRMED, bea.gov) · December FOMC (dates not re-fetched; hike ~91% priced per Kalshi) · next ex-dividend expected ~Dec 21, after expiry (EST.; last Sep 21)",
-    iv: "IV ~25.2% (Dec 18 ATM 680C / 680P 25.2%; Cboe iv30 25.3) · IVR n/a · realized HV20 35.9% > implied · Dec 18 ATM straddle $42.38 (±6.2%); NVIDIA alone prices ±~10% · 1σ to Dec 18 ≈ ±$50.2 (±7.5%) from ~$672.41 → $622 / $723",
-    liq: "A — Fri Nov 13 full session ≈2.22M option contracts (20d avg n/a) & 41.8M shares (20d avg 49.3M); Dec 18 OI 53.4k / 29.5k on the 725C / 730C, 27.7k / 41.7k on the 675P / 645P, 51.8k on the 650P; spreads 1.7–4.4% of mid [Cboe delayed chain, Nov 13 session / Yahoo]",
-    thesis: "INDEX HEDGE, re-validated overnight: Nasdaq-100 futures were −1.1% at ~1:40 am ET after Friday's 1.22% drop left the index (27,943.74) under its 200-day (28,039); QQQ ($679.89; 50-day $717.87, 200-day $682.24, RSI 43, −6.6% in 21d) implies ~$672 at the open. NVIDIA reports Tuesday without its founder after HSBC (Hold, PT $375 → $170) and Truist downgrades, the 10-year is 5.15% with a December hike ~91% priced, and ~$60B+ of Anthropic stock targets Thursday; implied vol (25%) is below realized (36%), so puts are fairly priced — targets are the $647 20-day low, then the 1σ level near $622. Risk: NVIDIA is deeply oversold (RSI 25) and a clean guide or a hot Anthropic debut could squeeze QQQ back toward $700–718; Friday's S&P breadth was positive (314 up / 185 down). Invalid on a close above $700. Conviction 4/5 (5/4/4/3/5).",
+  { ticker: "QQQ", name: "Invesco QQQ (Nasdaq-100)", rank: 1, spot: "$661.75 (Mon Nov 16 close, −2.67%; after-hours n/a) [Yahoo Finance chart / Cboe delayed quote]", sentiment: "Bearish",
+    catalyst: "No earnings (ETF) · NVIDIA Q3 Tue Nov 17 AMC (CONFIRMED; cons. EPS $2.49) · retail sales Nov 17 (CONFIRMED) · FOMC minutes Nov 18 (CONFIRMED) · Anthropic IPO first trade ~Thu Nov 19 (EST.; up to ~$64B of supply) · GDP / PCE Nov 25 (CONFIRMED) · ex-dividend before expiry: none sourced",
+    iv: "IV 28.7% (Dec 18 ATM) vs 20-day realized 36.5% · IVR n/a · 25Δ put skew +8.8 pts · Dec 18 straddle ±6.8% · 1σ to expiry ±$56.23", liq: "A — 8.47M contracts traded Mon (full session); OI 79.2k / 30.5k on 720C/730C, 41.7k / 32.2k on 660P/625P, 41.6k / 22.6k on 645P/605P; every leg ≤$0.31 wide (≤1.3%) [Cboe delayed chain]",
+    thesis: "Nasdaq-100 broke down: QQQ $661.75 is 7.7% under its 50-day ($716.72) and 3.0% under its 200-day ($682.44), −6.8% in a month, RSI 38, VIX ~23 with a flat VIX/VIX3M curve and only 145 S&P gainers today. Implied vol (28.7%) is below realized (36.5%), so puts are not overpriced, and the week stacks NVIDIA, FOMC minutes and the largest IPO supply of the year. Risk: QQQ is near its $647 20-day low and a clean NVIDIA beat could spark a sharp short-covering rally. Invalid above $683 (a close back over the 200-day). Conviction 4/5.",
     ideas: [
-      { profile: "Conservative", strategy: "Bear Call Credit Spread", text: "Sell $725C / buy $730C · Dec 18 '26 · credit $0.63 ESTIMATE (Black-Scholes at ~$672.41 with Friday strike IVs: 2.77 − 2.14; Friday mids 4.110 − 3.255) · capital ~$437 · max profit ~$63 · BE $725.63 · R:R 1:0.14 · POP ~87% (1−|Δ short|) · exit: buy back at ~50% profit (≈$0.32) or if QQQ closes above $700 (invalidation) / through $725; close by Dec 11 (~7 DTE) — short strike ~1.05σ above the estimated open and above the 50-day ($718); skip it if the live credit is under ~$0.50; OI 53.4k / 29.5k, spreads 4%" },
-      { profile: "Moderate", strategy: "Bear Put Debit Spread", text: "Buy $675P / sell $645P · Dec 18 '26 · debit $9.65 ESTIMATE (20.53 − 10.88 at ~$672.41; Friday mids 19.020 − 10.310) · capital ~$965 · max profit ~$2,035 · BE $665.35 · R:R 1:2.11 · POP ~46% (lognormal) · exit +75–100% (~$16.89–19.30 spread value) or stop −50% (~$4.83) / QQQ close above $700; close with ≥10 days left (by Dec 8) — near-the-money long leg (Δ ≈ −0.49 at the estimated open), short leg just under the $647 20-day low (~0.55σ); OI 27.7k / 41.7k, spreads ~2%" },
-      { profile: "Aggressive", strategy: "Long Put", text: "Buy $650P · Dec 18 '26 · debit $12.13 ESTIMATE (Black-Scholes at ~$672.41, IV 28.7%; Friday mid 11.425, bid/ask 11.31/11.54) · capital ~$1,213 · max profit: uncapped to $0 (~$63,787 theoretical) · BE $637.87 · R:R n/a (uncapped) · POP ~25% (lognormal) · exit +100% (~$24.26) or stop −50% (~$6.07) / QQQ close above $700; close with ≥10 days left (by Dec 8) — Δ ≈ −0.31 at the estimated open; an outright put is justified because implied (25–29%) sits well below realized (HV20 36%) with NVIDIA, Anthropic and PCE inside the expiry; OI 51.8k, spread 2.0%" },
+      { profile: "Conservative", strategy: "Bear Call Credit Spread", text: "Sell $720C / buy $730C (mids 2.775 − 1.665) · Dec 18 '26 · credit $1.11 · capital ~$889 · max profit ~$111 · BE $721.11 · R:R 1:0.12 · POP ~87% · exit +50% / stop on a close above $720 or $683 invalidation; close by Dec 11 — short strike just beyond 1σ ($718); profits if QQQ simply stays below its falling 50-day" },
+      { profile: "Moderate", strategy: "Bear Put Debit Spread", text: "Buy $660P / sell $625P (mids 20.290 − 10.260) · Dec 18 '26 · debit $10.03 · capital ~$1,003 · max profit ~$2,497 · BE $649.97 · R:R 1:2.49 · POP ~43% · exit +75–100% (~$17.55–$20.06) / stop −50% (~$5.02) or a close above $683 — at-the-money long put (Δ −0.46), short at ~0.65σ; spreads the vega risk around NVIDIA" },
+      { profile: "Aggressive", strategy: "Bear Put Debit Spread (OTM)", text: "Buy $645P / sell $605P (mids 15.160 − 6.945) · Dec 18 '26 · debit $8.21 · capital ~$821 · max profit ~$3,179 · BE $636.79 · R:R 1:3.87 · POP ~34% · exit +100% (~$16.42) / stop −50% (~$4.11) or a close above $683 — targets the 1σ low ($605); IV is elevated, so a spread beats a naked long put" },
     ] },
-  { ticker: "GLD", name: "SPDR Gold Shares", rank: 2, spot: "$355.45 (Fri Nov 13 close, +0.16%; no pre-market yet at ~2 am ET — gold futures −1.12% overnight to $3,842.70 imply ~$351.47, ESTIMATE) [Yahoo Finance chart / Cboe delayed quote]", sentiment: "Bearish",
-    catalyst: "No earnings (ETF), no dividend · Fed Chair Warsh Mon Nov 16 12:00 pm ET (CONFIRMED, federalreserve.gov) · retail sales Nov 17 · FOMC minutes Nov 18 (CONFIRMED) · GDP / PCE Nov 25 (CONFIRMED, bea.gov) · Beige Book Nov 25 (CONFIRMED) · December FOMC (hike ~91% priced per Kalshi; dates not re-fetched) — the Dec 18 expiry follows all of them",
-    iv: "IV ~23.3% (Dec 18 ATM 355C 23.1% / 355P 23.5%; Cboe iv30 23.3) · IVR n/a · realized HV20 28.1% > implied · no single-name binary (macro-driven); Dec 18 ATM straddle $20.55 (±5.8%) · 1σ to Dec 18 ≈ ±$24.25 (±6.9%) from ~$351.47 → $327 / $376",
-    liq: "A — Fri Nov 13 full session ≈450k option contracts (20d avg n/a) & 11.9M shares (20d avg 9.3M); Dec 18 OI 25.5k / 8.0k on the 380C / 385C, 10.4k / 4.3k on the 350P / 330P, 3.3k on the 345P; spreads 1.3–5.6% of mid [Cboe delayed chain, Nov 13 session / Yahoo]",
-    thesis: "The real-rate and dollar squeeze is still tightening: gold futures fell another 1.1% overnight to $3,842.70, under Friday's $3,886.30 settle, implying GLD ≈ $351.5 vs a $355.45 close that was already below the 50-day ($380.91) and 200-day ($408.42), −7.1% in 21d, RSI 38. The 10-year is 5.15% (≈+30 bp last week), the 2-year 4.88%, the dollar index 103.46 overnight, and October PPI ran 6.5% y/y with a December hike ~91% priced. Carried from the Nov 12, 13 and 15 reports (then $365.17 / $354.89 / $355.45 → Friday $355.45: −2.7% / +0.2% / 0.0%; working overnight), strikes re-set to the estimated open; next reference is the 1σ level near $327. Risk: RSI in the 30s invites short-covering, a dovish Warsh today or a soft PCE on Nov 25 would hit the trade, and Gulf escalation can revive the haven bid. Invalid on a close above $370. Conviction 4/5 (4/5/3/4/5).",
+  { ticker: "GLD", name: "SPDR Gold Shares", rank: 2, spot: "$352.93 (Mon Nov 16 close, −0.71%; lowest gold close since Sep 2025; gold futures $3,859) [Yahoo Finance chart / Cboe delayed quote]", sentiment: "Bearish",
+    catalyst: "No earnings (ETF), no dividend · retail sales Nov 17 · FOMC minutes Nov 18 (CONFIRMED) · UMich inflation expectations Nov 20 · GDP / PCE Nov 25 (CONFIRMED, bea.gov) · FOMC Dec 8–9 with a hike fully priced (TheStreet)",
+    iv: "IV 24.3% (Dec 18 ATM) vs 20-day realized 28.1% · IVR n/a · 25Δ skew +1.8 pts (flat) · Dec 18 straddle ±5.8% · 1σ to expiry ±$25.39", liq: "A — 320k contracts traded Mon (full session), 9.6M shares; OI 25.4k / 16.4k on 380C/390C, 3.4k / 4.4k on 355P/330P, 3.3k / 1.8k on 345P/325P; legs $0.08–0.25 wide (2.4–5.6%) [Cboe delayed chain]",
+    thesis: "Gold is in a clean downtrend: GLD $352.93 closed at a fresh 20-day low, 7.1% under its 50-day ($379.83) and 13.5% under its 200-day ($407.96), −7.0% in 5 sessions, RSI 37. The macro drivers are pointing the same way: a December hike fully priced, 26 bp by December, a 5.13% 10-yr and the dollar at its highest close since April 2025. IV (24.3%) sits below realized (28.1%), and put skew is flat, so downside is cheap. Risk: oversold after a ~30% slide from the 52-week high ($509.70); a soft PCE on Nov 25 or a risk-off safe-haven bid could spark a reflex rally. Invalid above $366 (Nov 11 breakdown area). Conviction 4/5.",
     ideas: [
-      { profile: "Conservative", strategy: "Bear Call Credit Spread", text: "Sell $380C / buy $385C · Dec 18 '26 · credit $0.51 ESTIMATE (1.77 − 1.26 at ~$351.47; Friday mids 2.665 − 1.965) · capital ~$449 · max profit ~$51 · BE $380.51 · R:R 1:0.11 · POP ~85% (1−|Δ short|) · exit: buy back at ~50% profit (≈$0.26) or if GLD closes above $370 (invalidation) / through $380; close by Dec 11 (~7 DTE) — short strike ~1.2σ above the estimated open and at the 50-day ($381); OI 25.5k / 8.0k, spreads 2–6%" },
-      { profile: "Moderate", strategy: "Bear Put Debit Spread", text: "Buy $350P / sell $330P · Dec 18 '26 · debit $5.82 ESTIMATE (8.55 − 2.73 at ~$351.47; Friday mids 7.600 − 2.460) · capital ~$582 · max profit ~$1,418 · BE $344.18 · R:R 1:2.44 · POP ~39% (lognormal) · exit +75–100% (~$10.19–11.64 spread value) or stop −50% (~$2.91) / GLD close above $370; close with ≥10 days left (by Dec 8) — near-the-money long leg (Δ ≈ −0.44 at the estimated open), short leg at ~0.9σ; OI 10.4k / 4.3k, spreads 1–2%" },
-      { profile: "Aggressive", strategy: "Long Put", text: "Buy $345P · Dec 18 '26 · debit $6.53 ESTIMATE (Black-Scholes at ~$351.47, IV 24.1%; Friday mid 5.800, bid/ask 5.65/5.95) · capital ~$653 · max profit: uncapped to $0 (~$33,847 theoretical) · BE $338.47 · R:R n/a (uncapped) · POP ~30% (lognormal) · exit +100% (~$13.06) or stop −50% (~$3.27) / GLD close above $370; close with ≥10 days left (by Dec 8) — Δ ≈ −0.37 at the estimated open; an outright put is justified because implied (23–24%) sits below realized (HV20 28%) with PCE and the FOMC run-up inside the expiry; OI 3.3k, spread 5.2%" },
+      { profile: "Conservative", strategy: "Bear Call Credit Spread", text: "Sell $380C / buy $390C (mids 2.275 − 1.240) · Dec 18 '26 · credit $1.03 · capital ~$897 · max profit ~$103 · BE $381.03 · R:R 1:0.11 · POP ~82% · exit +50% / stop on a close above $366 invalidation; close by Dec 11 — short strike above 1σ ($378.32) and at the 50-day; collects premium on a failed bounce" },
+      { profile: "Moderate", strategy: "Bear Put Debit Spread", text: "Buy $355P / sell $330P (mids 10.625 − 2.675) · Dec 18 '26 · debit $7.95 · capital ~$795 · max profit ~$1,705 · BE $347.05 · R:R 1:2.14 · POP ~42% · exit +75–100% (~$13.91–$15.90) / stop −50% (~$3.98) or a close above $366 — slightly in-the-money long (Δ −0.50), short near the 1σ low ($327.54)" },
+      { profile: "Aggressive", strategy: "Bear Put Debit Spread (OTM)", text: "Buy $345P / sell $325P (mids 6.375 − 1.965) · Dec 18 '26 · debit $4.41 · capital ~$441 · max profit ~$1,559 · BE $340.59 · R:R 1:3.54 · POP ~32% · exit +100% (~$8.82) / stop −50% (~$2.21) or a close above $366 — cheap OTM spread for a continuation to the 1σ zone" },
     ] },
-  { ticker: "AAPL", name: "Apple", rank: 3, spot: "$356.27 (Fri Nov 13 close, +0.39%, after an intraday record of $360.80; extended-hours $355.40, −0.2%; no pre-market yet at ~2 am ET, S&P futures −0.5%) [Yahoo Finance chart / Cboe delayed quote]", sentiment: "Bullish",
-    catalyst: "No earnings before expiry (next ~late Jan, EST.) · no ex-dividend before expiry (last ex-date Nov 12, $0.27 — StockAnalysis) · NVIDIA Q3 Nov 17 AMC (CONFIRMED; index risk) · retail sales Nov 17 · FOMC minutes Nov 18 (CONFIRMED) · Anthropic debut ~Nov 19 (EST.) · Black Friday Nov 27 · PCE Nov 25 (CONFIRMED) · cons. EPS/rev n/a (no print in window)",
-    iv: "IV ~21.5% (Dec 18 ATM 355C 21.9% / 360C 21.3%; Cboe iv30 21.4) · IVR n/a · realized HV20 27.5% > implied (premium is cheap) · no binary before expiry; Dec 18 355 straddle $19.45 (±5.5%) · 1σ to Dec 18 ≈ ±$22.7 (±6.4%) → $334 / $379",
-    liq: "A — Fri Nov 13 full session ≈618k option contracts (20d avg n/a) & 40.0M shares (20d avg 47.2M); Dec 18 OI 20.8k / 6.4k on the 330P / 325P, 6.0k / 19.2k on the 355C / 375C, 7.4k on the 365C; spreads 2.4–4.3% of mid ($0.07–0.30 wide) [Cboe delayed chain, Nov 13 session / Yahoo]",
-    thesis: "The megacap that rises when AI hardware falls: on a day the Nasdaq-100 lost 1.22%, AAPL set an intraday record ($360.80) and closed $356.27, +4.2% in 21d vs QQQ −6.6%, above a rising 50-day ($339.04) and 200-day ($301.25), RSI 61, with no AI-capex or NVIDIA-governance exposure. Implied vol (21.5%) is below realized (27.5%), so upside is cheap to own; the 1σ level is $379. Carried from the Nov 12, 13 and 15 reports (then $355.63 / $354.88 / $356.27 → Friday $356.27: +0.2% / +0.4% / 0.0%, flat-to-working), strikes re-set; it also offsets the QQQ hedge. Risk: two straight fades from record highs, a 5.15% 10-year compresses premium multiples, NQ futures −1.1% point to a soft open, and as QQQ's top weight it can't escape a disorderly NVIDIA reaction. Invalid on a close below $339. Conviction 4/5 (3/5/4/3/5).",
+  { ticker: "IBIT", name: "iShares Bitcoin Trust ETF", rank: 3, spot: "$36.79 (Mon Nov 16 close, −5.52%; Bitcoin ~$65.3k) [Yahoo Finance chart / Cboe delayed quote]", sentiment: "Bearish",
+    catalyst: "No earnings (ETF), no dividend · spot Bitcoin ETF outflows 7 straight sessions (~$1.91B since Nov 5, CoinGlass via MarketSpeaker) · NVIDIA Nov 17 and FOMC minutes Nov 18 (risk appetite) · MSCI drops Strategy at the Nov 30 close (~$3B passive selling of MSTR) · PCE Nov 25",
+    iv: "IV 43.6% (Dec 18 ATM), 43.0% (Jan 15) vs 20-day realized 42.7% · IVR n/a · 25Δ put skew +6.7 pts · Dec 18 straddle ±10.4% · 1σ to Dec 18 ±$4.75", liq: "A — 888k contracts traded Mon (full session), 61.1M shares; OI 21.1k / 22.6k on Jan 38P/31P, 14.0k / 18.5k on Dec 37P/33P, 30.8k / 19.1k on Dec 35P/32P; legs $0.01–0.10 wide (1.5–6.9%) [Cboe delayed chain]",
+    thesis: "Bitcoin broke its ~$73k 200-day and slid toward $62k over the weekend on cascading long liquidations ($700M Thu, $629M Fri) and seven straight ETF outflow sessions. IBIT is 18.8% under its 50-day ($45.30), −20% in a month, with a lower-high, lower-low structure. Risk: RSI 24 is deeply oversold and $60–62k is a widely watched support (Nansen), so a sharp short-covering bounce is likely along the way; IV ≈ realized, so these are spreads, not naked puts. Invalid above $41 (IBIT's 200-day, ≈ Bitcoin $73k). Conviction 4/5.",
     ideas: [
-      { profile: "Conservative", strategy: "Put Credit Spread", text: "Sell $330P / buy $325P · Dec 18 '26 · credit $0.53 (mids 2.300 − 1.765) · capital ~$447 · max profit ~$53 · BE $329.47 · R:R 1:0.12 · POP ~85% (1−|Δ short|) · exit: buy back at ~50% profit (≈$0.27) or if AAPL closes below $339 (invalidation) / $330; close by Dec 11 (~7 DTE) — short strike 1.15σ away ($334) and under the 50-day ($339); OI 20.8k / 6.4k, spreads 4%" },
-      { profile: "Moderate", strategy: "Bull Call Debit Spread", text: "Buy $355C / sell $375C · Dec 18 '26 · debit $8.18 (mids 11.100 − 2.920) · capital ~$818 · max profit ~$1,182 · BE $363.18 · R:R 1:1.44 · POP ~37% (lognormal) · exit +75–100% (~$14.31–16.36 spread value) or stop −50% (~$4.09) / AAPL close below $339; close with ≥10 days left (by Dec 8) — near-the-money long leg (Δ +0.56), short leg at ~0.8σ, below the $379 1σ level; OI 6.0k / 19.2k, spreads 3–4%" },
-      { profile: "Aggressive", strategy: "Long Call (OTM)", text: "Buy $365C · Dec 18 '26 · debit $6.12 (mid 6.125; bid/ask 6.05/6.20) · capital ~$612 · max profit: uncapped · BE $371.12 · R:R n/a (uncapped) · POP ~25% (lognormal) · exit +100% (~$12.24) or stop −50% (~$3.06) / AAPL close below $339; close with ≥10 days left (by Dec 8) — Δ +0.39; buying premium is justified because implied (20.7%) sits below realized (HV20 27.5%); OI 7.4k, spread 2.4%" },
+      { profile: "Conservative", strategy: "Bear Put Debit Spread (wide, longer-dated)", text: "Buy $38P / sell $31P (mids 3.050 − 0.725) · Jan 15 '27 · debit $2.33 · capital ~$233 · max profit ~$467 · BE $35.67 · R:R 1:2.00 · POP ~46% · exit +75% (~$4.08) or at $31–32 / stop −50% (~$1.17) or a close above $41 — in-the-money long put with 60 days of runway survives a relief bounce" },
+      { profile: "Moderate", strategy: "Bear Put Debit Spread", text: "Buy $37P / sell $33P (mids 1.935 − 0.665) · Dec 18 '26 · debit $1.27 · capital ~$127 · max profit ~$273 · BE $35.73 · R:R 1:2.15 · POP ~44% · exit +75–100% (~$2.22–$2.54) / stop −50% (~$0.64) or a close above $41 — at-the-money long (Δ −0.48), short near the 1σ low ($32.04)" },
+      { profile: "Aggressive", strategy: "Bear Put Debit Spread (OTM)", text: "Buy $35P / sell $32P (mids 1.150 − 0.505) · Dec 18 '26 · debit $0.65 · capital ~$65 · max profit ~$235 · BE $34.35 · R:R 1:3.62 · POP ~32% · exit +100% (~$1.30) / stop −50% (~$0.33) or a close above $41 — pays ~3.6:1 if Bitcoin loses the $60–62k shelf" },
     ] },
-  { ticker: "WMT", name: "Walmart", rank: 4, spot: "$128.09 (Fri Nov 13 close, +1.51%; extended-hours $127.93; no pre-market yet at ~2 am ET) [Yahoo Finance chart / Cboe delayed quote]", sentiment: "Bullish",
-    catalyst: "Q3 FY27 earnings Thu Nov 19 BMO (EST. — calendars agree, company confirmation not retrieved) · cons. EPS $0.63–0.64 / rev ~$187.2B vs guide $0.62–0.64 and +3.0–3.75% sales (FXEmpire, Hudson Labs, Trefis) · retail sales Nov 17 and Target / TJX / Lowe's Nov 18 as read-throughs · Black Friday Nov 27 · ex-dividend Dec 11 ($0.2475, StockAnalysis) — after every planned exit",
-    iv: "IV ~32% (Dec 18 ATM 130C 31.5% / 130P 32.5%; Cboe iv30 33.3, includes earnings) · IVR n/a · Nov 20 ATM straddle $8.00 → implied earnings move ±6.2% vs hist. ±~4.5% (Barchart average absolute day-0 move) · realized HV20 25.6% · 1σ to Dec 18 ≈ ±$12.1 (±9.5%) → $116 / $140",
-    liq: "A — Fri Nov 13 full session ≈59k option contracts (20d avg n/a) & 16.6M shares (20d avg 21.8M); Dec 18 OI 11.5k / 8.1k on the 120C / 130C, 9.9k on the 135C, 11.2k / 6.1k on the 125P / 120P; spreads 4.9–7.1% of mid ($0.13–0.50 wide) [Cboe delayed chain, Nov 13 session / Yahoo]",
-    thesis: "Staples leadership into a dated catalyst: Consumer Staples led Friday (+1.42%) and WMT closed $128.09 (+1.51%), +8.7% in 21d, above its 50-day ($114.54) and 200-day ($118.93) and 3% under the $131.82 20-day high. Thursday's Q3 needs only an in-line $0.63–0.64 against a $0.62–0.64 guide, and the holiday outlook is the swing factor; options price ±6.2% vs a ~±4.5% historical day-0 average, so the structures lean on spreads and premium selling rather than outright calls. New today (replaces IBIT). Risk: RSI 68 into a binary with a high bar, and a cautious consumer read from retail sales (forecast +0.2%) or Target / Lowe's on Wednesday could trigger sell-the-news. Invalid on a close below $120 (a gap through the implied move). Conviction 4/5 (5/4/3/3/4).",
+  { ticker: "WMT", name: "Walmart", rank: 4, spot: "$128.41 (Mon Nov 16 close, +0.25%; 20-day high $129.17) [Yahoo Finance chart / Cboe delayed quote]", sentiment: "Bullish",
+    catalyst: "Q3 FY27 earnings Thu Nov 19 BMO (date & timing per Nasdaq calendar; company confirmation not retrieved) · cons. EPS $0.64 (12 est.; 3 raised / 0 cut in 4 wks) / rev n/a · retail sales Nov 17; TGT / LOW / TJX Nov 18 read-through · ex-dividend Dec 11 ($0.2475, Nasdaq) — inside the expiry",
+    iv: "IV 34.7% (Dec 18 ATM; 75.6% Nov 20 incl. earnings) vs 20-day realized 25.6% · IVR n/a · implied move ±6.3% vs hist. ±6.1% (last 4) · 1σ to expiry ±$13.19", liq: "A — 75.9k contracts traded Mon (full session), 17.4M shares; OI 11.5k / 8.3k on 120C/130C, 8.3k / 9.5k on 130C/140C, 9.7k / 9.5k on 135C/140C; legs $0.08–0.35 wide (3.3–5.5%) [Cboe delayed chain]",
+    thesis: "Defensive leadership into a dated catalyst: staples were among the few sectors up today, and WMT ($128.41, +8.1% in a month) is 11.7% above its 50-day ($114.96) and 7.9% above its 200-day ($118.98), 1% from its 20-day high; Q3 EPS estimates went 3 up / 0 down in four weeks. Debit spreads cap vega, since IV is inflated by the print. Risk: WMT fell after 3 of its last 4 reports (−9.2%, −7.3%, −1.4%) even on beats, and RSI 68 means the bar is high. Invalid below $120 (the implied-move floor). Conviction 4/5.",
     ideas: [
-      { profile: "Conservative", strategy: "Bull Call Debit Spread (ITM)", text: "Buy $120C / sell $130C · Dec 18 '26 · debit $6.00 (mids 10.250 − 4.250) · capital ~$600 · max profit ~$400 · BE $126.00 · R:R 1:0.67 · POP ~55% (lognormal) · exit at ~80% of max profit (~$9.20 spread value; +75–100% of the debit is unreachable on a $10-wide spread) or stop −50% (~$3.00) / WMT close below $120; close with ≥10 days left (by Dec 8, before the Dec 11 ex-date) — in-the-money long leg (Δ +0.76) puts breakeven 1.6% below spot, so a flat-to-modestly-up print pays; vega-light into the binary; OI 11.5k / 8.1k, spreads 5–7%" },
-      { profile: "Moderate", strategy: "Bull Call Debit Spread", text: "Buy $130C / sell $135C · Dec 18 '26 · debit $1.76 (mids 4.250 − 2.490) · capital ~$176 · max profit ~$324 · BE $131.76 · R:R 1:1.84 · POP ~36% (lognormal) · exit +75–100% (~$3.08–3.52 spread value) or stop −50% (~$0.88) / WMT close below $120; close with ≥10 days left (by Dec 8) — long leg near the money (Δ +0.47), short leg at the implied post-earnings high (~$136); spread instead of a call because earnings IV (56% on the weekly) will crush; OI 8.1k / 9.9k, spreads 6–7%" },
-      { profile: "Aggressive", strategy: "Put Credit Spread", text: "Sell $125P / buy $120P · Dec 18 '26 · credit $1.69 (mids 3.650 − 1.955) · capital ~$331 · max profit ~$169 · BE $123.31 · R:R 1:0.51 · POP ~62% (1−|Δ short|) · exit: buy back at ~50% profit (≈$0.84) or if WMT closes below $120 (invalidation) / $125 after the print; close by Dec 11 (~7 DTE) — the short strike sits INSIDE the ±6.2% implied earnings move by design: the stated thesis is that WMT holds $125 and post-earnings IV crush does the work; OI 11.2k / 6.1k, spreads 6–7%" },
+      { profile: "Conservative", strategy: "Bull Call Debit Spread (ITM)", text: "Buy $120C / sell $130C (mids 10.625 − 4.550) · Dec 18 '26 · debit $6.08 · capital ~$608 · max profit ~$392 · BE $126.08 · R:R 1:0.64 · POP ~55% · exit at ~80% of max value (~$8.00) / stop −50% (~$3.04) or a close below $120; close before Dec 10 if the short $130C is ITM (Dec 11 ex-div) — breakeven is below spot, so it still pays if WMT holds most of a muted post-print reaction" },
+      { profile: "Moderate", strategy: "Bull Call Debit Spread", text: "Buy $130C / sell $140C (mids 4.550 − 1.460) · Dec 18 '26 · debit $3.09 · capital ~$309 · max profit ~$691 · BE $133.09 · R:R 1:2.24 · POP ~34% · exit +75–100% (~$5.41–$6.18) / stop −50% (~$1.55) or a close below $120; close before Dec 10 if the short call is ITM — near-the-money long (Δ 0.48), short at the ~$141.60 1σ high" },
+      { profile: "Aggressive", strategy: "Bull Call Debit Spread (OTM)", text: "Buy $135C / sell $140C (mids 2.685 − 1.460) · Dec 18 '26 · debit $1.23 · capital ~$123 · max profit ~$377 · BE $136.23 · R:R 1:3.07 · POP ~27% · exit +100% (~$2.46) / stop −50% (~$0.62) or a close below $120 — a cheap bet on a break above the $135.16 52-week high after a beat-and-raise" },
     ] },
-  { ticker: "UNH", name: "UnitedHealth Group", rank: 5, spot: "$407.46 (Fri Nov 13 close, +0.58%; extended-hours $407.30; no pre-market yet at ~2 am ET) [Yahoo Finance chart / Cboe delayed quote]", sentiment: "Bullish",
-    catalyst: "No earnings before expiry (next ~mid-Jan, EST.) · sector rotation into health care (XLV +6.6% in 21d) · Medtronic FQ2 Nov 24 (EST.) as a sector read · ex-dividend Dec 7 ($2.32, StockAnalysis) — inside the expiry: early-assignment risk on any short call that is in the money · macro: FOMC minutes Nov 18, PCE Nov 25 (CONFIRMED) · cons. EPS/rev n/a (no print in window)",
-    iv: "IV ~31.5% (Dec 18 ATM 410C 31.5% / 400P 31.7%; Cboe iv30 31.3) · IVR n/a · realized HV20 24.4% < implied (premium is rich → sell or spread it) · no binary before expiry · 1σ to Dec 18 ≈ ±$38.0 (±9.3%) → $369 / $445",
-    liq: "A — Fri Nov 13 full session ≈36k option contracts (20d avg n/a) & 3.5M shares (20d avg 4.9M); Dec 18 OI 2.2k / 2.0k on the 370P / 360P, 2.4k / 2.0k on the 410C / 440C, 2.3k / 2.9k on the 420C / 450C; spreads 3.5–8.9% of mid ($0.13–0.50 wide) [Cboe delayed chain, Nov 13 session / Yahoo]",
-    thesis: "Defensive-rotation leader: Health Care rose 0.54% on Friday's down tape and XLV is +6.6% in 21d, near its $192.32 52-week high; UNH ($407.46, +3.4% on the week) holds above its 50-day ($391.43) and 200-day ($366.44), RSI 55, with room to the $426.55 20-day high and Morgan Stanley's Street-high $529 target (Overweight, raised Oct 14 — 24/7 Wall St). Implied vol (31.5%) exceeds realized (24.4%), so the tiers sell premium or cap vega with spreads instead of buying calls. New today (replaces AMZN, flat across four reports). Risk: drug-pricing and Medicare policy headlines can gap managed care, there is no company catalyst before expiry, and the Dec 7 ex-dividend ($2.32) can trigger early assignment on short calls that go in the money. Invalid on a close below $388 (20-day low). Conviction 3/5 (2/4/3/3/4).",
+  { ticker: "UNH", name: "UnitedHealth Group", rank: 5, spot: "$412.02 (Mon Nov 16 close, +1.12% on a −1.9% S&P day) [Yahoo Finance chart / Cboe delayed quote]", sentiment: "Bullish",
+    catalyst: "No earnings before expiry (next ~mid-Jan, EST.) · managed-care rally Nov 16 (CNC +4.9%, ELV +3.9%, HUM +2.5% — TheStreet) · Medtronic Nov 24 as a sector read · ex-dividend Dec 7 ($2.32, StockAnalysis) — inside the expiry",
+    iv: "IV 33.8% (Dec 18 ATM) vs 20-day realized 24.2% · IVR n/a · 25Δ put skew +3.8 pts · no binary before expiry · 1σ to expiry ±$41.23", liq: "A — 52.3k contracts traded Mon (full session), 4.4M shares; OI 2.2k / 2.1k on 370P/360P, 2.5k / 2.0k on 410C/440C, 2.9k / 1.4k on 430C/460C; legs $0.13–0.50 wide (2.3–8.6%) [Cboe delayed chain]",
+    thesis: "Relative strength in the one defensive group with real momentum: UNH rose 1.1% while the S&P fell 1.9%, is +3.6% in 5 sessions, and sits 5.2% above its 50-day ($391.73) and 12.2% above its 200-day ($367.06), RSI 58; XLV is +6.3% in a month. IV (33.8%) is well above realized (24.2%), so the conservative tier sells a 1σ put spread. Risk: policy and Medicare Advantage headlines can gap managed care, and a broad de-risking can drag even leaders. Invalid below $390 (a close under the 50-day). Conviction 3/5.",
     ideas: [
-      { profile: "Conservative", strategy: "Put Credit Spread", text: "Sell $370P / buy $360P · Dec 18 '26 · credit $1.46 (mids 4.175 − 2.710) · capital ~$854 · max profit ~$146 · BE $368.54 · R:R 1:0.17 · POP ~83% (1−|Δ short|) · exit: buy back at ~50% profit (≈$0.73) or if UNH closes below $388 (invalidation) / $370; close by Dec 11 (~7 DTE) — short strike at ~1σ ($369) and above the 200-day ($366); no short-call dividend risk; OI 2.2k / 2.0k, spreads 6–8%" },
-      { profile: "Moderate", strategy: "Bull Call Debit Spread", text: "Buy $410C / sell $440C · Dec 18 '26 · debit $9.90 (mids 14.400 − 4.500) · capital ~$990 · max profit ~$2,010 · BE $419.90 · R:R 1:2.03 · POP ~36% (lognormal) · exit +75–100% (~$17.32–19.80 spread value) or stop −50% (~$4.95) / UNH close below $388; close with ≥10 days left (by Dec 8) — and if the $440 short call is in the money before the Dec 7 ex-date, close or roll by Dec 4; at-the-money long leg (Δ +0.50), short leg at ~0.85σ; OI 2.4k / 2.0k, spreads 3.5–4.4%" },
-      { profile: "Aggressive", strategy: "Bull Call Debit Spread (OTM)", text: "Buy $420C / sell $450C · Dec 18 '26 · debit $7.21 (mids 10.125 − 2.920) · capital ~$721 · max profit ~$2,279 · BE $427.21 · R:R 1:3.16 · POP ~29% (lognormal) · exit +75–100% (~$12.62–14.42 spread value) or stop −50% (~$3.60) / UNH close below $388; close with ≥10 days left (by Dec 8; close or roll by Dec 4 if the $450 call is in the money ahead of the Dec 7 ex-date) — OTM spread (long Δ +0.39) for a run through the $426.55 20-day high; a spread rather than an outright call because implied (31%) exceeds realized (24%); OI 2.3k / 2.9k, spreads 4–9%" },
+      { profile: "Conservative", strategy: "Put Credit Spread", text: "Sell $370P / buy $360P (mids 3.825 − 2.560) · Dec 18 '26 · credit $1.26 · capital ~$874 · max profit ~$126 · BE $368.74 · R:R 1:0.14 · POP ~84% · exit +50% / stop on a close below $390 invalidation; close by Dec 11 — short strike at ~1σ ($370.79) below the 200-day cluster; harvests rich IV vs realized" },
+      { profile: "Moderate", strategy: "Bull Call Debit Spread", text: "Buy $410C / sell $440C (mids 17.150 − 5.850) · Dec 18 '26 · debit $11.30 · capital ~$1,130 · max profit ~$1,870 · BE $421.30 · R:R 1:1.65 · POP ~39% · exit +75–100% (~$19.78–$22.60) / stop −50% (~$5.65) or a close below $390; close before Dec 4 if the short $440C is ITM (Dec 7 ex-div) — at-the-money long (Δ 0.54), short below the 1σ high ($453)" },
+      { profile: "Aggressive", strategy: "Bull Call Debit Spread (OTM)", text: "Buy $430C / sell $460C (mids 8.700 − 2.395) · Dec 18 '26 · debit $6.30 · capital ~$630 · max profit ~$2,370 · BE $436.30 · R:R 1:3.76 · POP ~27% · exit +100% (~$12.60) / stop −50% (~$3.15) or a close below $390 — targets a breakout over the $424.98 20-day high toward 1σ" },
     ] },
 ];
 
@@ -361,8 +379,14 @@ function MarketMatrix() {
         <div>
           <h1 style={S.h1}>US Market Pulse — Recency × Impact Matrix</h1>
           <div style={S.sub}>
-            Snapshot <b style={{ color: "#e2e8f0" }}>Monday, Nov 16 2026 · pre-market ~2 am ET (before the 4 am session) · stock & option quotes = Fri Nov 13 close (Cboe delayed chain); futures / gold / Bitcoin = Mon ~1:45 am ET; QQQ & GLD premiums re-estimated for the overnight futures move</b> · window: last 3 days → next 2 weeks ·
-            color = industry · dot = event · {DIR.BULLISH.glyph}/{DIR.BEARISH.glyph}/{DIR.MIXED.glyph} = bullish / bearish / mixed
+            Snapshot <b style={{ color: "#e2e8f0" }}>Monday, Nov 16 2026 · after the close (~5:45 pm ET; rebuild of the pre-market edition) · stock quotes = Mon close (Yahoo / Cboe) · option chains, OI &amp; volume = Cboe delayed chain after the Mon Nov 16 session</b> · window: last 3 days → next 2 weeks ·
+            color = industry · dot = event · {DIR.BULLISH.glyph}/{DIR.BEARISH.glyph}/{DIR.MIXED.glyph} = bullish / bearish / mixed ·
+            upcoming: {DIR.BULLISH.glyph}/{DIR.BEARISH.glyph} = lean, {PENDING_GLYPH} = pending, no lean
+            {LEAN_RECORD.hits + LEAN_RECORD.misses > 0 && (
+              <> · lean record {LEAN_RECORD.hits}/{LEAN_RECORD.hits + LEAN_RECORD.misses} correct
+                ({Math.round((100 * LEAN_RECORD.hits) / (LEAN_RECORD.hits + LEAN_RECORD.misses))}%)
+                {LEAN_RECORD.since ? ` since ${LEAN_RECORD.since}` : ""}</>
+            )}
           </div>
         </div>
         <div style={S.tabs}>
@@ -473,7 +497,7 @@ function MarketMatrix() {
                             strokeWidth={isOn ? 2.5 : 1} />
                     <text x={e.cx} y={e.cy} fill="#fff" fontSize={10} fontWeight={700}
                           textAnchor="middle" dominantBaseline="central" style={{ pointerEvents: "none" }}>
-                      {DIR[e.dir].glyph}
+                      {dirGlyph(e)}
                     </text>
                   </g>
                 );
@@ -492,9 +516,14 @@ function MarketMatrix() {
                     {detail.future ? "UPCOMING" : "PAST"}
                   </span>
                   <span style={badge("#475569")}>{IMPACT_LABEL[detail.impact]} IMPACT</span>
-                  <span style={badge(dirColor(detail.dir))}>{DIR[detail.dir].glyph} {DIR[detail.dir].label}</span>
+                  <span style={badge(dirColor(detail.dir))}>{dirGlyph(detail)} {dirLabel(detail)}</span>
                 </div>
                 <div style={S.tickers}>{detail.tickers}</div>
+                {detail.future && detail.basis && (
+                  <div style={{ color: "#94a3b8", fontSize: 13, marginTop: 6 }}>
+                    <b style={{ color: "#cbd5e1" }}>Lean basis:</b> {detail.basis}
+                  </div>
+                )}
                 <div style={S.recBox}>
                   <span style={S.recLabel}>What to do</span> {detail.rec}
                 </div>
@@ -517,7 +546,7 @@ function MarketMatrix() {
                     <span style={{ color: "#64748b", width: 52, fontSize: 12 }}>
                       {DAYS[e.dayIdx].date}
                     </span>
-                    <span style={{ color: dirColor(e.dir), width: 16, textAlign: "center" }}>{DIR[e.dir].glyph}</span>
+                    <span style={{ color: dirColor(e.dir), width: 16, textAlign: "center" }}>{dirGlyph(e)}</span>
                     <span style={{ flex: 1, color: "#cbd5e1", fontSize: 13 }}>
                       <b style={{ color: "#e2e8f0" }}>{e.tickers}</b> — {e.headline}
                       <span style={{ color: "#94a3b8" }}> → {e.rec}</span>
