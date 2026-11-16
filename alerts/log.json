@@ -1,6 +1,72 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-16T15:47:00Z",
+      "ticker": "TSN",
+      "move_pct": 7.45,
+      "price": 63.2,
+      "session": "regular",
+      "trigger": "Big move + news: Q4 earnings / FY27 outlook",
+      "headline": "Tyson Foods Soars 9% on Q4 Beat as Beef Losses Look Set to Ease in Fiscal 2027",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/tyson-foods-soars-9-q4-151455805.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-16T15:47:00Z",
+      "ticker": "CNC",
+      "move_pct": 5.56,
+      "price": 75.23,
+      "session": "regular",
+      "trigger": "Big move: no clear news — possibly sector flow",
+      "headline": "",
+      "url": "",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-16T15:47:00Z",
+      "ticker": "CRWV",
+      "move_pct": -5.33,
+      "price": 50.3,
+      "session": "regular",
+      "trigger": "Big move + news: tighter US chip rules",
+      "headline": "AMD, Broadcom stocks sink on tighter US chip rules, CoreWeave and Nebius shares drop",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/amd-broadcom-stocks-sink-on-tighter-us-chips-rules-coreweave-drops-143342994.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-16T15:47:00Z",
+      "ticker": "TSCO",
+      "move_pct": 4.99,
+      "price": 38.27,
+      "session": "regular",
+      "trigger": "Big move: no clear news — possibly sector flow",
+      "headline": "",
+      "url": "",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-16T15:47:00Z",
+      "ticker": "VALE",
+      "move_pct": -4.95,
+      "price": 10.67,
+      "session": "regular",
+      "trigger": "Big move: weak iron ore, Itaú BBA downgrade (3 days ago)",
+      "headline": "Here's Why Itaú BBA Downgraded Vale (VALE)",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/why-ita-bba-downgraded-vale-205852941.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-16T15:47:00Z",
+      "ticker": "NVDA",
+      "move_pct": -2.3,
+      "price": 159.1,
+      "session": "regular",
+      "trigger": "News reaction: tighter US chip rules",
+      "headline": "AMD, Broadcom stocks sink on tighter US chip rules, CoreWeave and Nebius shares drop",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/amd-broadcom-stocks-sink-on-tighter-us-chips-rules-coreweave-drops-143342994.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-16T14:47:00Z",
       "ticker": "INTC",
       "move_pct": -4.69,
