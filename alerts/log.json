@@ -1,6 +1,39 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-16T16:47:00Z",
+      "ticker": "IONQ",
+      "move_pct": -7.79,
+      "price": 26.63,
+      "session": "regular",
+      "trigger": "Big move: quantum peers' weak Q3",
+      "headline": "D-Wave Revenue Rises 21% as Quarterly Bookings Drop 19% and Losses Widen",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/d-wave-revenue-rises-21-143537738.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-16T16:47:00Z",
+      "ticker": "BEKE",
+      "move_pct": 5.63,
+      "price": 18.87,
+      "session": "regular",
+      "trigger": "News reaction: Q3 2026 results",
+      "headline": "KE Holdings Inc. Announces Third Quarter 2026 Unaudited Financial Results",
+      "url": "https://finance.yahoo.com/real-estate/articles/ke-holdings-inc-announces-third-100000214.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-16T16:47:00Z",
+      "ticker": "AMD",
+      "move_pct": -4.44,
+      "price": 510.36,
+      "session": "regular",
+      "trigger": "Big move: chip stocks slide ahead of Nvidia earnings",
+      "headline": "U.S. chip stocks slide as traders unwind Nvidia rival bets before earnings",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/u-chip-stocks-slide-traders-160656991.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-16T15:47:00Z",
       "ticker": "TSN",
       "move_pct": 7.45,
