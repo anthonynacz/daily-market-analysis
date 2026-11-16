@@ -54,6 +54,23 @@ const TODAY_IDX = 3;
 // impact: 3 = HIGH (top), 2 = MEDIUM, 1 = LOW (bottom)
 const IMPACT_LABEL = { 3: "HIGH", 2: "MEDIUM", 1: "LOW" };
 
+// Upcoming events cannot have a known outcome, so their `dir` is a LEAN, not a result:
+//   dir BULLISH / BEARISH = the evidence leans that way; `conf` (1-3) says how strongly
+//   and `basis` names the evidence. dir MIXED = pending, no measurable lean.
+// `conf` and `basis` are optional and only used on upcoming events (see template/LEAN_RULES.md).
+const CONF_LABEL = { 3: "HIGH", 2: "MEDIUM", 1: "LOW" };
+const PENDING_GLYPH = "?";
+const isPending = (e) => e.future && e.dir === "MIXED";
+const dirGlyph = (e) => (isPending(e) ? PENDING_GLYPH : DIR[e.dir].glyph);
+const dirLabel = (e) => {
+  if (!e.future) return DIR[e.dir].label;
+  if (e.dir === "MIXED") return "Pending · no lean";
+  return `Leans ${DIR[e.dir].label.toLowerCase()} · ${CONF_LABEL[e.conf] || "LOW"} confidence`;
+};
+
+// Running score of past leans vs what actually happened (updated by the daily run).
+const LEAN_RECORD = { hits: 0, misses: 0, since: "" };
+
 // ------------------------------------------------------------------ events
 // dayIdx maps the event date onto the 9-day axis above.
 const EVENTS = [
@@ -84,7 +101,8 @@ const EVENTS = [
   { id: "e3", ind: "energy", dayIdx: 5, future: true, impact: 3, dir: "MIXED",
     headline: "OPEC+ 41st ministerial — quota / policy decision (Sun)", tickers: "XOM · CVX · OXY · USO",
     rec: "Cut new directional bets into Sunday; a surprise larger hike is bearish crude, a hold/cut is bullish." },
-  { id: "e4", ind: "energy", dayIdx: 7, future: true, impact: 3, dir: "BULLISH",
+  { id: "e4", ind: "energy", dayIdx: 7, future: true, impact: 3, dir: "BULLISH", conf: 2,
+    basis: "XLE call skew bid; crude rose on 4 of the last 5 escalation headlines",
     headline: "Hormuz / Bab-al-Mandeb escalation risk persists", tickers: "XOM · CVX · OXY",
     rec: "Keep a tactical energy overweight as geopolitical insurance; trailing stops — a ceasefire reverses it sharply." },
   { id: "e5", ind: "energy", dayIdx: 6, future: true, impact: 1, dir: "MIXED",
@@ -107,7 +125,8 @@ const EVENTS = [
   { id: "h4", ind: "health", dayIdx: 3, future: false, impact: 2, dir: "BULLISH",
     headline: "Pfizer/Arvinas VEPPANU approved early — first-ever PROTAC degrader", tickers: "PFE · ARVN",
     rec: "Already priced in; hold ARVN for launch execution, not a date-driven pop." },
-  { id: "h5", ind: "health", dayIdx: 3, future: true, impact: 2, dir: "BEARISH",
+  { id: "h5", ind: "health", dayIdx: 3, future: true, impact: 2, dir: "BEARISH", conf: 1,
+    basis: "2027 estimates being cut; put skew elevated in UNH and HUM",
     headline: "CMS sets flat 2027 Medicare Advantage rate (vs ~5% for 2026)", tickers: "UNH · HUM · CVS",
     rec: "Margin headwind; stay cautious / underweight managed care until 2027-rate + DOJ clarity improve." },
 
@@ -288,7 +307,13 @@ export default function MarketMatrix() {
           <h1 style={S.h1}>US Market Pulse — Recency × Impact Matrix</h1>
           <div style={S.sub}>
             Snapshot <b style={{ color: "#e2e8f0" }}>Friday, Jun 5 2026</b> · window: last 3 days → next 2 weeks ·
-            color = industry · dot = event · {DIR.BULLISH.glyph}/{DIR.BEARISH.glyph}/{DIR.MIXED.glyph} = bullish / bearish / mixed
+            color = industry · dot = event · {DIR.BULLISH.glyph}/{DIR.BEARISH.glyph}/{DIR.MIXED.glyph} = bullish / bearish / mixed ·
+            upcoming: {DIR.BULLISH.glyph}/{DIR.BEARISH.glyph} = lean, {PENDING_GLYPH} = pending, no lean
+            {LEAN_RECORD.hits + LEAN_RECORD.misses > 0 && (
+              <> · lean record {LEAN_RECORD.hits}/{LEAN_RECORD.hits + LEAN_RECORD.misses} correct
+                ({Math.round((100 * LEAN_RECORD.hits) / (LEAN_RECORD.hits + LEAN_RECORD.misses))}%)
+                {LEAN_RECORD.since ? ` since ${LEAN_RECORD.since}` : ""}</>
+            )}
           </div>
         </div>
         <div style={S.tabs}>
@@ -399,7 +424,7 @@ export default function MarketMatrix() {
                             strokeWidth={isOn ? 2.5 : 1} />
                     <text x={e.cx} y={e.cy} fill="#fff" fontSize={10} fontWeight={700}
                           textAnchor="middle" dominantBaseline="central" style={{ pointerEvents: "none" }}>
-                      {DIR[e.dir].glyph}
+                      {dirGlyph(e)}
                     </text>
                   </g>
                 );
@@ -418,9 +443,14 @@ export default function MarketMatrix() {
                     {detail.future ? "UPCOMING" : "PAST"}
                   </span>
                   <span style={badge("#475569")}>{IMPACT_LABEL[detail.impact]} IMPACT</span>
-                  <span style={badge(dirColor(detail.dir))}>{DIR[detail.dir].glyph} {DIR[detail.dir].label}</span>
+                  <span style={badge(dirColor(detail.dir))}>{dirGlyph(detail)} {dirLabel(detail)}</span>
                 </div>
                 <div style={S.tickers}>{detail.tickers}</div>
+                {detail.future && detail.basis && (
+                  <div style={{ color: "#94a3b8", fontSize: 13, marginTop: 6 }}>
+                    <b style={{ color: "#cbd5e1" }}>Lean basis:</b> {detail.basis}
+                  </div>
+                )}
                 <div style={S.recBox}>
                   <span style={S.recLabel}>What to do</span> {detail.rec}
                 </div>
@@ -443,7 +473,7 @@ export default function MarketMatrix() {
                     <span style={{ color: "#64748b", width: 52, fontSize: 12 }}>
                       {DAYS[e.dayIdx].date}
                     </span>
-                    <span style={{ color: dirColor(e.dir), width: 16, textAlign: "center" }}>{DIR[e.dir].glyph}</span>
+                    <span style={{ color: dirColor(e.dir), width: 16, textAlign: "center" }}>{dirGlyph(e)}</span>
                     <span style={{ flex: 1, color: "#cbd5e1", fontSize: 13 }}>
                       <b style={{ color: "#e2e8f0" }}>{e.tickers}</b> — {e.headline}
                       <span style={{ color: "#94a3b8" }}> → {e.rec}</span>
