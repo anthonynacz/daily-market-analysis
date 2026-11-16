@@ -1,6 +1,39 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-16T18:47:00Z",
+      "ticker": "SOFI",
+      "move_pct": -4.54,
+      "price": 14.72,
+      "session": "regular",
+      "trigger": "Big move: no clear news, sector/market flow",
+      "headline": "SoFi Planned for 2 Rate Cuts This Year and Got a Rate Hike. It Raised Its Guidance Anyway.",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/sofi-planned-2-rate-cuts-215000185.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-16T18:47:00Z",
+      "ticker": "STLA",
+      "move_pct": -4.32,
+      "price": 3.655,
+      "session": "regular",
+      "trigger": "Big move: no clear news today",
+      "headline": "Canada Declares Stellantis in Default on Up to C$529 Million of Aid",
+      "url": "https://finance.yahoo.com/economy/policy/articles/canada-declares-stellantis-default-c-184640554.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-16T18:47:00Z",
+      "ticker": "NU",
+      "move_pct": -4.05,
+      "price": 12.69,
+      "session": "regular",
+      "trigger": "Big move: fade after Q3 earnings rally",
+      "headline": "Nu Holdings Stock Soars After Q3 Earnings: Is the Rally Worth Chasing?",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/nu-holdings-stock-soars-q3-154500473.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-16T17:46:00Z",
       "ticker": "MSTR",
       "move_pct": -7.73,
