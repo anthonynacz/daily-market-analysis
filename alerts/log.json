@@ -1,6 +1,39 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-17T12:50:00Z",
+      "ticker": "COHR",
+      "move_pct": 8.03,
+      "price": 219.77,
+      "session": "pre",
+      "trigger": "Big move: Reuters report on restricting Chinese data center equipment imports",
+      "headline": "Stocks making the biggest moves premarket: Disney, Home Depot, Nvidia & more",
+      "url": "https://www.cnbc.com/2026/11/17/stocks-moving-the-most-today-live-updates.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-17T12:50:00Z",
+      "ticker": "JD",
+      "move_pct": -7.41,
+      "price": 25.5,
+      "session": "pre",
+      "trigger": "Big move + news: Q3 revenue and adjusted profit missed",
+      "headline": "Stocks making the biggest moves premarket: Disney, Home Depot, Nvidia & more",
+      "url": "https://www.cnbc.com/2026/11/17/stocks-moving-the-most-today-live-updates.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-17T12:50:00Z",
+      "ticker": "HD",
+      "move_pct": -2.55,
+      "price": 338.88,
+      "session": "pre",
+      "trigger": "News reaction: CFO McPhail named CEO; Q3 beat",
+      "headline": "Stocks making the biggest moves premarket: Disney, Home Depot, Nvidia & more",
+      "url": "https://www.cnbc.com/2026/11/17/stocks-moving-the-most-today-live-updates.html",
+      "action": "In report: earnings event"
+    },
+    {
       "ts": "2026-11-16T18:47:00Z",
       "ticker": "SOFI",
       "move_pct": -4.54,
