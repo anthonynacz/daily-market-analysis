@@ -1,6 +1,39 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-17T20:47:00Z",
+      "ticker": "INTU",
+      "move_pct": -7.22,
+      "price": 320.6,
+      "session": "regular",
+      "trigger": "Big move + news reaction: FY27 guidance, AI-disruption software selloff",
+      "headline": "Why Intuit Stock Is Falling Fast Today",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/why-intuit-stock-falling-fast-173451442.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-17T20:47:00Z",
+      "ticker": "VIK",
+      "move_pct": 4.35,
+      "price": 94.21,
+      "session": "regular",
+      "trigger": "Big move + news reaction: rising despite Q3 earnings miss",
+      "headline": "Why Viking Cruise Stock Is Rising Despite Its Earnings Miss",
+      "url": "https://finance.yahoo.com/m/2dc2acc6-ddee-3248-8e85-302c8a8b0aa7/why-viking-cruise-stock-is.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-17T20:47:00Z",
+      "ticker": "ARM",
+      "move_pct": 4.05,
+      "price": 182.14,
+      "session": "regular",
+      "trigger": "Big move: no clear news, possibly sector flow",
+      "headline": "Arm Stocks Slide 6.72% as Nvidia CEO Search Keeps Rene Haas in Focus",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/arm-stocks-slide-6-72-174928553.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-17T19:48:00Z",
       "ticker": "NXT",
       "move_pct": -8.89,
