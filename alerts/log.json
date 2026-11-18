@@ -1,6 +1,50 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-18T14:48:00Z",
+      "ticker": "FCX",
+      "move_pct": -8.29,
+      "price": 50.72,
+      "session": "regular",
+      "trigger": "Big move: metals selloff, gold at 14-month low on Fed hike bets",
+      "headline": "Gold plunges to 14-month low, silver tumbles as Fed rate hike bets intensify",
+      "url": "https://www.kitco.com/news/article/2026-11-18/gold-plunges-14-month-low-silver-tumbles-fed-rate-hike-bets-intensify-kitco",
+      "action": "In report: WATCH (event e1)"
+    },
+    {
+      "ts": "2026-11-18T14:48:00Z",
+      "ticker": "TJX",
+      "move_pct": 8.54,
+      "price": 140.96,
+      "session": "regular",
+      "trigger": "Big move + news: Q3 FY27 sales beat, 4% comps, holiday acceleration",
+      "headline": "TJX Sees Holiday Sales Accelerating After Strong Third-Quarter Rebound",
+      "url": "https://finance.yahoo.com/quote/TJX/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-18T14:48:00Z",
+      "ticker": "AEM",
+      "move_pct": -7.19,
+      "price": 160.57,
+      "session": "regular",
+      "trigger": "Big move: gold at 14-month low on Fed hike bets",
+      "headline": "Gold plunges to 14-month low, silver tumbles as Fed rate hike bets intensify",
+      "url": "https://www.kitco.com/news/article/2026-11-18/gold-plunges-14-month-low-silver-tumbles-fed-rate-hike-bets-intensify-kitco",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-18T14:48:00Z",
+      "ticker": "TGT",
+      "move_pct": 3.56,
+      "price": 165.18,
+      "session": "regular",
+      "trigger": "News reaction: Q3 beat-and-raise, traffic +5%",
+      "headline": "Target's traffic jumps 5%, the biggest gain since 2022, as turnaround brings shoppers back",
+      "url": "https://finance.yahoo.com/quote/TGT/",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-17T20:47:00Z",
       "ticker": "INTU",
       "move_pct": -7.22,
