@@ -1,6 +1,50 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-18T15:47:00Z",
+      "ticker": "GLD",
+      "move_pct": -2.5,
+      "price": 343.66,
+      "session": "regular",
+      "trigger": "News reaction: gold at 1-yr low on hawkish Fed bets",
+      "headline": "Gold hits over one-year low on resilient dollar as hawkish Fed bets build",
+      "url": "https://www.kitco.com/news/off-the-wire/2026-11-16/gold-hits-over-one-year-low-resilient-dollar-hawkish-fed-bets-build",
+      "action": "In report: Bearish"
+    },
+    {
+      "ts": "2026-11-18T15:47:00Z",
+      "ticker": "PANW",
+      "move_pct": 5.64,
+      "price": 326.72,
+      "session": "regular",
+      "trigger": "Big move: no clear news, cyber sector flow ahead of FQ1 earnings AMC",
+      "headline": "No clear news - possibly sector flow",
+      "url": "https://finance.yahoo.com/quote/PANW/",
+      "action": "In report: today event"
+    },
+    {
+      "ts": "2026-11-18T15:47:00Z",
+      "ticker": "TTWO",
+      "move_pct": 6.98,
+      "price": 218.16,
+      "session": "regular",
+      "trigger": "Big move: GTA VI strong reviews ahead of Nov 19 launch",
+      "headline": "Take-Two shares jump on GTA VI reviews",
+      "url": "https://finance.yahoo.com/quote/TTWO/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-18T15:47:00Z",
+      "ticker": "CRWV",
+      "move_pct": -5.6,
+      "price": 47.1,
+      "session": "regular",
+      "trigger": "Big move: AI-infrastructure financing worries",
+      "headline": "CoreWeave falls ~5% despite NVIDIA financing commitments",
+      "url": "https://finance.yahoo.com/quote/CRWV/",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-18T14:48:00Z",
       "ticker": "FCX",
       "move_pct": -8.29,
