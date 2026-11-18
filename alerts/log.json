@@ -1,6 +1,72 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-18T18:50:00Z",
+      "ticker": "UNH",
+      "move_pct": -9.06,
+      "price": 354.38,
+      "session": "regular",
+      "trigger": "Big move: CMS CRUSH anti-fraud proposal hits managed care",
+      "headline": "UnitedHealth and other insurers drag down the Dow after CMS proposes new anti-fraud rule",
+      "url": "https://finance.yahoo.com/healthcare/article/unitedhealth-and-other-insurance-stocks-drag-down-the-dow-after-cms-proposes-new-anti-fraud-rule-173851810.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-18T18:50:00Z",
+      "ticker": "CDE",
+      "move_pct": -6.95,
+      "price": 12.26,
+      "session": "regular",
+      "trigger": "Big move: gold/silver selloff on Fed hike bets",
+      "headline": "Newmont Stocks Fall as Gold Slides Below $3,800 on Fed Hike Bets",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/newmont-stocks-fall-5-13-170805714.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-18T18:50:00Z",
+      "ticker": "B",
+      "move_pct": -6.33,
+      "price": 34.31,
+      "session": "regular",
+      "trigger": "Big move: gold selloff on Fed hike bets",
+      "headline": "Newmont Stocks Fall as Gold Slides Below $3,800 on Fed Hike Bets",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/newmont-stocks-fall-5-13-170805714.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-18T18:50:00Z",
+      "ticker": "NEM",
+      "move_pct": -6.27,
+      "price": 104.28,
+      "session": "regular",
+      "trigger": "Big move: gold selloff on Fed hike bets",
+      "headline": "Newmont Stocks Fall as Gold Slides Below $3,800 on Fed Hike Bets",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/newmont-stocks-fall-5-13-170805714.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-18T18:50:00Z",
+      "ticker": "WPM",
+      "move_pct": -5.73,
+      "price": 119.99,
+      "session": "regular",
+      "trigger": "Big move: gold/silver selloff on Fed hike bets",
+      "headline": "Newmont Stocks Fall as Gold Slides Below $3,800 on Fed Hike Bets",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/newmont-stocks-fall-5-13-170805714.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-18T18:50:00Z",
+      "ticker": "TECK",
+      "move_pct": -5.56,
+      "price": 52.96,
+      "session": "regular",
+      "trigger": "Big move: copper at 7-month low",
+      "headline": "Copper stocks fall as LME prices plunge to seven-month low",
+      "url": "https://finance.yahoo.com/markets/commodities/articles/copper-stocks-fall-lme-prices-160100723.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-18T17:46:00Z",
       "ticker": "AU",
       "move_pct": -8.03,
