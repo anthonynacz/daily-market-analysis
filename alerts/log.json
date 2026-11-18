@@ -1,6 +1,17 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-18T19:47:00Z",
+      "ticker": "OKTA",
+      "move_pct": 10.7,
+      "price": 193.34,
+      "session": "regular",
+      "trigger": "Big move; no clear company news - cybersecurity sector rally",
+      "headline": "Okta quote page (Yahoo Finance)",
+      "url": "https://finance.yahoo.com/quote/OKTA/",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-18T18:50:00Z",
       "ticker": "UNH",
       "move_pct": -9.06,
