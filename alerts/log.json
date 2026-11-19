@@ -1,6 +1,28 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-19T19:47:00Z",
+      "ticker": "AMZN",
+      "move_pct": -3.21,
+      "price": 259.14,
+      "session": "regular",
+      "trigger": "News reaction: Anthropic IPO debut fade (sell-the-news, unconfirmed)",
+      "headline": "ANT IPO live: first trading day",
+      "url": "https://www.stocktitan.net/articles/anthropic-ipo-live-ant-first-trading-day-2026",
+      "action": "In report: Bullish"
+    },
+    {
+      "ts": "2026-11-19T19:47:00Z",
+      "ticker": "ANT",
+      "move_pct": 18.61,
+      "price": 98.45,
+      "session": "regular",
+      "trigger": "Big move: first trading day vs $83 IPO price",
+      "headline": "ANT IPO live: first trading day",
+      "url": "https://www.stocktitan.net/articles/anthropic-ipo-live-ant-first-trading-day-2026",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-19T18:47:00Z",
       "ticker": "AMD",
       "move_pct": -8.96,
