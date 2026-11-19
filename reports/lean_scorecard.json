@@ -1,1 +1,22 @@
-[]
+[
+ {
+  "reportDate": "2026-11-16",
+  "eventDate": "2026-11-17",
+  "id": "c5",
+  "ticker": "DIS",
+  "lean": "BEARISH",
+  "conf": 1,
+  "movePct": -1.48,
+  "result": "HIT"
+ },
+ {
+  "reportDate": "2026-11-17",
+  "eventDate": "2026-11-18",
+  "id": "c6",
+  "ticker": "LOW",
+  "lean": "BEARISH",
+  "conf": 1,
+  "movePct": 1.05,
+  "result": "MISS"
+ }
+]
