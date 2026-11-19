@@ -1,6 +1,28 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-19T14:47:00Z",
+      "ticker": "INTC",
+      "move_pct": 7.87,
+      "price": 58.97,
+      "session": "regular",
+      "trigger": "Big move: chip breakthrough headline (unconfirmed date)",
+      "headline": "Intel Stock Jumps After Chip Breakthrough. Finally Some Good News.",
+      "url": "https://finance.yahoo.com/m/40e8c2bc-e65a-39ef-8826-a75a5bf8ec2b/intel-stock-jumps-after-chip.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-19T14:47:00Z",
+      "ticker": "NVDA",
+      "move_pct": 4.47,
+      "price": 157.72,
+      "session": "regular",
+      "trigger": "Big move: chip sector rally on Anthropic IPO optimism",
+      "headline": "Nvidia, AMD, Micron stocks lead chip sector higher amid Anthropic IPO optimism",
+      "url": "https://finance.yahoo.com/markets/article/copy-nvidia-stock-slips-as-investors-digest-ceo-exit-rest-of-chip-sector-falls-134408467.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-19T13:50:00Z",
       "ticker": "PANW",
       "move_pct": 8.7,
