@@ -1,6 +1,39 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-19T13:50:00Z",
+      "ticker": "PANW",
+      "move_pct": 8.7,
+      "price": 369.6,
+      "session": "pre",
+      "trigger": "Big move + news: FQ1 beat, raised FY27 outlook, $4.5B Applied Compute deal",
+      "headline": "Palo Alto inks $4.5 billion deal for AI startup Applied Compute, shares pop 8% on earnings",
+      "url": "https://www.cnbc.com/2026/11/18/palo-alto-networks-panw-q1-2027-earnings-.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-19T13:50:00Z",
+      "ticker": "WSM",
+      "move_pct": -6.5,
+      "price": 243.0,
+      "session": "pre",
+      "trigger": "Big move + earnings: Q3 EPS $2.19 vs $2.21 consensus",
+      "headline": "Williams-Sonoma reports Q3 non-GAAP EPS $2.19, consensus $2.21",
+      "url": "https://www.tipranks.com/news/the-fly/williams-sonoma-reports-q3-non-gaap-eps-2-19-consensus-2-21-thefly-news",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-19T13:50:00Z",
+      "ticker": "PDD",
+      "move_pct": 5.9,
+      "price": 82.0,
+      "session": "pre",
+      "trigger": "News reaction: Q3 EPS beat, revenue miss",
+      "headline": "Temu-owner PDD misses third-quarter revenue estimates",
+      "url": "https://www.reuters.com/business/retail-consumer/temu-owner-pdd-misses-third-quarter-revenue-estimates-2026-11-19/",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-18T19:47:00Z",
       "ticker": "OKTA",
       "move_pct": 10.7,
