@@ -1,6 +1,50 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-20T15:50:00Z",
+      "ticker": "SNDK",
+      "move_pct": -15.55,
+      "price": 79.72,
+      "session": "regular",
+      "trigger": "Big move + news: TrendForce bearish on 2027 NAND prices",
+      "headline": "Sandisk tumbles as TrendForce turns bearish on 2027 NAND prices",
+      "url": "https://finance.yahoo.com/quote/SNDK/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-20T15:50:00Z",
+      "ticker": "NBIS",
+      "move_pct": -10.95,
+      "price": 86.31,
+      "session": "regular",
+      "trigger": "Big move: neocloud/AI financing rout",
+      "headline": "Nebius drops as neocloud rout continues",
+      "url": "https://finance.yahoo.com/quote/NBIS/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-20T15:50:00Z",
+      "ticker": "CRWV",
+      "move_pct": -10.62,
+      "price": 40.14,
+      "session": "regular",
+      "trigger": "Big move: AI selloff, neocloud weakness",
+      "headline": "CoreWeave down as Anthropic debut fails to stop AI selloff",
+      "url": "https://finance.yahoo.com/quote/CRWV/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-20T15:50:00Z",
+      "ticker": "AVGO",
+      "move_pct": -8.89,
+      "price": 315.85,
+      "session": "regular",
+      "trigger": "Big move: broad semiconductor/AI selloff",
+      "headline": "Broadcom falls in chip sector selloff",
+      "url": "https://finance.yahoo.com/quote/AVGO/",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-20T14:50:00Z",
       "ticker": "NVDA",
       "move_pct": -4.14,
@@ -501,8 +545,8 @@
       "move_pct": -8.89,
       "price": 81.37,
       "session": "regular",
-      "trigger": "Big move; no clear news — possibly sector/market flow",
-      "headline": "No clear news — possibly sector/market flow",
+      "trigger": "Big move; no clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "",
       "action": "WATCH"
     },
@@ -523,8 +567,8 @@
       "move_pct": -6.66,
       "price": 11.21,
       "session": "regular",
-      "trigger": "Big move; no clear news — possibly sector/market flow",
-      "headline": "No clear news — possibly sector/market flow",
+      "trigger": "Big move; no clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "",
       "action": "WATCH"
     },
@@ -568,7 +612,7 @@
       "price": 23.78,
       "session": "regular",
       "trigger": "Big move; broad tech/AI sell-off, no clear news",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "",
       "action": "WATCH"
     },
@@ -579,7 +623,7 @@
       "price": 266.75,
       "session": "regular",
       "trigger": "Big move; broad tech/AI sell-off, no clear news",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "",
       "action": "WATCH"
     },
@@ -590,7 +634,7 @@
       "price": 356.79,
       "session": "regular",
       "trigger": "Big move; broad tech/AI sell-off, no clear news",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "",
       "action": "WATCH"
     },
@@ -601,7 +645,7 @@
       "price": 113.95,
       "session": "regular",
       "trigger": "Big move; broad tech/AI sell-off, no clear news",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "",
       "action": "WATCH"
     },
@@ -765,7 +809,7 @@
       "move_pct": 5.56,
       "price": 75.23,
       "session": "regular",
-      "trigger": "Big move: no clear news — possibly sector flow",
+      "trigger": "Big move: no clear news \u2014 possibly sector flow",
       "headline": "",
       "url": "",
       "action": "WATCH"
@@ -787,7 +831,7 @@
       "move_pct": 4.99,
       "price": 38.27,
       "session": "regular",
-      "trigger": "Big move: no clear news — possibly sector flow",
+      "trigger": "Big move: no clear news \u2014 possibly sector flow",
       "headline": "",
       "url": "",
       "action": "WATCH"
@@ -798,8 +842,8 @@
       "move_pct": -4.95,
       "price": 10.67,
       "session": "regular",
-      "trigger": "Big move: weak iron ore, Itaú BBA downgrade (3 days ago)",
-      "headline": "Here's Why Itaú BBA Downgraded Vale (VALE)",
+      "trigger": "Big move: weak iron ore, Ita\u00fa BBA downgrade (3 days ago)",
+      "headline": "Here's Why Ita\u00fa BBA Downgraded Vale (VALE)",
       "url": "https://finance.yahoo.com/markets/stocks/articles/why-ita-bba-downgraded-vale-205852941.html",
       "action": "WATCH"
     },
@@ -1162,7 +1206,7 @@
       "price": 54.95,
       "session": "pre",
       "trigger": "Big move; direction flipped; no clear news",
-      "headline": "no clear news — giveback after yesterday's surge",
+      "headline": "no clear news \u2014 giveback after yesterday's surge",
       "url": "",
       "action": "WATCH"
     },
@@ -1173,7 +1217,7 @@
       "price": 352.22,
       "session": "pre",
       "trigger": "Big move; direction flipped; AI-hardware giveback",
-      "headline": "no clear news — sector flow",
+      "headline": "no clear news \u2014 sector flow",
       "url": "",
       "action": "WATCH"
     },
@@ -1184,7 +1228,7 @@
       "price": 199.73,
       "session": "pre",
       "trigger": "Big move; direction flipped; momentum giveback",
-      "headline": "no clear news — sector flow",
+      "headline": "no clear news \u2014 sector flow",
       "url": "",
       "action": "WATCH"
     },
@@ -1195,7 +1239,7 @@
       "price": 776.39,
       "session": "pre",
       "trigger": "Big move; direction flipped; semis giveback",
-      "headline": "no clear news — sector flow",
+      "headline": "no clear news \u2014 sector flow",
       "url": "",
       "action": "WATCH"
     },
@@ -1536,7 +1580,7 @@
       "price": 34.53,
       "session": "regular",
       "trigger": "Big move + news: Q3 results, shares fall",
-      "headline": "On Holding Delivers Record Q3 Sales As Apparel Revenue Jumps 39% — Why ONON Stock Is Falling",
+      "headline": "On Holding Delivers Record Q3 Sales As Apparel Revenue Jumps 39% \u2014 Why ONON Stock Is Falling",
       "url": "https://finance.yahoo.com/markets/stocks/articles/holding-delivers-record-q3-sales-113240499.html",
       "action": "WATCH"
     },
@@ -1546,7 +1590,7 @@
       "move_pct": -7.41,
       "price": 16.3,
       "session": "regular",
-      "trigger": "Big move: no clear news — possibly sector flow",
+      "trigger": "Big move: no clear news \u2014 possibly sector flow",
       "headline": "",
       "url": "",
       "action": "WATCH"
@@ -1568,7 +1612,7 @@
       "move_pct": 4.39,
       "price": 215.71,
       "session": "regular",
-      "trigger": "Big move: no clear news — rebound after post-earnings drop",
+      "trigger": "Big move: no clear news \u2014 rebound after post-earnings drop",
       "headline": "Daiwa Securities Adjusts Price Target on Twilio to $230 From $277",
       "url": "https://finance.yahoo.com/markets/stocks/articles/daiwa-securities-adjusts-price-target-105419968.html",
       "action": "WATCH"
@@ -2371,7 +2415,7 @@
       "move_pct": -5.14,
       "price": 29.77,
       "session": "regular",
-      "trigger": "Big move: no clear news — possibly sector/market flow",
+      "trigger": "Big move: no clear news \u2014 possibly sector/market flow",
       "headline": "Yahoo Finance most-active list",
       "url": "https://finance.yahoo.com/markets/stocks/most-active/",
       "action": "WATCH"
@@ -2382,7 +2426,7 @@
       "move_pct": -4.98,
       "price": 134.27,
       "session": "regular",
-      "trigger": "Big move: no clear news — possibly sector/market flow",
+      "trigger": "Big move: no clear news \u2014 possibly sector/market flow",
       "headline": "Yahoo Finance most-active list",
       "url": "https://finance.yahoo.com/markets/stocks/most-active/",
       "action": "WATCH"
@@ -2393,7 +2437,7 @@
       "move_pct": -4.12,
       "price": 58.05,
       "session": "regular",
-      "trigger": "Big move: no clear news — possibly sector/market flow",
+      "trigger": "Big move: no clear news \u2014 possibly sector/market flow",
       "headline": "Yahoo Finance most-active list",
       "url": "https://finance.yahoo.com/markets/stocks/most-active/",
       "action": "WATCH"
@@ -2988,7 +3032,7 @@
       "price": 92.38,
       "session": "regular",
       "trigger": "Big move; no clear news",
-      "headline": "no clear news — possibly sector/market flow",
+      "headline": "no clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/NXT/",
       "action": "WATCH"
     },
@@ -3021,7 +3065,7 @@
       "price": 13.82,
       "session": "regular",
       "trigger": "Big move; no clear news",
-      "headline": "no clear news — possibly rate/sector flow",
+      "headline": "no clear news \u2014 possibly rate/sector flow",
       "url": "https://finance.yahoo.com/quote/RKT/",
       "action": "WATCH"
     },
@@ -3164,7 +3208,7 @@
       "price": 166.48,
       "session": "regular",
       "trigger": "Big move; no clear news",
-      "headline": "no clear news — possibly sector/market flow",
+      "headline": "no clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/TSEM/",
       "action": "WATCH"
     },
@@ -3626,7 +3670,7 @@
       "price": 8.53,
       "session": "regular",
       "trigger": "Big move + Q3 growth outlook trimmed",
-      "headline": "Haleon shares plunge 14% after £500 million buyback launch",
+      "headline": "Haleon shares plunge 14% after \u00a3500 million buyback launch",
       "url": "https://finance.yahoo.com/markets/stocks/articles/haleon-launches-500-million-share-072500287.html",
       "action": "WATCH"
     },
@@ -3813,7 +3857,7 @@
       "price": 2.755,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/BBD/",
       "action": "WATCH"
     },
@@ -3824,7 +3868,7 @@
       "price": 39.47,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -3835,7 +3879,7 @@
       "price": 11.77,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -3846,7 +3890,7 @@
       "price": 55.86,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -3857,7 +3901,7 @@
       "price": 90.6,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
