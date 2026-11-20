@@ -1,6 +1,61 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-20T20:46:00Z",
+      "ticker": "MRVL",
+      "move_pct": -11.3,
+      "price": 122.82,
+      "session": "regular",
+      "trigger": "Big move + news: AI selloff, Lumentum deal pushback",
+      "headline": "Credo Sinks 6%, Marvell Down 5% as Cramer Says Nvidia Woes Are 'Overwhelming the Good News'",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/credo-sinks-6-marvell-down-143904477.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-20T20:46:00Z",
+      "ticker": "GLW",
+      "move_pct": -10.88,
+      "price": 94.44,
+      "session": "regular",
+      "trigger": "Big move: no clear news, AI hardware sector flow",
+      "headline": "no clear news",
+      "url": "https://finance.yahoo.com/quote/GLW/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-20T20:46:00Z",
+      "ticker": "DELL",
+      "move_pct": -10.68,
+      "price": 279.15,
+      "session": "regular",
+      "trigger": "Big move: AI selloff ahead of Tuesday earnings",
+      "headline": "Dell stock plunges 10% in AI selloff",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/dell-stock-plunges-10-ai-180702531.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-20T20:46:00Z",
+      "ticker": "RKLB",
+      "move_pct": -10.55,
+      "price": 45.61,
+      "session": "regular",
+      "trigger": "Big move: space stocks selloff",
+      "headline": "AST SpaceMobile plunged 44% in a month as space stocks sold off",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/ast-spacemobile-just-plunged-44-200406881.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-20T20:46:00Z",
+      "ticker": "HOOD",
+      "move_pct": -8.94,
+      "price": 62.51,
+      "session": "regular",
+      "trigger": "Big move: Anthropic-exposure funds weak",
+      "headline": "Funds With Anthropic Exposure Got Off To a Rough Start",
+      "url": "https://finance.yahoo.com/m/7bc6aba7-b1c4-3abf-b83a-be1cf9f2e52c/funds-with-anthropic-exposure.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-20T19:46:00Z",
       "ticker": "NVDA",
       "move_pct": -11.2,
