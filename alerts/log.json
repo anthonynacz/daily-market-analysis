@@ -1,6 +1,72 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-20T17:46:00Z",
+      "ticker": "CLS",
+      "move_pct": -15.02,
+      "price": 204.13,
+      "session": "regular",
+      "trigger": "Big move: AI-hardware sector selloff",
+      "headline": "No clear news - possibly sector flow",
+      "url": "https://finance.yahoo.com/quote/CLS/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-20T17:46:00Z",
+      "ticker": "COHR",
+      "move_pct": -14.29,
+      "price": 184.22,
+      "session": "regular",
+      "trigger": "Big move: optics-sector reversal",
+      "headline": "Coherent faces sharp optics-sector reversal as AI-linked hardware sells off",
+      "url": "https://finance.yahoo.com/quote/COHR/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-20T17:46:00Z",
+      "ticker": "BE",
+      "move_pct": -13.1,
+      "price": 146.08,
+      "session": "regular",
+      "trigger": "Big move: AI-infrastructure flow",
+      "headline": "Bloom Energy Tumbles 10% Despite BMO Upgrade With $230 Target",
+      "url": "https://finance.yahoo.com/quote/BE/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-20T17:46:00Z",
+      "ticker": "CRDO",
+      "move_pct": -12.53,
+      "price": 103.0,
+      "session": "regular",
+      "trigger": "Big move: Nvidia-related AI worries",
+      "headline": "Credo Sinks, Marvell Down as Nvidia Woes Overwhelm the Good News",
+      "url": "https://finance.yahoo.com/quote/CRDO/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-20T17:46:00Z",
+      "ticker": "SPCX",
+      "move_pct": -7.13,
+      "price": 128.56,
+      "session": "regular",
+      "trigger": "Big move: financing concerns",
+      "headline": "SpaceX drops after $32B bond sale at 8.26%",
+      "url": "https://finance.yahoo.com/quote/SPCX/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-20T17:46:00Z",
+      "ticker": "INTC",
+      "move_pct": -5.34,
+      "price": 52.75,
+      "session": "regular",
+      "trigger": "Big move: chip-sector flow",
+      "headline": "No clear news - possibly sector flow",
+      "url": "https://finance.yahoo.com/quote/INTC/",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-20T16:48:00Z",
       "ticker": "AMD",
       "move_pct": -11.41,
