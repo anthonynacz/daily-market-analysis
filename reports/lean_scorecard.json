@@ -18,5 +18,15 @@
   "conf": 1,
   "movePct": 1.05,
   "result": "MISS"
+ },
+ {
+  "reportDate": "2026-11-18",
+  "eventDate": "2026-11-19",
+  "id": "c7",
+  "ticker": "WMT",
+  "lean": "BULLISH",
+  "conf": 1,
+  "movePct": -1.04,
+  "result": "MISS"
  }
 ]
