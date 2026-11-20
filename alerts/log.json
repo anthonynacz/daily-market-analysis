@@ -1,6 +1,61 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-20T14:50:00Z",
+      "ticker": "NVDA",
+      "move_pct": -4.14,
+      "price": 139.94,
+      "session": "regular",
+      "trigger": "Big move: 6th straight loss, chip sector lower",
+      "headline": "Nvidia stock extends 6-day losing streak, as AMD, Broadcom lead chip sector lower",
+      "url": "https://finance.yahoo.com/markets/article/nvidia-amd-and-broadcom-lead-chip-stocks-lower-133658985.html",
+      "action": "In report: Avoid (event)"
+    },
+    {
+      "ts": "2026-11-20T14:50:00Z",
+      "ticker": "UNH",
+      "move_pct": 2.88,
+      "price": 339.99,
+      "session": "regular",
+      "trigger": "News reaction: rebound on analyst support (direction flipped)",
+      "headline": "TD Cowen Names UnitedHealth Its 2027 Best Idea",
+      "url": "https://finance.yahoo.com/healthcare/articles/td-cowen-names-unitedhealth-2027-113753026.html",
+      "action": "In report: Bearish"
+    },
+    {
+      "ts": "2026-11-20T14:50:00Z",
+      "ticker": "GLD",
+      "move_pct": -2.39,
+      "price": 327.16,
+      "session": "regular",
+      "trigger": "News reaction: gold slides on Fed-hike bets",
+      "headline": "Gold Just Crashed Below $3,700 and December Could Make It Worse",
+      "url": "https://finance.yahoo.com/markets/commodities/articles/gold-just-crashed-below-3-121224500.html",
+      "action": "In report: Bearish"
+    },
+    {
+      "ts": "2026-11-20T14:50:00Z",
+      "ticker": "SNDK",
+      "move_pct": -8.28,
+      "price": 86.58,
+      "session": "regular",
+      "trigger": "Big move: TrendForce bearish on 2027 NAND prices",
+      "headline": "SanDisk Tumbles 8% as TrendForce Turns Bearish on 2027 NAND Prices",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/sandisk-tumbles-8-trendforce-turns-140929574.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-20T14:50:00Z",
+      "ticker": "MU",
+      "move_pct": -7.1,
+      "price": 641.43,
+      "session": "regular",
+      "trigger": "Big move: memory selloff / chip rout",
+      "headline": "SanDisk Tumbles 8% as TrendForce Turns Bearish on 2027 NAND Prices; Micron Falls 5%",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/sandisk-tumbles-8-trendforce-turns-140929574.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-20T13:48:00Z",
       "ticker": "AMD",
       "move_pct": -6.08,
