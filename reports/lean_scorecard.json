@@ -28,5 +28,15 @@
   "conf": 1,
   "movePct": -1.04,
   "result": "MISS"
+ },
+ {
+  "reportDate": "2026-11-18",
+  "eventDate": "2026-11-19",
+  "id": "c8",
+  "ticker": "ROST",
+  "lean": "BULLISH",
+  "conf": 1,
+  "movePct": -2.92,
+  "result": "MISS"
  }
 ]
