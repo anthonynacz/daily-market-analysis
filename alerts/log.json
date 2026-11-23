@@ -1,6 +1,61 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-23T18:47:00Z",
+      "ticker": "ASX",
+      "move_pct": 21.41,
+      "price": 31.9,
+      "session": "regular",
+      "trigger": "Big move; no clear news, likely AI-semis sympathy rally",
+      "headline": "Stock market today: Dow, S&P 500, Nasdaq surge as Jensen Huang's reinstatement at Nvidia sparks stunning rally",
+      "url": "https://finance.yahoo.com/markets/live/stock-market-today-monday-november-23-dow-sp-500-nasdaq-nvidia-reinstates-jensen-huang-141511975.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-23T18:47:00Z",
+      "ticker": "CRDO",
+      "move_pct": 20.58,
+      "price": 120.41,
+      "session": "regular",
+      "trigger": "Big move; no clear news, likely AI-semis sympathy rally",
+      "headline": "Stock market today: Dow, S&P 500, Nasdaq surge as Jensen Huang's reinstatement at Nvidia sparks stunning rally",
+      "url": "https://finance.yahoo.com/markets/live/stock-market-today-monday-november-23-dow-sp-500-nasdaq-nvidia-reinstates-jensen-huang-141511975.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-23T18:47:00Z",
+      "ticker": "ALAB",
+      "move_pct": 19.76,
+      "price": 215.98,
+      "session": "regular",
+      "trigger": "Big move; no clear news, likely AI-semis sympathy rally",
+      "headline": "Stock market today: Dow, S&P 500, Nasdaq surge as Jensen Huang's reinstatement at Nvidia sparks stunning rally",
+      "url": "https://finance.yahoo.com/markets/live/stock-market-today-monday-november-23-dow-sp-500-nasdaq-nvidia-reinstates-jensen-huang-141511975.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-23T18:47:00Z",
+      "ticker": "UMC",
+      "move_pct": 19.6,
+      "price": 14.4,
+      "session": "regular",
+      "trigger": "Big move; no clear news, likely AI-semis sympathy rally",
+      "headline": "Stock market today: Dow, S&P 500, Nasdaq surge as Jensen Huang's reinstatement at Nvidia sparks stunning rally",
+      "url": "https://finance.yahoo.com/markets/live/stock-market-today-monday-november-23-dow-sp-500-nasdaq-nvidia-reinstates-jensen-huang-141511975.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-23T18:47:00Z",
+      "ticker": "BE",
+      "move_pct": 18.01,
+      "price": 168.04,
+      "session": "regular",
+      "trigger": "Big move; no clear news, likely AI-semis sympathy rally",
+      "headline": "Stock market today: Dow, S&P 500, Nasdaq surge as Jensen Huang's reinstatement at Nvidia sparks stunning rally",
+      "url": "https://finance.yahoo.com/markets/live/stock-market-today-monday-november-23-dow-sp-500-nasdaq-nvidia-reinstates-jensen-huang-141511975.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-23T17:46:00Z",
       "ticker": "NBIS",
       "move_pct": 21.2,
