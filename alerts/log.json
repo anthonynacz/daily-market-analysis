@@ -1,6 +1,61 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-24T15:47:00Z",
+      "ticker": "SNDK",
+      "move_pct": -13.9,
+      "price": 75.52,
+      "session": "regular",
+      "trigger": "Big move: AI/memory chip selloff",
+      "headline": "Micron falls 7% as NVIDIA pullback partially reverses Monday's AI chip rally; SanDisk and SK Hynix drop 6%",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/micron-falls-7-nvidia-pullback-140733539.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-24T15:47:00Z",
+      "ticker": "CRWV",
+      "move_pct": -11.82,
+      "price": 42.62,
+      "session": "regular",
+      "trigger": "Big move: neocloud/AI selloff",
+      "headline": "Anthropic tumbles 9%, trades below IPO price; CoreWeave and Nebius drop 8%",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/anthropic-tumbles-9-trades-below-145448903.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-24T15:47:00Z",
+      "ticker": "INTC",
+      "move_pct": -8.6,
+      "price": 54.53,
+      "session": "regular",
+      "trigger": "Big move: chips give back Nvidia rally",
+      "headline": "Marvell Sinks 8%, Intel Down 6% as Chip Stocks Give Back Nvidia's Record Huang Rally",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/marvell-sinks-8-intel-down-151459189.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-24T15:47:00Z",
+      "ticker": "SMCI",
+      "move_pct": -8.44,
+      "price": 22.46,
+      "session": "regular",
+      "trigger": "Big move: AI infrastructure selloff",
+      "headline": "The U.S. Just Blacklisted the Firm Suspected of Funneling Nvidia Chips to China",
+      "url": "https://finance.yahoo.com/technology/articles/u-just-blacklisted-firm-suspected-142308444.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-24T15:47:00Z",
+      "ticker": "IBIT",
+      "move_pct": -2.35,
+      "price": 33.81,
+      "session": "regular",
+      "trigger": "News reaction: record Bitcoin ETF outflows",
+      "headline": "Bitcoin ETF Outflows Hit A Record $4.71 Billion",
+      "url": "https://finance.yahoo.com/quote/IBIT/",
+      "action": "In report: Bearish"
+    },
+    {
       "ts": "2026-11-24T14:47:00Z",
       "ticker": "HPE",
       "move_pct": -14.0,
