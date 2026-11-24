@@ -1,6 +1,61 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-24T19:47:00Z",
+      "ticker": "KYMR",
+      "move_pct": 13.02,
+      "price": 169.96,
+      "session": "regular",
+      "trigger": "Big move + news: positive atopic dermatitis data",
+      "headline": "Kymera Shares Soar 30% After Positive Atopic Dermatitis Drug Data",
+      "url": "https://finance.yahoo.com/healthcare/articles/kymera-shares-soar-30-positive-164000708.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-24T19:47:00Z",
+      "ticker": "ALAB",
+      "move_pct": -12.74,
+      "price": 193.83,
+      "session": "regular",
+      "trigger": "Big move: no clear news, AI-hardware sector flow",
+      "headline": "Nvidia Sinks 7% as US Blacklists Customer Megaspeed",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/nvidia-sinks-7-us-blacklists-152551540.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-24T19:47:00Z",
+      "ticker": "CRDO",
+      "move_pct": -12.06,
+      "price": 107.69,
+      "session": "regular",
+      "trigger": "Big move: Nvidia-related risk reassessment (unconfirmed)",
+      "headline": "Nvidia Sinks 7% as US Blacklists Customer Megaspeed",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/nvidia-sinks-7-us-blacklists-152551540.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-24T19:47:00Z",
+      "ticker": "DELL",
+      "move_pct": -11.68,
+      "price": 295.8,
+      "session": "regular",
+      "trigger": "Big move: AI-server worries ahead of Q3 earnings after close",
+      "headline": "Dell Technologies Stocks Fall 7.47% Hours Before Results Test a $95 Billion AI Backlog",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/dell-technologies-stocks-fall-7-174249169.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-24T19:47:00Z",
+      "ticker": "DLTR",
+      "move_pct": 10.95,
+      "price": 154.34,
+      "session": "regular",
+      "trigger": "Big move + news: Q3 beat, raised FY26 guidance",
+      "headline": "Dollar Tree stock pops as thrifty shoppers power a 6th straight earnings beat",
+      "url": "https://finance.yahoo.com/markets/stocks/article/dollar-tree-stock-pops-as-thrifty-shoppers-power-a-6th-straight-earnings-beat-150530467.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-24T17:48:00Z",
       "ticker": "NVDA",
       "move_pct": -7.24,
@@ -5444,61 +5499,6 @@
       "headline": "Microsoft (MSFT) Stock Surges on Copilot Overhaul Targeting Anthropic",
       "url": "https://blockonomi.com/microsoft-msft-stock-surges-4-following-copilot-overhaul-targeting-anthropic/",
       "action": "In report: impact-3 event (OpenAI DevDay keynote), Mixed - WATCH"
-    },
-    {
-      "ts": "2026-09-28T18:50:40Z",
-      "ticker": "AMD",
-      "move_pct": -3.66,
-      "price": 607.53,
-      "session": "regular",
-      "trigger": "OpenAI pauses advanced-model training over safety review; AI-chip sector selloff",
-      "headline": "Advanced Micro Devices Inc Stock (AMD) Moved Down by 3.66% on Sep 28",
-      "url": "https://www.tradingkey.com/news/market-movers/262190003-market-movers-amd-20260928",
-      "action": "In report: Bullish (extended) option play #4"
-    },
-    {
-      "ts": "2026-09-28T18:50:40Z",
-      "ticker": "MU",
-      "move_pct": -3.31,
-      "price": 1046.13,
-      "session": "regular",
-      "trigger": "OpenAI safety-pause hits memory/AI chips + Burry AI-complex short disclosure",
-      "headline": "Micron Technology Inc Stock (MU) Moved Down by 3.31% on Sep 28",
-      "url": "https://www.tradingkey.com/news/market-movers/262190004-market-movers-mu-20260928",
-      "action": "In report: impact-3 event, avoid chasing memory here"
-    },
-    {
-      "ts": "2026-09-28T15:52:08Z",
-      "ticker": "MDB",
-      "move_pct": -23.6,
-      "price": 323.49,
-      "session": "regular",
-      "trigger": "CEO Desai resignation compounds Q2 earnings selloff",
-      "headline": "Why MongoDB (MDB) Stock Is Nosediving",
-      "url": "https://markets.financialcontent.com/stocks/article/stockstory-2026-9-28-why-mongodb-mdb-stock-is-nosediving",
-      "action": "In report: Avoid until leadership clarity (re-flag, was -15.0%)"
-    },
-    {
-      "ts": "2026-09-28T15:52:08Z",
-      "ticker": "META",
-      "move_pct": -3.3,
-      "price": 751.66,
-      "session": "regular",
-      "trigger": "NM jury finds Facebook liable for 43M+ privacy violations, ~$200B penalty exposure",
-      "headline": "Meta Platforms Inc Stock (META) Opened Down by 3.77% on Sep 28",
-      "url": "https://www.tradingkey.com/news/market-movers/262189908-market-movers-meta-20260928",
-      "action": "WATCH"
-    },
-    {
-      "ts": "2026-09-28T14:51:14.596031Z",
-      "ticker": "MDB",
-      "move_pct": -15.0,
-      "price": 328.82,
-      "session": "regular",
-      "trigger": "CEO CJ Desai resigns effective immediately for Meta role",
-      "headline": "MongoDB Shares Fall 15% as CEO Chirantan Desai Resigns to Join Meta",
-      "url": "https://finance.yahoo.com/markets/stocks/articles/mongodb-shares-fall-15-ceo-135550642.html",
-      "action": "In report: Avoid until leadership clarity"
     }
   ]
 }
