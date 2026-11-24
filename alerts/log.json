@@ -1,6 +1,28 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-24T13:50:00Z",
+      "ticker": "ADI",
+      "move_pct": -10.49,
+      "price": 339.01,
+      "session": "pre",
+      "trigger": "Big move + news reaction: FQ4 beat but weak Q1 FY27 guide",
+      "headline": "Analog Devices Reports Record Fourth Quarter and Fiscal 2026 Financial Results",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/analog-devices-reports-record-fourth-120100362.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-24T13:50:00Z",
+      "ticker": "NVDA",
+      "move_pct": -4.76,
+      "price": 157.2,
+      "session": "pre",
+      "trigger": "Big move: profit-taking after +31.5% rally on Huang return",
+      "headline": "Nvidia stock falls after epic rally on Jensen Huang's return as CEO",
+      "url": "https://finance.yahoo.com/quote/NVDA/",
+      "action": "In report: Bullish"
+    },
+    {
       "ts": "2026-11-23T18:47:00Z",
       "ticker": "ASX",
       "move_pct": 21.41,
