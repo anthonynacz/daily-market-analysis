@@ -1,6 +1,50 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-24T14:47:00Z",
+      "ticker": "HPE",
+      "move_pct": -14.0,
+      "price": 41.3,
+      "session": "regular",
+      "trigger": "Big move + news reaction: FQ4 beat but margin outlook disappoints",
+      "headline": "HPE stock declines as disappointing margin forecast outweighs upbeat guidance",
+      "url": "https://finance.yahoo.com/markets/article/hpe-stock-declines-as-margin-outlook-disappoints-134420648.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-24T14:47:00Z",
+      "ticker": "INSM",
+      "move_pct": 14.35,
+      "price": 170.49,
+      "session": "regular",
+      "trigger": "Big move + M&A: Sanofi to acquire Insmed",
+      "headline": "Sanofi to buy US biopharma group Insmed for $41 bn in cash",
+      "url": "https://finance.yahoo.com/healthcare/articles/sanofi-buy-us-biopharma-group-104404701.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-24T14:47:00Z",
+      "ticker": "AMD",
+      "move_pct": -7.54,
+      "price": 419.29,
+      "session": "regular",
+      "trigger": "Big move: chip-sector selloff, AI trade pressure",
+      "headline": "Nvidia, AMD, Broadcom lead chip stocks lower as AI trade comes under pressure",
+      "url": "https://finance.yahoo.com/markets/article/nvidia-amd-broadcom-lead-chip-stocks-lower-as-ai-trade-comes-under-pressure-141635463.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-24T14:47:00Z",
+      "ticker": "MU",
+      "move_pct": -6.84,
+      "price": 659.32,
+      "session": "regular",
+      "trigger": "Big move: follows Nvidia pullback, memory selloff",
+      "headline": "Micron Falls 7% as NVIDIA Pullback Partially Reverses Monday's AI Chip Rally",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/micron-falls-7-nvidia-pullback-140733539.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-24T13:50:00Z",
       "ticker": "ADI",
       "move_pct": -10.49,
