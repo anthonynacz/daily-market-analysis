@@ -1,6 +1,17 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-24T20:46:00Z",
+      "ticker": "SNY",
+      "move_pct": 10.75,
+      "price": 51.8,
+      "session": "regular",
+      "trigger": "Big move + news: $41B Insmed acquisition",
+      "headline": "Sanofi stock jumps after $41B Insmed deal",
+      "url": "https://seekingalpha.com/news/4676291-sanofi-stock-jumps-41b-insmed-deal",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-24T19:47:00Z",
       "ticker": "KYMR",
       "move_pct": 13.02,
@@ -5488,17 +5499,6 @@
       "headline": "SanDisk Stock Forecast: Micron Earnings Read-Through",
       "url": "https://www.fxleaders.com/news/2026/09/28/sandisk-stock-forecast-micron-earnings/",
       "action": "In report: Bearish event (OpenAI safety-pause chip selloff) - WATCH"
-    },
-    {
-      "ts": "2026-09-28T19:53:07Z",
-      "ticker": "MSFT",
-      "move_pct": 3.66,
-      "price": 518.0,
-      "session": "regular",
-      "trigger": "Copilot enterprise relaunch targeting Anthropic + Stifel Hold->Buy upgrade",
-      "headline": "Microsoft (MSFT) Stock Surges on Copilot Overhaul Targeting Anthropic",
-      "url": "https://blockonomi.com/microsoft-msft-stock-surges-4-following-copilot-overhaul-targeting-anthropic/",
-      "action": "In report: impact-3 event (OpenAI DevDay keynote), Mixed - WATCH"
     }
   ]
 }
