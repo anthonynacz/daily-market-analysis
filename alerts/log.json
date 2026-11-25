@@ -1,6 +1,39 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-25T14:47:00Z",
+      "ticker": "QQQ",
+      "move_pct": -4.43,
+      "price": 609.85,
+      "session": "regular",
+      "trigger": "Big move: chip/AI selloff continuation",
+      "headline": "No single verified headline",
+      "url": "",
+      "action": "In report: Bearish"
+    },
+    {
+      "ts": "2026-11-25T14:47:00Z",
+      "ticker": "AMZN",
+      "move_pct": -5.75,
+      "price": 237.8,
+      "session": "regular",
+      "trigger": "Big move: no clear news, sector flow",
+      "headline": "No clear news",
+      "url": "",
+      "action": "In report: Bullish"
+    },
+    {
+      "ts": "2026-11-25T14:47:00Z",
+      "ticker": "NVDA",
+      "move_pct": -8.28,
+      "price": 142.52,
+      "session": "regular",
+      "trigger": "Big move: AI trade selloff",
+      "headline": "Nvidia, AMD, and Micron stocks sink as investors flee AI trade (Yahoo Finance)",
+      "url": "https://finance.yahoo.com/quote/NVDA/",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-24T20:46:00Z",
       "ticker": "SNY",
       "move_pct": 10.75,
@@ -5466,39 +5499,6 @@
       "headline": "EIA weekly petroleum status shows crude stockpiles fall 2.2M bbl",
       "url": "https://www.ogj.com/general-interest/article/17250662/eia-us-crude-stockpiles-fall-3-million-bbl",
       "action": "In report: Bullish option play #3"
-    },
-    {
-      "ts": "2026-09-30T17:51:00Z",
-      "ticker": "FICO",
-      "move_pct": -2.39,
-      "price": 603.08,
-      "session": "regular",
-      "trigger": "Continued slide after FHFA directs Fannie/Freddie to single-pricing-grid treating VantageScore equally",
-      "headline": "Fair Isaac stock plunges after Fannie and Freddie open door to FICO credit score rival",
-      "url": "https://finance.yahoo.com/markets/stocks/article/fair-isaac-stock-plunges-20-after-fannie-and-freddie-open-door-to-fico-credit-score-rival-142841650.html",
-      "action": "WATCH"
-    },
-    {
-      "ts": "2026-09-28T20:57:00Z",
-      "ticker": "ORCL",
-      "move_pct": -3.05,
-      "price": 132.92,
-      "session": "after",
-      "trigger": "Michael Burry reopens short on Oracle citing OpenAI-backlog leverage risk",
-      "headline": "Michael Burry Reopens Short Bet on Oracle",
-      "url": "https://www.tipranks.com/news/michael-burry-reopens-short-bet-on-oracle-orcl-heres-why-wall-street-still-sees-80-upside",
-      "action": "In report: Bearish event (Burry AI-complex shorts) - WATCH"
-    },
-    {
-      "ts": "2026-09-28T20:57:00Z",
-      "ticker": "SNDK",
-      "move_pct": -2.42,
-      "price": 1711.11,
-      "session": "after",
-      "trigger": "OpenAI training-pause memory/AI-chip selloff + Micron earnings read-through",
-      "headline": "SanDisk Stock Forecast: Micron Earnings Read-Through",
-      "url": "https://www.fxleaders.com/news/2026/09/28/sandisk-stock-forecast-micron-earnings/",
-      "action": "In report: Bearish event (OpenAI safety-pause chip selloff) - WATCH"
     }
   ]
 }
