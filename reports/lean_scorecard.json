@@ -38,5 +38,15 @@
   "conf": 1,
   "movePct": -2.92,
   "result": "MISS"
+ },
+ {
+  "reportDate": "2026-11-23",
+  "eventDate": "2026-11-24",
+  "id": "t12",
+  "ticker": "ADI",
+  "lean": "BEARISH",
+  "conf": 1,
+  "movePct": -17.37,
+  "result": "HIT"
  }
 ]
