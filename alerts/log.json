@@ -1,6 +1,61 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-25T18:47:00Z",
+      "ticker": "NTNX",
+      "move_pct": -17.66,
+      "price": 44.95,
+      "session": "regular",
+      "trigger": "Big move + news: CEO stepping down, FY revenue guide light",
+      "headline": "Nutanix stock plunges as CEO announces plans to step down",
+      "url": "https://finance.yahoo.com/quote/NTNX/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-25T18:47:00Z",
+      "ticker": "HPQ",
+      "move_pct": 11.27,
+      "price": 31.09,
+      "session": "regular",
+      "trigger": "Big move + news: Q4 beat, cautious FY27 outlook",
+      "headline": "HP shares jump as earnings beat offsets cautious fiscal 2027 outlook",
+      "url": "https://finance.yahoo.com/quote/HPQ/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-25T18:47:00Z",
+      "ticker": "QXO",
+      "move_pct": 8.44,
+      "price": 11.95,
+      "session": "regular",
+      "trigger": "Big move; no clear news - possibly sector/market flow",
+      "headline": "QXO quote page",
+      "url": "https://finance.yahoo.com/quote/QXO/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-25T18:47:00Z",
+      "ticker": "LRCX",
+      "move_pct": -6.97,
+      "price": 182.48,
+      "session": "regular",
+      "trigger": "Big move: AI-led semiconductor selloff",
+      "headline": "Lam Research (LRCX) Stock Is Down Today: AI-Led Chip Selloff",
+      "url": "https://finance.yahoo.com/quote/LRCX/",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-25T18:47:00Z",
+      "ticker": "AMAT",
+      "move_pct": -5.63,
+      "price": 305.54,
+      "session": "regular",
+      "trigger": "Big move; no clear news - semi equipment sector selloff",
+      "headline": "AMAT quote page",
+      "url": "https://stockanalysis.com/stocks/amat/",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-25T17:47:00Z",
       "ticker": "SMH",
       "move_pct": -4.31,
@@ -5443,61 +5498,6 @@
       "trigger": "Big move + news: SpaceX talks to buy ~80,000 cell sites",
       "headline": "Crown Castle soars on reported SpaceX talks",
       "url": "https://finance.yahoo.com/markets/stocks/articles/crown-castle-soars-12-reported-143401919.html",
-      "action": "WATCH"
-    },
-    {
-      "ts": "2026-10-23T14:48:00Z",
-      "ticker": "BE",
-      "move_pct": -10.23,
-      "price": 195.5,
-      "session": "regular",
-      "trigger": "Big move + news: post-Q3 selloff on negative cash flow/capex",
-      "headline": "BE Stock Extends Selloff After Q3 Print",
-      "url": "https://finance.yahoo.com/markets/stocks/articles/stock-extends-selloff-q3-print-135320966.html",
-      "action": "WATCH"
-    },
-    {
-      "ts": "2026-10-23T14:48:00Z",
-      "ticker": "CRWD",
-      "move_pct": 5.75,
-      "price": 251.62,
-      "session": "regular",
-      "trigger": "Big move: no clear same-day news",
-      "headline": "CrowdStrike expanded NVIDIA AI security deal (Oct 22 context)",
-      "url": "https://finance.yahoo.com/markets/stocks/articles/crowdstrike-stock-rose-5-expanded-195738995.html",
-      "action": "WATCH"
-    },
-    {
-      "ts": "2026-10-23T14:48:00Z",
-      "ticker": "T",
-      "move_pct": -4.51,
-      "price": 21.72,
-      "session": "regular",
-      "trigger": "Big move + news: SpaceX cell-site report, competition fears",
-      "headline": "Telecom Stocks Fall as SpaceX Eyes 80,000 Cell Sites",
-      "url": "https://finance.yahoo.com/markets/stocks/articles/telecom-stocks-fall-spacex-eyes-134838815.html",
-      "action": "WATCH"
-    },
-    {
-      "ts": "2026-10-23T14:48:00Z",
-      "ticker": "INFY",
-      "move_pct": -4.35,
-      "price": 12.65,
-      "session": "regular",
-      "trigger": "Big move + news: Q2 guidance disappoints",
-      "headline": "Infosys shares fall as revenue misses estimates and guidance disappoints",
-      "url": "https://finance.yahoo.com/markets/stocks/articles/infosys-shares-fall-revenue-misses-142600785.html",
-      "action": "WATCH"
-    },
-    {
-      "ts": "2026-10-23T14:48:00Z",
-      "ticker": "AMT",
-      "move_pct": 4.55,
-      "price": 189.83,
-      "session": "regular",
-      "trigger": "Big move + news: SpaceX tower-site report",
-      "headline": "SpaceX Is Coming for the Phone Companies, but the Tower Owners Win Either Way",
-      "url": "https://finance.yahoo.com/markets/stocks/articles/spacex-coming-phone-companies-tower-124555789.html",
       "action": "WATCH"
     }
   ]
