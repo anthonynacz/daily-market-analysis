@@ -1,6 +1,72 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-25T16:47:00Z",
+      "ticker": "SNDK",
+      "move_pct": -13.3,
+      "price": 67.58,
+      "session": "regular",
+      "trigger": "Big move: Memory/AI-spend reassessment",
+      "headline": "Why Sandisk Stock Just Dropped Again",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/why-sandisk-stock-just-dropped-153644278.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-25T16:47:00Z",
+      "ticker": "NBIS",
+      "move_pct": -12.42,
+      "price": 76.45,
+      "session": "regular",
+      "trigger": "Big move: Capacity delays, 2027 capex $40-45B",
+      "headline": "Nebius Sinks 43% in a Month on Delays and Soaring Capex",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/nebius-sinks-43-month-delays-112624280.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-25T16:47:00Z",
+      "ticker": "MU",
+      "move_pct": -12.34,
+      "price": 552.32,
+      "session": "regular",
+      "trigger": "Big move: BNP Paribas halves target",
+      "headline": "Micron Stocks Sink After BNP Paribas Halves Target on Oversupply Fears",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/micron-stocks-sink-10-47-154807203.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-25T16:47:00Z",
+      "ticker": "CRWV",
+      "move_pct": -10.57,
+      "price": 38.1,
+      "session": "regular",
+      "trigger": "Big move: Bonds plunge, 2031 yield 17.91%",
+      "headline": "CoreWeave bonds plunge as 2031 yield surges to 17.91%",
+      "url": "https://finance.yahoo.com/technology/ai/articles/coreweave-bonds-plunge-2031-yield-160749981.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-25T16:47:00Z",
+      "ticker": "INTC",
+      "move_pct": -9.65,
+      "price": 49.51,
+      "session": "regular",
+      "trigger": "Big move: Broad semiconductor selloff",
+      "headline": "NVIDIA Tumbles 9%... AMD Plunges 10%, Intel Falls 8%",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/nvidia-tumbles-9-jensen-huang-145650450.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-25T16:47:00Z",
+      "ticker": "AMD",
+      "move_pct": -9.52,
+      "price": 373.94,
+      "session": "regular",
+      "trigger": "Big move: Chip rout and tariff threat",
+      "headline": "AMD Stocks Plunge 9.74% as Chip Rout and Tariff Threat Collide",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/amd-stocks-plunge-9-74-154902897.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-25T14:47:00Z",
       "ticker": "QQQ",
       "move_pct": -4.43,
@@ -1271,8 +1337,8 @@
       "move_pct": -8.89,
       "price": 81.37,
       "session": "regular",
-      "trigger": "Big move; no clear news — possibly sector/market flow",
-      "headline": "No clear news — possibly sector/market flow",
+      "trigger": "Big move; no clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "",
       "action": "WATCH"
     },
@@ -1293,8 +1359,8 @@
       "move_pct": -6.66,
       "price": 11.21,
       "session": "regular",
-      "trigger": "Big move; no clear news — possibly sector/market flow",
-      "headline": "No clear news — possibly sector/market flow",
+      "trigger": "Big move; no clear news \u2014 possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "",
       "action": "WATCH"
     },
@@ -1338,7 +1404,7 @@
       "price": 23.78,
       "session": "regular",
       "trigger": "Big move; broad tech/AI sell-off, no clear news",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "",
       "action": "WATCH"
     },
@@ -1349,7 +1415,7 @@
       "price": 266.75,
       "session": "regular",
       "trigger": "Big move; broad tech/AI sell-off, no clear news",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "",
       "action": "WATCH"
     },
@@ -1360,7 +1426,7 @@
       "price": 356.79,
       "session": "regular",
       "trigger": "Big move; broad tech/AI sell-off, no clear news",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "",
       "action": "WATCH"
     },
@@ -1371,7 +1437,7 @@
       "price": 113.95,
       "session": "regular",
       "trigger": "Big move; broad tech/AI sell-off, no clear news",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "",
       "action": "WATCH"
     },
@@ -1535,7 +1601,7 @@
       "move_pct": 5.56,
       "price": 75.23,
       "session": "regular",
-      "trigger": "Big move: no clear news — possibly sector flow",
+      "trigger": "Big move: no clear news \u2014 possibly sector flow",
       "headline": "",
       "url": "",
       "action": "WATCH"
@@ -1557,7 +1623,7 @@
       "move_pct": 4.99,
       "price": 38.27,
       "session": "regular",
-      "trigger": "Big move: no clear news — possibly sector flow",
+      "trigger": "Big move: no clear news \u2014 possibly sector flow",
       "headline": "",
       "url": "",
       "action": "WATCH"
@@ -1568,8 +1634,8 @@
       "move_pct": -4.95,
       "price": 10.67,
       "session": "regular",
-      "trigger": "Big move: weak iron ore, Itaú BBA downgrade (3 days ago)",
-      "headline": "Here's Why Itaú BBA Downgraded Vale (VALE)",
+      "trigger": "Big move: weak iron ore, Ita\u00fa BBA downgrade (3 days ago)",
+      "headline": "Here's Why Ita\u00fa BBA Downgraded Vale (VALE)",
       "url": "https://finance.yahoo.com/markets/stocks/articles/why-ita-bba-downgraded-vale-205852941.html",
       "action": "WATCH"
     },
@@ -1932,7 +1998,7 @@
       "price": 54.95,
       "session": "pre",
       "trigger": "Big move; direction flipped; no clear news",
-      "headline": "no clear news — giveback after yesterday's surge",
+      "headline": "no clear news \u2014 giveback after yesterday's surge",
       "url": "",
       "action": "WATCH"
     },
@@ -1943,7 +2009,7 @@
       "price": 352.22,
       "session": "pre",
       "trigger": "Big move; direction flipped; AI-hardware giveback",
-      "headline": "no clear news — sector flow",
+      "headline": "no clear news \u2014 sector flow",
       "url": "",
       "action": "WATCH"
     },
@@ -1954,7 +2020,7 @@
       "price": 199.73,
       "session": "pre",
       "trigger": "Big move; direction flipped; momentum giveback",
-      "headline": "no clear news — sector flow",
+      "headline": "no clear news \u2014 sector flow",
       "url": "",
       "action": "WATCH"
     },
@@ -1965,7 +2031,7 @@
       "price": 776.39,
       "session": "pre",
       "trigger": "Big move; direction flipped; semis giveback",
-      "headline": "no clear news — sector flow",
+      "headline": "no clear news \u2014 sector flow",
       "url": "",
       "action": "WATCH"
     },
@@ -2306,7 +2372,7 @@
       "price": 34.53,
       "session": "regular",
       "trigger": "Big move + news: Q3 results, shares fall",
-      "headline": "On Holding Delivers Record Q3 Sales As Apparel Revenue Jumps 39% — Why ONON Stock Is Falling",
+      "headline": "On Holding Delivers Record Q3 Sales As Apparel Revenue Jumps 39% \u2014 Why ONON Stock Is Falling",
       "url": "https://finance.yahoo.com/markets/stocks/articles/holding-delivers-record-q3-sales-113240499.html",
       "action": "WATCH"
     },
@@ -2316,7 +2382,7 @@
       "move_pct": -7.41,
       "price": 16.3,
       "session": "regular",
-      "trigger": "Big move: no clear news — possibly sector flow",
+      "trigger": "Big move: no clear news \u2014 possibly sector flow",
       "headline": "",
       "url": "",
       "action": "WATCH"
@@ -2338,7 +2404,7 @@
       "move_pct": 4.39,
       "price": 215.71,
       "session": "regular",
-      "trigger": "Big move: no clear news — rebound after post-earnings drop",
+      "trigger": "Big move: no clear news \u2014 rebound after post-earnings drop",
       "headline": "Daiwa Securities Adjusts Price Target on Twilio to $230 From $277",
       "url": "https://finance.yahoo.com/markets/stocks/articles/daiwa-securities-adjusts-price-target-105419968.html",
       "action": "WATCH"
@@ -3141,7 +3207,7 @@
       "move_pct": -5.14,
       "price": 29.77,
       "session": "regular",
-      "trigger": "Big move: no clear news — possibly sector/market flow",
+      "trigger": "Big move: no clear news \u2014 possibly sector/market flow",
       "headline": "Yahoo Finance most-active list",
       "url": "https://finance.yahoo.com/markets/stocks/most-active/",
       "action": "WATCH"
@@ -3152,7 +3218,7 @@
       "move_pct": -4.98,
       "price": 134.27,
       "session": "regular",
-      "trigger": "Big move: no clear news — possibly sector/market flow",
+      "trigger": "Big move: no clear news \u2014 possibly sector/market flow",
       "headline": "Yahoo Finance most-active list",
       "url": "https://finance.yahoo.com/markets/stocks/most-active/",
       "action": "WATCH"
@@ -3163,7 +3229,7 @@
       "move_pct": -4.12,
       "price": 58.05,
       "session": "regular",
-      "trigger": "Big move: no clear news — possibly sector/market flow",
+      "trigger": "Big move: no clear news \u2014 possibly sector/market flow",
       "headline": "Yahoo Finance most-active list",
       "url": "https://finance.yahoo.com/markets/stocks/most-active/",
       "action": "WATCH"
@@ -3758,7 +3824,7 @@
       "price": 92.38,
       "session": "regular",
       "trigger": "Big move; no clear news",
-      "headline": "no clear news — possibly sector/market flow",
+      "headline": "no clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/NXT/",
       "action": "WATCH"
     },
@@ -3791,7 +3857,7 @@
       "price": 13.82,
       "session": "regular",
       "trigger": "Big move; no clear news",
-      "headline": "no clear news — possibly rate/sector flow",
+      "headline": "no clear news \u2014 possibly rate/sector flow",
       "url": "https://finance.yahoo.com/quote/RKT/",
       "action": "WATCH"
     },
@@ -3934,7 +4000,7 @@
       "price": 166.48,
       "session": "regular",
       "trigger": "Big move; no clear news",
-      "headline": "no clear news — possibly sector/market flow",
+      "headline": "no clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/TSEM/",
       "action": "WATCH"
     },
@@ -4396,7 +4462,7 @@
       "price": 8.53,
       "session": "regular",
       "trigger": "Big move + Q3 growth outlook trimmed",
-      "headline": "Haleon shares plunge 14% after £500 million buyback launch",
+      "headline": "Haleon shares plunge 14% after \u00a3500 million buyback launch",
       "url": "https://finance.yahoo.com/markets/stocks/articles/haleon-launches-500-million-share-072500287.html",
       "action": "WATCH"
     },
@@ -4583,7 +4649,7 @@
       "price": 2.755,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/quote/BBD/",
       "action": "WATCH"
     },
@@ -4594,7 +4660,7 @@
       "price": 39.47,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -4605,7 +4671,7 @@
       "price": 11.77,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -4616,7 +4682,7 @@
       "price": 55.86,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -4627,7 +4693,7 @@
       "price": 90.6,
       "session": "regular",
       "trigger": "Big move; no clear news found",
-      "headline": "No clear news — possibly sector/market flow",
+      "headline": "No clear news \u2014 possibly sector/market flow",
       "url": "https://finance.yahoo.com/markets/stocks/losers/",
       "action": "WATCH"
     },
@@ -5433,72 +5499,6 @@
       "headline": "Why is Occidental Petroleum stock rallying today?",
       "url": "https://www.investing.com/news/stock-market-news/why-is-occidental-petroleum-stock-rallying-today-93CH-4927710",
       "action": "In report: Mixed (OPEC+/Iran event) - WATCH"
-    },
-    {
-      "ts": "2026-10-01T18:50:45Z",
-      "ticker": "ACN",
-      "move_pct": 17.55,
-      "price": 215.56,
-      "session": "regular",
-      "trigger": "FY2026 Q4 earnings beat (EPS 3.29 vs 3.18 est), record bookings, best day ever",
-      "headline": "Accenture rallies more than 20% after earnings beat, heads for best day ever",
-      "url": "https://www.cnbc.com/2026/10/01/accenture-rallies-more-than-20percent-after-earnings-beat-heads-for-best-day-ever.html",
-      "action": "In report: Bullish (impact-2 event) - WATCH"
-    },
-    {
-      "ts": "2026-10-01T18:50:45Z",
-      "ticker": "UTHR",
-      "move_pct": 6.98,
-      "price": 515.1,
-      "session": "regular",
-      "trigger": "Court upheld patent Liquidia admitted infringing, Yutrepia litigation win",
-      "headline": "United Therapeutics Won Its Patent War and Liquidia Collapsed",
-      "url": "https://finance.yahoo.com/healthcare/articles/united-therapeutics-won-patent-war-150712736.html",
-      "action": "In report: Bullish (impact-3 event) - WATCH"
-    },
-    {
-      "ts": "2026-10-01T18:50:45Z",
-      "ticker": "RKLB",
-      "move_pct": 5.0,
-      "price": 72.88,
-      "session": "regular",
-      "trigger": "Record 20-mission Electron launch agreement with Synspective, backlog past 100 missions",
-      "headline": "Rocket Lab Climbs 5% as Largest-Ever Electron Deal Lifts Backlog Past 100 Missions",
-      "url": "https://finance.yahoo.com/markets/stocks/articles/rocket-lab-climbs-5-largest-132637806.html",
-      "action": "WATCH"
-    },
-    {
-      "ts": "2026-09-30T19:51:47Z",
-      "ticker": "META",
-      "move_pct": -4.2,
-      "price": 720.16,
-      "session": "regular",
-      "trigger": "AI-capex spending concerns + JPMorgan downgrade to Neutral",
-      "headline": "Why is Meta stock down on Wednesday?",
-      "url": "https://invezz.com/ie/news/2026/09/30/why-is-meta-stock-down-on-wednesday/",
-      "action": "In report: Bullish (Sep 28 event) - WATCH"
-    },
-    {
-      "ts": "2026-09-30T19:51:47Z",
-      "ticker": "AAPL",
-      "move_pct": 2.4,
-      "price": 337.16,
-      "session": "regular",
-      "trigger": "Bloomberg: new CEO John Ternus sets Oct 13 smart-home hub launch",
-      "headline": "Apple Is Finally Ready to Enter Its Next Big Category: the Smart Home",
-      "url": "https://www.bloomberg.com/news/articles/2026-09-30/apple-is-finally-ready-to-enter-its-next-big-category-the-smart-home",
-      "action": "In report: Bullish Option Play #4"
-    },
-    {
-      "ts": "2026-09-30T17:51:00Z",
-      "ticker": "XOM",
-      "move_pct": 2.61,
-      "price": 163.96,
-      "session": "regular",
-      "trigger": "EIA crude draw to 414.1M bbl (lowest since Dec 2022) + TD Cowen PT raise to $180",
-      "headline": "EIA weekly petroleum status shows crude stockpiles fall 2.2M bbl",
-      "url": "https://www.ogj.com/general-interest/article/17250662/eia-us-crude-stockpiles-fall-3-million-bbl",
-      "action": "In report: Bullish option play #3"
     }
   ]
 }
