@@ -48,5 +48,15 @@
   "conf": 1,
   "movePct": -17.37,
   "result": "HIT"
+ },
+ {
+  "reportDate": "2026-11-24",
+  "eventDate": "2026-11-25",
+  "id": "f7",
+  "ticker": "TLT",
+  "lean": "BULLISH",
+  "conf": 1,
+  "movePct": 0.92,
+  "result": "HIT"
  }
 ]
