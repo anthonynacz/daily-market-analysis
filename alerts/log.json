@@ -1,6 +1,50 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-27T20:50:00Z",
+      "ticker": "SNDK",
+      "move_pct": 15.68,
+      "price": 85.15,
+      "session": "after",
+      "trigger": "Big move: memory rebound, Kioxia/Nvidia SSD news",
+      "headline": "SanDisk Stocks Jump After Kioxia and Nvidia Stretch GPU Memory With SSDs (GuruFocus)",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/sandisk-stocks-jump-12-85-181316890.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-27T20:50:00Z",
+      "ticker": "ACN",
+      "move_pct": -6.18,
+      "price": 225.64,
+      "session": "after",
+      "trigger": "Big move: no clear news (after-hours drop)",
+      "headline": "no clear news",
+      "url": "",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-27T20:50:00Z",
+      "ticker": "INTC",
+      "move_pct": 5.38,
+      "price": 57.4,
+      "session": "regular",
+      "trigger": "Big move: Washington 10% stake court filings, chip rally",
+      "headline": "Intel Stocks Climb as Court Filings Detail Washington's 10% Stake Push (GuruFocus)",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/intel-stocks-climb-2-86-192124489.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-27T20:50:00Z",
+      "ticker": "AMZN",
+      "move_pct": 3.96,
+      "price": 254.12,
+      "session": "regular",
+      "trigger": "News reaction: Thanksgiving online spending $7.1B",
+      "headline": "Amazon Stocks Climb as Thanksgiving Online Spending Hits $7.1 Billion (GuruFocus)",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/amazon-stocks-climb-2-96-190908869.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-27T16:46:00Z",
       "ticker": "MRVL",
       "move_pct": 5.64,
@@ -5454,50 +5498,6 @@
       "trigger": "Big move, no clear news (sector flow)",
       "headline": "no clear news",
       "url": "https://finance.yahoo.com/quote/P/news/",
-      "action": "WATCH"
-    },
-    {
-      "ts": "2026-10-26T18:47:00Z",
-      "ticker": "NFLX",
-      "move_pct": -4.21,
-      "price": 63.08,
-      "session": "regular",
-      "trigger": "Big move, no clear news today (post-earnings pressure)",
-      "headline": "Netflix Sinks 7% as Soft Q4 Outlook Sparks Wave of Price Target Cuts",
-      "url": "https://247wallst.com/investing/2026/10/21/netflix-sinks-7-as-soft-q4-outlook-sparks-wave-of-price-target-cuts-spotify-slips-disney-holds-steady/",
-      "action": "WATCH"
-    },
-    {
-      "ts": "2026-10-26T15:47:00Z",
-      "ticker": "SBS",
-      "move_pct": -25.16,
-      "price": 4.79,
-      "session": "regular",
-      "trigger": "Brazil selloff after Lula win",
-      "headline": "Brazilian Stocks Tumble After Lula's Shock Win (Barron's, via Yahoo)",
-      "url": "https://finance.yahoo.com/quote/SBS/",
-      "action": "WATCH"
-    },
-    {
-      "ts": "2026-10-26T15:47:00Z",
-      "ticker": "ABEV",
-      "move_pct": -15.71,
-      "price": 2.78,
-      "session": "regular",
-      "trigger": "Brazil selloff after Lula win",
-      "headline": "Brazilian Stocks Tumble After Lula's Shock Win (Barron's, via Yahoo)",
-      "url": "https://finance.yahoo.com/quote/ABEV/",
-      "action": "WATCH"
-    },
-    {
-      "ts": "2026-10-26T15:47:00Z",
-      "ticker": "NOK",
-      "move_pct": 6.31,
-      "price": 8.65,
-      "session": "regular",
-      "trigger": "Big move, no clear news (sector flow)",
-      "headline": "no clear news",
-      "url": "https://finance.yahoo.com/quote/NOK/",
       "action": "WATCH"
     }
   ]
