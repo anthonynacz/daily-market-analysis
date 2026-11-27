@@ -1,6 +1,61 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-27T16:46:00Z",
+      "ticker": "MRVL",
+      "move_pct": 5.64,
+      "price": 138.32,
+      "session": "regular",
+      "trigger": "News reaction: optics/AI chip rally",
+      "headline": "Why Is Marvell Technology Stock Surging Today?",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/why-marvell-technology-stock-surging-115215377.html",
+      "action": "In report: Bearish"
+    },
+    {
+      "ts": "2026-11-27T16:46:00Z",
+      "ticker": "DELL",
+      "move_pct": 6.74,
+      "price": 317.09,
+      "session": "regular",
+      "trigger": "Big move: no clear news",
+      "headline": "no clear news",
+      "url": "",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-27T16:46:00Z",
+      "ticker": "VRTX",
+      "move_pct": -5.58,
+      "price": 532.64,
+      "session": "regular",
+      "trigger": "News reaction: FDA delays kidney drug decision",
+      "headline": "Vertex shares drop after FDA delays kidney drug decision",
+      "url": "https://finance.yahoo.com/healthcare/articles/vertex-shares-drop-fda-delays-160450096.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-27T16:46:00Z",
+      "ticker": "PLTR",
+      "move_pct": 5.16,
+      "price": 172.03,
+      "session": "regular",
+      "trigger": "Big move: possible Poland defense deal",
+      "headline": "Palantir Stock Jumps. It Could Land a Major Poland Defense Deal",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/palantir-stock-jumps-could-land-143921179.html",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-27T16:46:00Z",
+      "ticker": "TSLA",
+      "move_pct": 5.07,
+      "price": 399.4,
+      "session": "regular",
+      "trigger": "Big move: no clear news",
+      "headline": "no clear news",
+      "url": "",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-27T15:47:00Z",
       "ticker": "SBS",
       "move_pct": 12.24,
@@ -5443,61 +5498,6 @@
       "trigger": "Big move, no clear news (sector flow)",
       "headline": "no clear news",
       "url": "https://finance.yahoo.com/quote/NOK/",
-      "action": "WATCH"
-    },
-    {
-      "ts": "2026-10-26T15:47:00Z",
-      "ticker": "CRWV",
-      "move_pct": 5.39,
-      "price": 57.16,
-      "session": "regular",
-      "trigger": "Intraday reversal after Musk neocloud warning",
-      "headline": "CoreWeave Drops 5% as Musk Warns of Neocloud 'Guppy-Level Death'",
-      "url": "https://finance.yahoo.com/markets/stocks/articles/coreweave-drops-5-musk-warns-131852401.html",
-      "action": "WATCH"
-    },
-    {
-      "ts": "2026-10-26T15:47:00Z",
-      "ticker": "INTC",
-      "move_pct": 4.69,
-      "price": 91.04,
-      "session": "regular",
-      "trigger": "New Street bullish call, earnings Oct 29",
-      "headline": "Street bullish on Intel as CPU scarcity drives turnaround",
-      "url": "https://finance.yahoo.com/markets/stocks/articles/street-bullish-intel-buy-cpu-144611818.html",
-      "action": "WATCH"
-    },
-    {
-      "ts": "2026-10-26T14:50:00Z",
-      "ticker": "TSLA",
-      "move_pct": 6.1,
-      "price": 395.06,
-      "session": "regular",
-      "trigger": "Barclays upgrade to Overweight on SpaceX tie-up potential",
-      "headline": "Tesla Rises 6% as Barclays Upgrade Cites SpaceX Merger Potential",
-      "url": "https://finance.yahoo.com/quote/TSLA/",
-      "action": "WATCH"
-    },
-    {
-      "ts": "2026-10-26T14:50:00Z",
-      "ticker": "NU",
-      "move_pct": -20.7,
-      "price": 12.03,
-      "session": "regular",
-      "trigger": "Brazil election shock (Lula win)",
-      "headline": "Brazilian Stocks Tumble as Lula Wins Surprise Fourth Term",
-      "url": "https://247wallst.com/investing/2026/10/26/brazilian-stocks-tumble-as-lula-wins-surprise-fourth-term-nu-holdings-sinks-25-petrobras-tumbles-21-mercadolibre-drops-15/",
-      "action": "WATCH"
-    },
-    {
-      "ts": "2026-10-26T14:50:00Z",
-      "ticker": "ITUB",
-      "move_pct": -23.9,
-      "price": 7.36,
-      "session": "regular",
-      "trigger": "Brazil election shock (Lula win)",
-      "headline": "Brazilian Stocks Tumble as Lula Wins Surprise Fourth Term",
-      "url": "https://247wallst.com/investing/2026/10/26/brazilian-stocks-tumble-as-lula-wins-surprise-fourth-term-nu-holdings-sinks-25-petrobras-tumbles-21-mercadolibre-drops-15/",
       "action": "WATCH"
     }
   ]
