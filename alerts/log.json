@@ -1,6 +1,28 @@
 {
   "alerts": [
     {
+      "ts": "2026-11-27T15:47:00Z",
+      "ticker": "SBS",
+      "move_pct": 12.24,
+      "price": 5.46,
+      "session": "regular",
+      "trigger": "Big move; no clear company news, likely Brazil-wide flow",
+      "headline": "Brazil Stocks Jump on Finance Pick",
+      "url": "https://riotimesonline.com/brazil-markets-ibovespa-real-thursday-november-26-2026",
+      "action": "WATCH"
+    },
+    {
+      "ts": "2026-11-27T15:47:00Z",
+      "ticker": "COHR",
+      "move_pct": 11.31,
+      "price": 218.37,
+      "session": "regular",
+      "trigger": "Big move; AI-optics/chip rebound, $2B buyback, director buying",
+      "headline": "Chip stocks rally on Black Friday, but Nvidia lags",
+      "url": "https://finance.yahoo.com/markets/article/chip-stocks-lead-a-black-friday-rally-but-nvidia-misses-out-alphacheck-145727185.html",
+      "action": "WATCH"
+    },
+    {
       "ts": "2026-11-27T14:47:00Z",
       "ticker": "ITUB",
       "move_pct": 12.79,
@@ -5472,28 +5494,6 @@
       "ticker": "ITUB",
       "move_pct": -23.9,
       "price": 7.36,
-      "session": "regular",
-      "trigger": "Brazil election shock (Lula win)",
-      "headline": "Brazilian Stocks Tumble as Lula Wins Surprise Fourth Term",
-      "url": "https://247wallst.com/investing/2026/10/26/brazilian-stocks-tumble-as-lula-wins-surprise-fourth-term-nu-holdings-sinks-25-petrobras-tumbles-21-mercadolibre-drops-15/",
-      "action": "WATCH"
-    },
-    {
-      "ts": "2026-10-26T14:50:00Z",
-      "ticker": "PBR",
-      "move_pct": -18.1,
-      "price": 21.43,
-      "session": "regular",
-      "trigger": "Brazil election shock (Lula win)",
-      "headline": "Brazilian Stocks Tumble as Lula Wins Surprise Fourth Term",
-      "url": "https://247wallst.com/investing/2026/10/26/brazilian-stocks-tumble-as-lula-wins-surprise-fourth-term-nu-holdings-sinks-25-petrobras-tumbles-21-mercadolibre-drops-15/",
-      "action": "WATCH"
-    },
-    {
-      "ts": "2026-10-26T14:50:00Z",
-      "ticker": "MELI",
-      "move_pct": -10.6,
-      "price": 1618.04,
       "session": "regular",
       "trigger": "Brazil election shock (Lula win)",
       "headline": "Brazilian Stocks Tumble as Lula Wins Surprise Fourth Term",
